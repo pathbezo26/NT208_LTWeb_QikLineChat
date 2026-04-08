@@ -12,12 +12,12 @@
 
 ## 👥 Thành Viên Nhóm
 
-| STT | Họ và tên | MSSV | Vai trò | GitHub |
-|-----|-----------|------|---------|--------|
-| 1 | Nguyễn Văn A | 2100001 | Fullstack Lead | [@nguyenvana](https://github.com) |
-| 2 | Trần Thị B | 2100002 | Backend Developer | [@tranthib](https://github.com) |
-| 3 | Lê Văn C | 2100003 | Frontend Developer | [@levanc](https://github.com) |
-| 4 | Phạm Thị D | 2100004 | UI/UX & Testing | [@phamthid](https://github.com) |
+| STT | Họ và tên | MSSV  | GitHub |
+|-----|-----------|------|--------|
+| 1 | Nguyễn Tấn Phát | 24521306 | [@pathbezo26](https://github.com/pathbezo26) |
+| 2 | Lê Hồ Thành Phát | 24521297 | [@](https://github.com) |
+| 3 | Nguyễn Nhật Quang | 24521472 | [@](https://github.com) |
+| 4 | Lê Nam Khánh | 24520783 | [@](https://github.com) |
 
 ---
 
@@ -71,7 +71,7 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 ## 📁 Cấu Trúc Thư Mục
 
 ```
-webchat/
+webchat_realtime/
 ├── frontend/                             ← ReactJS + Vite
 │   ├── public/                           ← Chứa file tĩnh public nếu cần
 │   ├── src/
@@ -192,8 +192,8 @@ webchat/
 ### 1️⃣ Clone Repository
 
 ```bash
-git clone https://github.com/your-username/webchat-app.git
-cd webchat-app
+git clone https://github.com/pathbezo26/NT208_Web.git
+cd webchat_realtime
 ```
 
 ---
@@ -401,7 +401,7 @@ socket.on('newMessage', (message) => {
 
 ---
 
-## 🔮 Tương Lai Phát Triển
+## 🔮 Tính năng phát triển
 
 Các tính năng có thể bổ sung trong các phiên bản tiếp theo:
 
