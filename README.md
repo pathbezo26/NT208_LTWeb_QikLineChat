@@ -15,7 +15,7 @@
 | STT | Họ và tên | MSSV  | GitHub |
 |-----|-----------|------|--------|
 | 1 | Nguyễn Tấn Phát | 24521306 | [@pathbezo26](https://github.com/pathbezo26) |
-| 2 | Lê Hồ Thành Phát | 24521297 | [@](https://github.com) |
+| 2 | Lê Hồ Thành Phát | 24521297 | [@](https://github.com/LEHOTHANHPHAT) |
 | 3 | Nguyễn Nhật Quang | 24521472 | [@](https://github.com) |
 | 4 | Lê Nam Khánh | 24520783 | [@](https://github.com) |
 
