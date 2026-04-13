@@ -15,7 +15,7 @@
 | STT | Họ và tên | MSSV  | GitHub |
 |-----|-----------|------|--------|
 | 1 | Nguyễn Tấn Phát | 24521306 | [@pathbezo26](https://github.com/pathbezo26) |
-| 2 | Lê Hồ Thành Phát | 24521297 | [@](https://github.com) |
+| 2 | Lê Hồ Thành Phát | 24521297 | [@LEHOTHANHPHAT](https://github.com/LEHOTHANHPHAT) |
 | 3 | Nguyễn Nhật Quang | 24521472 | [@](https://github.com) |
 | 4 | Lê Nam Khánh | 24520783 | [@](https://github.com) |
 
@@ -23,7 +23,7 @@
 
 ## 📖 Mô Tả Tổng Quan
 
-**WebChat App** là một ứng dụng nhắn tin thời gian thực, cho phép người dùng trò chuyện trực tiếp theo hình thức **chat 1-1 (private)** và **chat nhóm (group)**. Ứng dụng được xây dựng theo kiến trúc client-server hiện đại, kết hợp **REST API** để xử lý dữ liệu bền vững và **Socket.IO** để truyền tin nhắn tức thời không cần reload trang.
+**QikLine Chat** là một ứng dụng nhắn tin thời gian thực, cho phép người dùng trò chuyện trực tiếp theo hình thức **chat 1-1 (private)** và **chat nhóm (group)**. Ứng dụng được xây dựng theo kiến trúc client-server hiện đại, kết hợp **REST API** để xử lý dữ liệu bền vững và **Socket.IO** để truyền tin nhắn tức thời không cần reload trang.
 
 Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhập bảo mật bằng JWT, tự động tải lịch sử trò chuyện, hiển thị tin nhắn realtime và quản lý các cuộc trò chuyện linh hoạt. Toàn bộ dữ liệu được lưu trữ trên MongoDB, đảm bảo tính bền vững và khả năng mở rộng cho hệ thống.
 
@@ -71,9 +71,9 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 ## 📁 Cấu Trúc Thư Mục
 
 ```
-webchat_realtime/
+qikline_chat/
 ├── frontend/                             ← ReactJS + Vite
-│   ├── public/                           ← Chứa file tĩnh public nếu cần
+│   ├── public/                          
 │   ├── src/
 │   │   ├── assets/                       ← Ảnh, icon, avatar mặc định, logo
 │   │   │
@@ -192,8 +192,8 @@ webchat_realtime/
 ### 1️⃣ Clone Repository
 
 ```bash
-git clone https://github.com/pathbezo26/NT208_Web.git
-cd webchat_realtime
+git clone https://github.com/pathbezo26/NT208_LTWeb_QikLineChat.git
+cd QikLineChat
 ```
 
 ---
@@ -398,7 +398,256 @@ socket.on('newMessage', (message) => {
   setMessages(prev => [...prev, message]);
 });
 ```
+---
+## 🗄️ Thiết Kế Cơ Sở Dữ Liệu
 
+### 📐 Lược Đồ Cơ Sở Dữ Liệu (Schema)
+
+Ứng dụng sử dụng **MongoDB** với 3 collection chính: `users`, `conversations`, `messages`. Dưới đây là chi tiết schema và mối quan hệ giữa các collection.
+
+---
+
+#### 👤 Collection: `users`
+
+Lưu trữ thông tin tài khoản người dùng.
+
+```javascript
+// models/User.js
+{
+  _id:          ObjectId,          // Khóa chính, tự sinh bởi MongoDB
+  username:     String,            // Tên hiển thị, bắt buộc, duy nhất
+  email:        String,            // Email đăng nhập, bắt buộc, duy nhất
+  passwordHash: String,            // Mật khẩu đã mã hóa bcrypt
+  createdAt:    Date,              // Thời điểm tạo tài khoản (timestamps)
+  updatedAt:    Date               // Thời điểm cập nhật gần nhất (timestamps)
+}
+```
+
+| Trường | Kiểu | Bắt buộc | Unique | Mô tả |
+|--------|------|----------|--------|-------|
+| `_id` | ObjectId | ✅ | ✅ | Khóa chính tự sinh |
+| `username` | String | ✅ | ✅ | Tên người dùng |
+| `email` | String | ✅ | ✅ | Email đăng nhập |
+| `passwordHash` | String | ✅ | ❌ | Mật khẩu mã hóa bcrypt |
+| `createdAt` | Date | ✅ | ❌ | Tự động (Mongoose timestamps) |
+
+> ⚠️ **Lưu ý quan trọng về `updatedAt`**
+>
+> Trường `updatedAt` của `conversations` **không tự động cập nhật khi có tin nhắn mới**, vì message được lưu ở collection `messages` riêng.
+>
+> Vì vậy, sau khi lưu `Message`, backend cần **cập nhật thủ công `Conversation.updatedAt`** để sidebar luôn sort đúng cuộc trò chuyện mới nhất lên đầu.
+>
+> ```javascript
+> await Conversation.findByIdAndUpdate(conversationId, {
+>   updatedAt: new Date()
+> });
+> ```
+>
+> Thường xử lý trong `socketHandler.js` hoặc `messageController.js` ngay sau bước lưu message.
+
+---
+
+#### 💬 Collection: `conversations`
+
+Lưu trữ thông tin các cuộc trò chuyện (private hoặc group).
+
+```javascript
+// models/Conversation.js
+{
+  _id:       ObjectId,            // Khóa chính
+  type:      String,              // "private" | "group"
+  name:      String,              // Tên nhóm (chỉ dùng cho group, null nếu private)
+  members:   [ObjectId],          // Mảng _id của các thành viên → ref: "User"
+  createdBy: ObjectId,            // _id của người tạo → ref: "User"
+  createdAt: Date,
+  updatedAt: Date                 // Cập nhật mỗi khi có tin nhắn mới (dùng để sort)
+}
+```
+
+| Trường | Kiểu | Bắt buộc | Mô tả |
+|--------|------|----------|-------|
+| `_id` | ObjectId | ✅ | Khóa chính tự sinh |
+| `type` | String (enum) | ✅ | `"private"` hoặc `"group"` |
+| `name` | String | ❌ | Tên nhóm (bỏ trống nếu private) |
+| `members` | [ObjectId] | ✅ | Danh sách thành viên (ref → `users`) |
+| `createdBy` | ObjectId | ✅ | Người tạo cuộc trò chuyện (ref → `users`) |
+| `updatedAt` | Date | ✅ | Dùng để sắp xếp sidebar theo thời gian |
+
+---
+
+#### 📨 Collection: `messages`
+
+Lưu trữ toàn bộ tin nhắn của tất cả các cuộc trò chuyện.
+
+```javascript
+// models/Message.js
+{
+  _id:            ObjectId,       // Khóa chính
+  conversationId: ObjectId,       // Thuộc cuộc trò chuyện nào → ref: "Conversation"
+  sender:         ObjectId,       // Ai gửi → ref: "User"
+  content:        String,         // Nội dung tin nhắn văn bản
+  createdAt:      Date,
+  updatedAt:      Date
+}
+```
+
+| Trường | Kiểu | Bắt buộc | Mô tả |
+|--------|------|----------|-------|
+| `_id` | ObjectId | ✅ | Khóa chính tự sinh |
+| `conversationId` | ObjectId | ✅ | Thuộc conversation nào (ref → `conversations`) |
+| `sender` | ObjectId | ✅ | Người gửi (ref → `users`) |
+| `content` | String | ✅ | Nội dung tin nhắn văn bản |
+| `createdAt` | Date | ✅ | Thời điểm gửi, dùng để sắp xếp |
+
+---
+
+#### 🔗 Quan Hệ Giữa Các Collection
+
+```mermaid
+erDiagram
+    USERS {
+        ObjectId _id PK
+        string username
+        string email
+        string passwordHash
+        date createdAt
+    }
+
+    CONVERSATIONS {
+        ObjectId _id PK
+        string type
+        string name
+        ObjectId[] members FK
+        ObjectId createdBy FK
+        date updatedAt
+    }
+
+    MESSAGES {
+        ObjectId _id PK
+        ObjectId conversationId FK
+        ObjectId sender FK
+        string content
+        date createdAt
+    }
+
+    USERS ||--o{ CONVERSATIONS : "tham gia (members[])"
+    USERS ||--o{ MESSAGES : "gửi (sender)"
+    CONVERSATIONS ||--o{ MESSAGES : "chứa (conversationId)"
+```
+
+---
+
+### 🚀 Chiến Lược Lập Chỉ Mục (Indexing)
+
+Indexing giúp tăng tốc độ truy vấn MongoDB đáng kể, đặc biệt quan trọng khi dữ liệu tin nhắn tăng trưởng nhanh.
+
+#### 📌 Index trên Collection `users`
+
+```javascript
+// Đăng nhập bằng email (authController.js)
+db.users.createIndex({ email: 1 }, { unique: true })  // Unique, tăng tốc login
+
+// Đảm bảo username không trùng
+db.users.createIndex({ username: 1 }, { unique: true })
+```
+
+| Index | Loại | Lý do |
+|-------|------|-------|
+| `email_1` | Unique | Tra cứu nhanh khi đăng nhập |
+| `username_1` | Unique | Đảm bảo tên không trùng |
+
+---
+
+#### 📌 Index trên Collection `conversations`
+
+```javascript
+// Lấy danh sách conversation của user trên Sidebar
+db.conversations.createIndex({ members: 1 })
+
+// Sắp xếp theo tin nhắn mới nhất (conversation gần đây lên đầu)
+db.conversations.createIndex({ updatedAt: -1 })
+
+// Tổ hợp: lọc theo members + sort theo thời gian (query phổ biến nhất)
+db.conversations.createIndex({ members: 1, updatedAt: -1 })
+
+// Kiểm tra private conversation đã tồn tại chưa trước khi tạo mới
+db.conversations.createIndex({ type: 1, members: 1 })
+```
+
+| Index | Loại | Truy vấn được tối ưu |
+|-------|------|---------------------|
+| `members_1` | Single | Lấy conversations theo userId |
+| `updatedAt_-1` | Single | Sort theo tin nhắn mới nhất |
+| `members_1_updatedAt_-1` | Compound | Sidebar query: filter + sort |
+| `type_1_members_1` | Compound | Kiểm tra private chat trùng |
+
+---
+
+#### 📌 Index trên Collection `messages`
+
+```javascript
+// Lấy lịch sử tin nhắn của một conversation (query quan trọng nhất)
+db.messages.createIndex({ conversationId: 1, createdAt: -1 })
+```
+
+| Index | Loại | Truy vấn được tối ưu |
+|-------|------|---------------------|
+| `conversationId_1_createdAt_-1` | Compound | Tải lịch sử tin nhắn theo thứ tự mới nhất |
+
+---
+
+#### 🏗️ Khai Báo Index Trong Mongoose Schema
+
+```javascript
+// models/Message.js — Ví dụ khai báo index trực tiếp trong schema
+const MessageSchema = new mongoose.Schema(
+  {
+    conversationId: { type: ObjectId, ref: 'Conversation', required: true },
+    sender:         { type: ObjectId, ref: 'User', required: true },
+    content:        { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+// Compound index: tối ưu truy vấn lịch sử chat
+MessageSchema.index({ conversationId: 1, createdAt: -1 });
+
+// models/Conversation.js
+const ConversationSchema = new mongoose.Schema(
+  {
+    type:      { type: String, enum: ['private', 'group'], required: true },
+    name:      { type: String },
+    members:   [{ type: ObjectId, ref: 'User', required: true }],
+    createdBy: { type: ObjectId, ref: 'User' },
+  },
+  { timestamps: true }
+);
+
+// Compound index: sidebar query (filter members + sort by latest)
+ConversationSchema.index({ members: 1, updatedAt: -1 });
+ConversationSchema.index({ type: 1, members: 1 });
+```
+
+---
+
+#### 📊 Tóm Tắt Toàn Bộ Index
+
+```
+Collection: users
+  ├── email_1           (unique)     ← đăng nhập
+  └── username_1        (unique)     ← đảm bảo không trùng
+
+Collection: conversations
+  ├── members_1_updatedAt_-1         ← sidebar (chính)
+  └── type_1_members_1               ← kiểm tra private trùng
+
+Collection: messages
+  └── conversationId_1_createdAt_-1  ← tải lịch sử (chính)
+```
+
+> 💡 **Lưu ý**: Không nên tạo quá nhiều index vì mỗi index tốn thêm dung lượng lưu trữ và làm chậm thao tác **write** (insert/update). Chỉ index những trường thực sự được dùng trong điều kiện `find()`, `sort()`, và `$lookup`.
+
+---
 ---
 
 ## 🔮 Tính năng phát triển
