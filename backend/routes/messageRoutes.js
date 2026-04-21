@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
+const { sendMessage, getMessages } = require('../controllers/messageController');
 
-// TODO: Sẽ hoàn thiện ở bước tiếp theo
-// GET /api/messages/:conversationId
-// POST /api/messages
+router.post('/', protect, sendMessage);
+router.get('/:conversationId', protect, getMessages);
 
 module.exports = router;

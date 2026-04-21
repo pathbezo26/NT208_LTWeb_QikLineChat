@@ -115,4 +115,29 @@ const getMe = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getMe };
+const searchUsers = async (req, res) => {
+    try {
+        const keyword = req.query.username;
+
+        // 1. Must provide a search keyword
+        if (!keyword) {
+            return res.status(400).json({ message: 'Vui lòng nhập username để tìm kiếm' });
+        }
+
+        // 2. Search MongoDB for matching usernames
+        // $regex makes it a partial match, $options: 'i' makes it case-insensitive
+        // $ne: req.user._id means "don't return yourself in results"
+        const users = await User.find({
+            username: { $regex: keyword, $options: 'i' },
+            _id: { $ne: req.user._id }
+        }).select('_id username email');
+
+        res.status(200).json({ users });
+
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
+module.exports = { register, login, getMe, searchUsers };
