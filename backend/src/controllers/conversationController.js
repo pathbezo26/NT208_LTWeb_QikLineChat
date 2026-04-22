@@ -47,6 +47,17 @@ const createConversation = async (req, res) => {
         const memberSet = new Set([userId.toString(), ...members.map(m => m.toString())]);
         const finalMembers = Array.from(memberSet);
 
+        // Check có private trùng hay chưa
+        if (type === 'private') {
+            const existing = await Conversation.findOne({
+                type: 'private',
+                members: { $all: finalMembers, $size: 2 },
+            });
+            if (existing) {
+                return res.status(400).json({ message: 'Private chat đã tồn tại' });
+            }
+        }
+
         // Kiểm tra private chat — chỉ 2 thành viên
         if (type === 'private' && finalMembers.length !== 2) {
             return res.status(400).json({ message: 'Private chat phải chỉ có 2 thành viên' });
