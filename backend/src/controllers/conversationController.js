@@ -91,13 +91,13 @@ const createConversation = async (req, res) => {
     }
 };
 
-// Thêm thành viên vào group
+// Thêm các thành viên vào group
 const addMembers = async (req, res) => {
     try {
         const { conversationId, newMemberIds } = req.body; // newMemberIds là mảng [id1, id2...]
         const userId = req.user._id;
 
-        // Kiểm tra hội thoại có tồn tại và có phải là Group không
+        // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
         if (conversation.type !== 'group') {
@@ -125,4 +125,47 @@ const addMembers = async (req, res) => {
     }
 };
 
-module.exports = { getConversations, createConversation, addMembers };
+// Xóa thành viên khỏi group
+const removeMember = async (req, res) => {
+    try {
+        const { conversationId, memberId } = req.body; // MemberId là người bị xóa
+        const adminId = req.user._id;
+
+        // Kiểm tra hội thoại có tồn tại và có phải là group ko
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Chỉ có thể xóa thành viên khỏi nhóm' });
+        }
+
+        // Check admin
+        if (conversation.createdBy.toString() !== adminId.toString()) {
+            return res.status(403).json({ message: 'Bạn không có quyền xóa thành viên' });
+        }
+
+        // if (!memberId) return res.status(400).json({ message: 'Thiếu memberId' });
+        
+        // Check người bị xóa có trong nhóm ko
+        const exists = conversation.members.some(
+            id => id.toString() === memberId
+        );
+        if (!exists) {
+            return res.status(400).json({ message: 'Người dùng này không có trong nhóm' });
+        }
+
+        // Xóa khỏi nhóm
+        conversation.members = conversation.members.filter(
+            id => id.toString() !== memberId
+        );
+
+        // Cập nhật DB
+        conversation.updatedAt = new Date();
+        await conversation.save();
+
+        res.status(200).json({ message: 'Xóa thành viên thành công', conversation });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
+module.exports = { getConversations, createConversation, addMembers, removeMember };
