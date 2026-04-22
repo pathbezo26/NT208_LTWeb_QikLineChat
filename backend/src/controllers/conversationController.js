@@ -91,4 +91,38 @@ const createConversation = async (req, res) => {
     }
 };
 
-module.exports = { getConversations, createConversation };
+// Thêm thành viên vào group
+const addMembers = async (req, res) => {
+    try {
+        const { conversationId, newMemberIds } = req.body; // newMemberIds là mảng [id1, id2...]
+        const userId = req.user._id;
+
+        // Kiểm tra hội thoại có tồn tại và có phải là Group không
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Chỉ có thể thêm thành viên vào nhóm' });
+        }
+
+        // Bỏ người bị trùng
+        const currentMembers = conversation.members.map(m => m.toString());
+        const toAdd = newMemberIds.filter(id => !currentMembers.includes(id));
+
+        if (toAdd.length === 0) {
+            return res.status(400).json({ message: 'Các thành viên này đã ở trong nhóm' });
+        }
+
+        // Cập nhật DB
+        conversation.members.push(...toAdd);
+        conversation.updatedAt = new Date();
+        await conversation.save();
+
+        await conversation.populate('members', 'username email');
+
+        res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
+module.exports = { getConversations, createConversation, addMembers };
