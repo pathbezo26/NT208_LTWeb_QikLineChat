@@ -1,5 +1,7 @@
 const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
+//8.8.8.8 : google public dns.
+//1.1.1.1 : cloudfare public dns.
 
 const mongoose = require('mongoose');
 
@@ -14,4 +16,5 @@ const connectDB = async () => {
     }
 };
 
+//make connectDB available through other files via node.js
 module.exports = connectDB;
