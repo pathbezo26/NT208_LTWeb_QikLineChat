@@ -88,8 +88,7 @@ qikline_chat/
 │   │   ├── pages/
 │   │   │   ├── LoginPage.jsx             ← Form đăng nhập, gọi POST /api/auth/login
 │   │   │   ├── RegisterPage.jsx          ← Form đăng ký, gọi POST /api/auth/register
-│   │   │   ├── PrivateChat.jsx           ← Trang chat 1-1, load tin nhắn private
-│   │   │   └── GroupChat.jsx             ← Trang chat nhóm, load tin nhắn group
+│   │   │   └── ChatPage.jsx              ← Trang chat, load tin nhắn     
 │   │   │
 │   │   ├── context/
 │   │   │   ├── AuthContext.jsx           ← Lưu user đăng nhập, token, hàm login/logout cho toàn app

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import './AuthPage.css';
+import './styles/AuthPage.css';
 
 function RegisterPage() {
     const { register } = useAuth();
@@ -45,13 +45,13 @@ function RegisterPage() {
                     <div className="form-group">
                         <label htmlFor="username">Tên người dùng</label>
                         <input id="username" name="username" type="text"
-                            placeholder="Nhập username" value={form.username}
+                            placeholder="Username" value={form.username}
                             onChange={handleChange} required />
                     </div>
                     <div className="form-group">
                         <label htmlFor="email">Email</label>
                         <input id="email" name="email" type="email"
-                            placeholder="you@example.com" value={form.email}
+                            placeholder="Email" value={form.email}
                             onChange={handleChange} required />
                     </div>
                     <div className="form-group">

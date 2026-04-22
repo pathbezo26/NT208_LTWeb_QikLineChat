@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import './AuthPage.css';
+import './styles/AuthPage.css';
 import logoImg from '../assets/logo.png';
 
 function LoginPage() {
@@ -48,18 +48,16 @@ function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="auth-form">
                     <div className="form-group">
-                        <label htmlFor="email">Email</label>
                         <input
                             id="email" name="email" type="email"
-                            placeholder="Nhập email (abc@example.com)"
+                            placeholder="Email"
                             value={form.email} onChange={handleChange} required
                         />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="password">Mật khẩu</label>
                         <input
                             id="password" name="password" type="password"
-                            placeholder="Nhập mật khẩu"
+                            placeholder="Mật khẩu"
                             value={form.password} onChange={handleChange} required
                         />
                     </div>
