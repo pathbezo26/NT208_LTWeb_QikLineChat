@@ -16,8 +16,8 @@
 |-----|-----------|------|--------|
 | 1 | Nguyễn Tấn Phát | 24521306 | [@pathbezo26](https://github.com/pathbezo26) |
 | 2 | Lê Hồ Thành Phát | 24521297 | [@LEHOTHANHPHAT](https://github.com/LEHOTHANHPHAT) |
-| 3 | Nguyễn Nhật Quang | 24521472 | [@](https://github.com) |
-| 4 | Lê Nam Khánh | 24520783 | [@](https://github.com) |
+| 3 | Nguyễn Nhật Quang | 24521472 | [@maccriagor](https://github.com/maccriagor) |
+| 4 | Lê Nam Khánh | 24520783 | [@nhat3911](https://github.com/nhat3911) |
 
 ---
 
@@ -88,8 +88,7 @@ qikline_chat/
 │   │   ├── pages/
 │   │   │   ├── LoginPage.jsx             ← Form đăng nhập, gọi POST /api/auth/login
 │   │   │   ├── RegisterPage.jsx          ← Form đăng ký, gọi POST /api/auth/register
-│   │   │   ├── PrivateChat.jsx           ← Trang chat 1-1, load tin nhắn private
-│   │   │   └── GroupChat.jsx             ← Trang chat nhóm, load tin nhắn group
+│   │   │   └── ChatPage.jsx              ← Trang chat, load tin nhắn     
 │   │   │
 │   │   ├── context/
 │   │   │   ├── AuthContext.jsx           ← Lưu user đăng nhập, token, hàm login/logout cho toàn app

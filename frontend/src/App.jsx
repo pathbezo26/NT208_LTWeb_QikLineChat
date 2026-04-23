@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ChatPage from './pages/ChatPage';
 import useAuth from './hooks/useAuth';
 import ChatPage from './pages/ChatPage';
 

@@ -4,11 +4,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const messageRoutes = require('./routes/messageRoutes');
-const conversationRoutes = require('./routes/conversationRoutes');
-const socketHandler = require('./socket/socketHandler');
+const connectDB = require('./src/config/db');
+const authRoutes = require('./src/routes/authRoutes');
+const messageRoutes = require('./src/routes/messageRoutes');
+const conversationRoutes = require('./src/routes/conversationRoutes');
+const socketHandler = require('./src/socket/socketHandler');
 
 // ─── Kết nối MongoDB ──────────────────────────────────────────────────────────
 connectDB();

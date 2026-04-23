@@ -125,8 +125,8 @@ const searchUsers = async (req, res) => {
         }
 
         // 2. Search MongoDB for matching usernames
-        // $regex makes it a partial match, $options: 'i' makes capitalization doesnt matter much when searching
-        // $ne: req.user._id means don't return yourself in results
+        // $regex makes it a partial match, $options: 'i' makes it case-insensitive
+        // $ne: req.user._id means "don't return yourself in results"
         const users = await User.find({
             username: { $regex: keyword, $options: 'i' },
             _id: { $ne: req.user._id }
@@ -140,5 +140,4 @@ const searchUsers = async (req, res) => {
     }
 };
 
-//allow node.js to call these functions wherever
 module.exports = { register, login, getMe, searchUsers };
