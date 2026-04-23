@@ -91,6 +91,38 @@ const createConversation = async (req, res) => {
     }
 };
 
+// Xóa group chat
+const deleteConversation = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user._id;
+
+        // Kiểm tra group có tồn tại ko
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Không tìm thấy nhóm chat' });
+        }
+
+        // Nếu là nhóm: chỉ người tạo nhóm mới được xóa
+        if (conversation.type === "group" && conversation.createdBy.toString() !== userId.toString()) {
+            return res.status(403).json({ message: 'Chỉ chủ nhóm mới có quyền giải tán nhóm' });
+        }
+
+        // Thực hiện xóa: Xóa hội thoại và tất cả tin nhắn liên quan
+        // Dùng deleteMany để dọn dẹp Message collection
+        await Message.deleteMany({ conversationId: conversationId });
+        await Conversation.findByIdAndDelete(conversationId);
+
+        res.status(200).json({ 
+            message: 'Đã giải tán nhóm và toàn bộ lịch sử tin nhắn',
+            conversationId 
+        });
+    } catch (error) {
+        console.error('deleteGroup error:', error);
+        res.status(500).json({ message: 'Lỗi server khi xóa nhóm' });
+    }
+};
+
 // Thêm các thành viên vào group
 const addMembers = async (req, res) => {
     try {
@@ -129,7 +161,7 @@ const addMembers = async (req, res) => {
 const removeMember = async (req, res) => {
     try {
         const { conversationId, memberId } = req.body; // MemberId là người bị xóa
-        const adminId = req.user._id;
+        const userId = req.user._id;
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
@@ -139,7 +171,7 @@ const removeMember = async (req, res) => {
         }
 
         // Check admin
-        if (conversation.createdBy.toString() !== adminId.toString()) {
+        if (conversation.createdBy.toString() !== userId.toString()) {
             return res.status(403).json({ message: 'Bạn không có quyền xóa thành viên' });
         }
 
@@ -168,4 +200,4 @@ const removeMember = async (req, res) => {
     }
 };
 
-module.exports = { getConversations, createConversation, addMembers, removeMember };
+module.exports = { getConversations, createConversation, deleteConversation, addMembers, removeMember };

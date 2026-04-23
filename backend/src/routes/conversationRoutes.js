@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 
-const { getConversations, createConversation, addMembers, removeMember } = require('../controllers/conversationController');
+const { getConversations, createConversation, deleteConversation, addMembers, removeMember } = require('../controllers/conversationController');
 
 // GET /api/conversations — Lấy danh sách tất cả conversation của user
 router.get('/', protect, getConversations);
@@ -11,8 +11,11 @@ router.get('/', protect, getConversations);
 router.post('/', protect, createConversation);
 module.exports = router;
 
+// DELETE /api/conversations - Xóa conversation
+router.delete('/:conversationId', authMiddleware, deleteConversation);
+
 // PUT /api/conversations - thêm thành viên
 router.put('/', protect, addMembers);
 
-// DELETE /api/conversations - Xóa thành viên
+// PUT /api/conversations - Xóa thành viên (chỉ là cập nhật ds thành viên nên dùng PUT)
 router.put('/', protect, removeMember);
