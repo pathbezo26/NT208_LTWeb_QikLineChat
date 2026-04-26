@@ -12,7 +12,7 @@ router.post('/', protect, createConversation);
 module.exports = router;
 
 // DELETE /api/conversations - Xóa conversation
-router.delete('/:conversationId', authMiddleware, deleteConversation);
+router.delete('/', protect, deleteConversation);
 
 // PUT /api/conversations - thêm thành viên
 router.put('/', protect, addMembers);

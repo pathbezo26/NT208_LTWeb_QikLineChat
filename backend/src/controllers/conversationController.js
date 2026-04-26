@@ -91,13 +91,13 @@ const createConversation = async (req, res) => {
     }
 };
 
-// Xóa group chat
+// Xóa conversation
 const deleteConversation = async (req, res) => {
     try {
         const { conversationId } = req.params;
         const userId = req.user._id;
 
-        // Kiểm tra group có tồn tại ko
+        // Kiểm tra conversation có tồn tại ko
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
             return res.status(404).json({ message: 'Không tìm thấy nhóm chat' });
