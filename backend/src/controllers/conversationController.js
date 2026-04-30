@@ -1,5 +1,34 @@
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const mongoose = require('mongoose');
+
+/**
+ * Hàm hỗ trợ: Chuyển đổi danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
+ * @param {Array} identifiers - Danh sách chuỗi nhập vào từ Client
+ * @returns {Array} - Danh sách các ID chuẩn
+ */
+const getValidUserIds = async (identifiers) => {
+    const userIds = [];
+
+    for (let item of identifiers) {
+        // Nếu là ID chuẩn của MongoDB
+        if (mongoose.Types.ObjectId.isValid(item)) {
+            userIds.push(item.toString());
+        } else {
+            // Nếu là Username hoặc Email, tìm trong DB để lấy ID
+            const foundUser = await User.findOne({
+                $or: [{ username: item }, { email: item }]
+            });
+            
+            if (foundUser) {
+                userIds.push(foundUser._id.toString());
+            } else {
+                throw new Error(`Người dùng "${item}" không tồn tại.`);
+            }
+        }
+    }
+    return userIds;
+};
 
 // ─── GET /api/conversations ───────────────────────────────────────────────────
 // Lấy danh sách tất cả cuộc trò chuyện của user hiện tại
@@ -43,9 +72,10 @@ const createConversation = async (req, res) => {
             return res.status(400).json({ message: 'Phải có ít nhất 1 thành viên' });
         }
 
-        // Đảm bảo userId hiện tại nằm trong members
-        const memberSet = new Set([userId.toString(), ...members.map(m => m.toString())]);
-        const finalMembers = Array.from(memberSet);
+        // Hàm lấy Id chuẩn
+        const targetIds = await getValidUserIds(members);
+        // Gộp ID người tạo và ID người nhận, loại bỏ trùng lặp
+        const finalMembers = Array.from(new Set([userId.toString(), ...targetIds]));
 
         // Check có private trùng hay chưa
         if (type === 'private') {

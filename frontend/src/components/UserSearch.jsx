@@ -8,22 +8,25 @@ function UserSearch({ onClose, onSelect }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleSearchAndCreate = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!searchTerm.trim()) return;
+        const identifier = searchTerm.trim();
+        if (!identifier) return;
 
         setLoading(true);
         try {
-            // Ở đây logic đơn giản là tạo chat với ID hoặc Email người dùng nhập vào
-            // Backend của bạn sẽ xử lý việc tìm user và kiểm tra trùng lặp
             const res = await createConversationAPI({
                 type: 'private',
-                members: [searchTerm] // searchTerm ở đây có thể là userId của người kia
+                members: [identifier] 
             });
 
-            onSelect(res.conversation); // Trả kết quả về ChatPage
+            // Backend trả về conversation
+            if (res && res.conversation) {
+                onSelect(res.conversation); 
+                onClose();
+            }
         } catch (error) {
-            alert(error.response?.data?.message || 'Không tìm thấy người dùng hoặc lỗi server');
+            alert(error.response?.data?.message || 'Lỗi kết nối');
         } finally {
             setLoading(false);
         }
@@ -36,7 +39,7 @@ function UserSearch({ onClose, onSelect }) {
                     <h3>Tìm kiếm người dùng</h3>
                 </div>
                 
-                <form onSubmit={handleSearchAndCreate}>
+                <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label>Nhập tên người dùng:</label>
                         <input 
