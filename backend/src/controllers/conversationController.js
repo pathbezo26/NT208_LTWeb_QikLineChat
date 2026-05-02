@@ -1,5 +1,30 @@
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const mongoose = require('mongoose');
+
+// Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
+const getValidUserIds = async (identifiers) => {
+    const userIds = [];
+
+    for (let item of identifiers) {
+        // Nếu là ID chuẩn của MongoDB
+        if (mongoose.Types.ObjectId.isValid(item)) {
+            userIds.push(item.toString());
+        } else {
+            // Nếu là Username hoặc Email, tìm trong DB để lấy ID
+            const foundUser = await User.findOne({
+                $or: [{ username: item }, { email: item }]
+            });
+            
+            if (foundUser) {
+                userIds.push(foundUser._id.toString());
+            } else {
+                throw new Error(`Người dùng "${item}" không tồn tại.`);
+            }
+        }
+    }
+    return userIds;
+};
 
 // ─── GET /api/conversations ───────────────────────────────────────────────────
 // Lấy danh sách tất cả cuộc trò chuyện của user hiện tại
@@ -43,9 +68,10 @@ const createConversation = async (req, res) => {
             return res.status(400).json({ message: 'Phải có ít nhất 1 thành viên' });
         }
 
-        // Đảm bảo userId hiện tại nằm trong members
-        const memberSet = new Set([userId.toString(), ...members.map(m => m.toString())]);
-        const finalMembers = Array.from(memberSet);
+        // Hàm lấy Id chuẩn
+        const targetIds = await getValidUserIds(members);
+        // Gộp ID người tạo và ID người nhận, loại bỏ trùng lặp
+        const finalMembers = Array.from(new Set([userId.toString(), ...targetIds]));
 
         // Check có private trùng hay chưa
         if (type === 'private') {
@@ -87,7 +113,40 @@ const createConversation = async (req, res) => {
         });
     } catch (error) {
         console.error('createConversation error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
+    }
+};
+
+// Xóa conversation
+const deleteConversation = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user._id;
+
+        // Kiểm tra conversation có tồn tại ko
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Không tìm thấy nhóm chat' });
+        }
+
+        // Nếu là nhóm: chỉ người tạo nhóm mới được xóa
+        if (conversation.type === "group" && conversation.createdBy.toString() !== userId.toString()) {
+            return res.status(403).json({ message: 'Chỉ chủ nhóm mới có quyền giải tán nhóm' });
+        }
+
+        // Thực hiện xóa: Xóa hội thoại và tất cả tin nhắn liên quan
+        // Dùng deleteMany để dọn dẹp Message collection
+        await Message.deleteMany({ conversationId: conversationId });
+        await Conversation.findByIdAndDelete(conversationId);
+
+        res.status(200).json({ 
+            message: 'Đã giải tán nhóm và toàn bộ lịch sử tin nhắn',
+            conversationId 
+        });
+    } catch (error) {
+        console.error('deleteGroup error:', error);
+        res.status(500).json({ message: 'Lỗi server khi xóa nhóm' });
     }
 };
 
@@ -121,7 +180,9 @@ const addMembers = async (req, res) => {
 
         res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server' });
+        console.error('createConversation error:', error);
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
     }
 };
 
@@ -129,7 +190,7 @@ const addMembers = async (req, res) => {
 const removeMember = async (req, res) => {
     try {
         const { conversationId, memberId } = req.body; // MemberId là người bị xóa
-        const adminId = req.user._id;
+        const userId = req.user._id;
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
@@ -139,7 +200,7 @@ const removeMember = async (req, res) => {
         }
 
         // Check admin
-        if (conversation.createdBy.toString() !== adminId.toString()) {
+        if (conversation.createdBy.toString() !== userId.toString()) {
             return res.status(403).json({ message: 'Bạn không có quyền xóa thành viên' });
         }
 
@@ -168,4 +229,4 @@ const removeMember = async (req, res) => {
     }
 };
 
-module.exports = { getConversations, createConversation, addMembers, removeMember };
+module.exports = { getConversations, createConversation, deleteConversation, addMembers, removeMember };

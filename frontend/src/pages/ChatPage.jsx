@@ -3,6 +3,8 @@ import { getConversationsAPI } from '../api/conversationAPI';
 import ChatWindow from '../components/ChatWindow';
 import useAuth from '../hooks/useAuth';
 import './styles/ChatPage.css';
+import UserSearch from '../components/UserSearch';
+import CreateGroupModal from '../components/CreateGroupModal';
 
 function ChatPage() {
     const { user } = useAuth();
@@ -10,6 +12,10 @@ function ChatPage() {
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    // Tạo conversion
+    const [showMenu, setShowMenu] = useState(false); // Tạo menu chọn loại chat
+    const [showUserSearch, setShowUserSearch] = useState(false); // Tạo private chat
+    const [showCreateGroup, setShowCreateGroup] = useState(false); // Tạo group chat
 
     // Tải danh sách conversation khi component mount
     useEffect(() => {
@@ -46,15 +52,39 @@ function ChatPage() {
         return otherUser ? otherUser.username : 'Người dùng';
     };
 
+    const handleNewConversation = (newConv) => {
+        setConversations(prev => {
+            const exists = prev.find(c => c._id === newConv._id);
+            if (exists) return prev;
+            return [newConv, ...prev];
+        });
+        setSelectedConversation(newConv);
+        setShowMenu(false);
+        setShowUserSearch(false);
+        setShowCreateGroup(false);
+    };
+
     return (
         <div className="chat-page">
             {/* Sidebar: Danh sách conversation */}
             <aside className="chat-sidebar">
                 <div className="sidebar-header">
                     <h2>Tin nhắn</h2>
-                    <button className="btn-new-chat" title="Tạo cuộc trò chuyện mới">
-                        ➕
-                    </button>
+                    <div className='new-chat-container'>
+                        <button className="btn-new-chat" title="Tạo cuộc trò chuyện mới" onClick={() => setShowMenu(!showMenu)}>
+                            ➕
+                        </button>
+                        {showMenu && (
+                            <div className="new-chat-menu">
+                                <button onClick={() => { setShowUserSearch(true); setShowMenu(false); }}>
+                                    🔍 Tìm người dùng
+                                </button>
+                                <button onClick={() => { setShowCreateGroup(true); setShowMenu(false); }}>
+                                    👥 Tạo nhóm mới
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {loading && (
@@ -96,6 +126,20 @@ function ChatPage() {
                     ))}
                 </ul>
             </aside>
+            
+            {showUserSearch && (
+                <UserSearch 
+                    onClose={() => setShowUserSearch(false)} 
+                    onSelect={handleNewConversation} 
+                />
+            )}
+
+            {showCreateGroup && (
+                <CreateGroupModal 
+                    onClose={() => setShowCreateGroup(false)} 
+                    onCreated={handleNewConversation} 
+                />
+            )}
 
             {/* Main: ChatWindow */}
             <main className="chat-main">
