@@ -2,11 +2,7 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
-/**
- * Hàm hỗ trợ: Chuyển đổi danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
- * @param {Array} identifiers - Danh sách chuỗi nhập vào từ Client
- * @returns {Array} - Danh sách các ID chuẩn
- */
+// Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
 const getValidUserIds = async (identifiers) => {
     const userIds = [];
 
@@ -117,7 +113,8 @@ const createConversation = async (req, res) => {
         });
     } catch (error) {
         console.error('createConversation error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
     }
 };
 
@@ -183,7 +180,9 @@ const addMembers = async (req, res) => {
 
         res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server' });
+        console.error('createConversation error:', error);
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
     }
 };
 

@@ -15,7 +15,7 @@ function CreateGroupModal({ onClose, onCreated }) {
         }
     };
 
-    const handleCreateGroup = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (members.length < 1) return alert("Vui lòng thêm ít nhất 1 thành viên");
 
@@ -41,7 +41,7 @@ function CreateGroupModal({ onClose, onCreated }) {
                     <h3>Tạo nhóm mới</h3>
                 </div>
 
-                <form onSubmit={handleCreateGroup}>
+                <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label>Tên nhóm:</label>
                         <input 
@@ -62,7 +62,7 @@ function CreateGroupModal({ onClose, onCreated }) {
                                 onChange={(e) => setMemberId(e.target.value)}
                                 placeholder="Nhập Username thành viên..."
                             />
-                            <button className="btn-confirm-gradient" onClick={addMemberToList}>Thêm</button>
+                            <button className="btn-confirm-gradient" type='button' onClick={addMemberToList}>Thêm</button>
                             {/* <button className="btn-cancel" onClick={showMemberToList}>Xem</button> */}
                         </div>
                     </div>
