@@ -16,8 +16,8 @@
 |-----|-----------|------|--------|
 | 1 | Nguyễn Tấn Phát | 24521306 | [@pathbezo26](https://github.com/pathbezo26) |
 | 2 | Lê Hồ Thành Phát | 24521297 | [@LEHOTHANHPHAT](https://github.com/LEHOTHANHPHAT) |
-| 3 | Nguyễn Nhật Quang | 24521472 | [@maccriagor](https://github.com/maccriagor) |
-| 4 | Lê Nam Khánh | 24520783 | [@nhat3911](https://github.com/nhat3911) |
+| 3 | Nguyễn Nhật Quang | 24521472 | [@nhat3911](https://github.com/nhat3911) |
+| 4 | Lê Nam Khánh | 24520783 | [@maccriagor](https://github.com/maccriagor) |
 
 ---
 
@@ -132,6 +132,7 @@ qikline_chat/
     │   │   ├── authRoutes.js             ← POST /register, POST /login
     │   │   ├── messageRoutes.js          ← GET /messages/:conversationId, POST /messages
     │   │   └── conversationRoutes.js     ← GET /conversations, POST /conversations
+    │   │   └── userRoutes.js             ← GET /search
     │   │
     │   ├── middleware/
     │   │   └── authMiddleware.js         ← Verify JWT trước các route cần bảo vệ
@@ -248,8 +249,6 @@ const instance = axios.create({
 
 ### 4️⃣ Chạy Dự Án
 
-**Cách 1 — Chạy riêng lẻ (2 terminal):**
-
 ```bash
 # Terminal 1: Chạy Backend
 cd backend
@@ -260,28 +259,9 @@ npm run dev      # Dùng nodemon (hot reload)
 cd frontend
 npm run dev
 ```
-
-**Cách 2 — Chạy đồng thời với `concurrently` (từ thư mục gốc):**
-
-```bash
-# Tại thư mục gốc webchat-app/
-npm install concurrently --save-dev
-
-# Thêm script này vào package.json gốc:
-# "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
-
-npm run dev
-```
-
 ---
 
 ### 5️⃣ Truy Cập Ứng Dụng
-
-| Dịch vụ | URL |
-|---------|-----|
-| 🖥️ Frontend | http://localhost:5173 |
-| 🔧 Backend API | http://localhost:5000/api |
-| 🗄️ MongoDB (local) | mongodb://localhost:27017/webchat |
 
 ---
 
