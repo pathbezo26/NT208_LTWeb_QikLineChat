@@ -1,62 +1,50 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import useAuth from '../hooks/useAuth';
 
-// Khởi tạo Context
-const ChatContext = createContext();
+export const SocketContext = createContext(null);
 
-export const ChatProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // Lưu thông tin user hiện tại (lấy từ JWT/localStorage)
-  const [selectedChat, setSelectedChat] = useState(); // Cuộc trò chuyện đang được chọn để hiển thị ở ChatBox
-  const [chats, setChats] = useState([]); // Danh sách các cuộc trò chuyện ở Sidebar
-  const [socket, setSocket] = useState(null); // Lưu instance của socket
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
+export function SocketProvider({ children }) {
+  const { token } = useAuth();
+  const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
-  // Lấy user từ localStorage khi app khởi chạy
   useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    setUser(userInfo);
-  }, []);
-
-  // Khởi tạo Socket khi đã có thông tin user
-  useEffect(() => {
-    if (user && user.token) {
-      // Thay thế URL bằng địa chỉ server của bạn
-      const newSocket = io('http://localhost:5000', {
-        auth: {
-          token: user.token, // Gửi token để backend xác thực (Tính năng: Xác thực Socket)
-        },
-      });
-
-      setSocket(newSocket);
-
-      newSocket.on('connect', () => {
-        setIsSocketConnected(true);
-        // Báo cho server biết user này đã online
-        newSocket.emit('setup', user);
-      });
-
-      // Cleanup function khi component unmount
-      return () => {
-        newSocket.disconnect();
-      };
+    if (!token) {
+      // If logged out, disconnect existing socket
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocket(null);
+      }
+      return;
     }
-  }, [user]);
+
+    // Create single shared socket for the whole app
+    const newSocket = io('http://localhost:5000', {
+      auth: { token },
+      transports: ['websocket'],
+    });
+
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected:', newSocket.id);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('❌ Socket connection error:', err.message);
+    });
+
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [token]);
 
   return (
-    <ChatContext.Provider
-      value={{
-        user, setUser,
-        selectedChat, setSelectedChat,
-        chats, setChats,
-        socket, isSocketConnected
-      }}
-    >
+    <SocketContext.Provider value={socket}>
       {children}
-    </ChatContext.Provider>
+    </SocketContext.Provider>
   );
-};
-
-// Custom hook để gọi Context nhanh hơn
-export const ChatState = () => {
-  return useContext(ChatContext);
-};
+}
