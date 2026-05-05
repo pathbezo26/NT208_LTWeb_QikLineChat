@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate để chuyển hướng
 import { getConversationsAPI } from '../api/conversationAPI';
 import ChatWindow from '../components/ChatWindow';
 import useAuth from '../hooks/useAuth';
@@ -7,7 +8,9 @@ import UserSearch from '../components/UserSearch';
 import CreateGroupModal from '../components/CreateGroupModal';
 
 function ChatPage() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth(); 
+    const navigate = useNavigate(); // Khởi tạo hook chuyển hướng
+
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -64,16 +67,45 @@ function ChatPage() {
         setShowCreateGroup(false);
     };
 
+    // --- HÀM XỬ LÝ ĐĂNG XUẤT ---
+    const handleLogout = () => {
+        if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+            localStorage.removeItem('token'); 
+            
+            // 2. Nếu có hàm logout từ Context, gọi nó để reset state
+            if (logout) {
+                logout();
+            }
+
+            // 3. Chuyển hướng về trang Login
+            navigate('/login');
+        }
+    };
+
     return (
         <div className="chat-page">
             {/* Sidebar: Danh sách conversation */}
             <aside className="chat-sidebar">
                 <div className="sidebar-header">
-                    <h2>Tin nhắn</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <h2>Tin nhắn</h2>
+                        <span style={{ fontSize: '16px', color: '#666' }}>{user?.username}</span>
+                    </div>
+
                     <div className='new-chat-container'>
                         <button className="btn-new-chat" title="Tạo cuộc trò chuyện mới" onClick={() => setShowMenu(!showMenu)}>
                             ➕
                         </button>
+
+                        {/* NÚT ĐĂNG XUẤT */}
+                        <button 
+                            title="Đăng xuất" 
+                            onClick={handleLogout}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px' }}
+                        >
+                            🚪
+                        </button>
+
                         {showMenu && (
                             <div className="new-chat-menu">
                                 <button onClick={() => { setShowUserSearch(true); setShowMenu(false); }}>
