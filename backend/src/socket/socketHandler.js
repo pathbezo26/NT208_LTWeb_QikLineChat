@@ -1,12 +1,86 @@
-// TODO: Sẽ hoàn thiện ở bước Socket.IO
-const socketHandler = (io) => {
-    io.on('connection', (socket) => {
-        console.log(`🔌 Socket connected: ${socket.id}`);
+const jwt = require('jsonwebtoken');
+const Message = require('../models/Message');
+const Conversation = require('../models/Conversation');
 
-        socket.on('disconnect', () => {
-            console.log(`🔌 Socket disconnected: ${socket.id}`);
-        });
+const onlineUsers = new Map(); //Mảng các user đang onl
+
+const socketHandler = (io) => {
+  // Authenticate socket on connection
+  io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error('Authentication error: No token'));
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.user = decoded; // attach user to socket
+      next();
+    } catch {
+      next(new Error('Authentication error: Invalid token'));
+    }
+  });
+
+  io.on('connection', (socket) => {
+    const { id: userId, username } = socket.user;
+    console.log(`🔌 User connected: ${username} (${socket.id})`);
+
+    // Track online users
+    onlineUsers.set(userId, socket.id);
+    io.emit('userOnline', { userId, username });
+
+    // Join a conversation room
+    socket.on('joinRoom', (conversationId) => {
+      socket.join(conversationId);
+      console.log(`📌 ${username} joined room: ${conversationId}`);
     });
+
+    // Leave a conversation room
+    socket.on('leaveRoom', (conversationId) => {
+      socket.leave(conversationId);
+      console.log(`🚪 ${username} left room: ${conversationId}`);
+    });
+
+    // Handle sending a message
+    socket.on('sendMessage', async ({ conversationId, content }) => {
+      if (!conversationId || !content?.trim()) return;
+
+      try {
+        // Save to DB
+        const message = await Message.create({
+          conversationId,
+          sender: userId,
+          content: content.trim(),
+        });
+
+        // Update conversation's updatedAt for sidebar sorting
+        await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() });
+
+        // Populate sender info before broadcasting
+        const populated = await message.populate('sender', '_id username email');
+
+        // Broadcast to everyone in the room (including sender)
+        io.to(conversationId).emit('newMessage', populated);
+      } catch (err) {
+        console.error('Error saving message:', err.message);
+        socket.emit('messageError', { message: 'Không thể gửi tin nhắn.' });
+      }
+    });
+
+    // Typing indicators
+    socket.on('typing', ({ conversationId }) => {
+      socket.to(conversationId).emit('typing', { userId, username });
+    });
+
+    socket.on('stopTyping', ({ conversationId }) => {
+      socket.to(conversationId).emit('stopTyping', { userId });
+    });
+
+    // Handle disconnect
+    socket.on('disconnect', () => {
+      console.log(`❌ User disconnected: ${username}`);
+      onlineUsers.delete(userId);
+      io.emit('userOffline', { userId, username });
+    });
+  });
 };
 
 module.exports = socketHandler;

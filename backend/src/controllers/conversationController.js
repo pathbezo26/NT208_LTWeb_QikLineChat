@@ -75,6 +75,11 @@ const createConversation = async (req, res) => {
 
         // Check có private trùng hay chưa
         if (type === 'private') {
+            // Kiểm tra private chat — chỉ 2 thành viên
+            if (finalMembers.length !== 2) {
+                return res.status(400).json({ message: 'Private chat phải chỉ có 2 thành viên' });
+            }
+
             const existing = await Conversation.findOne({
                 type: 'private',
                 members: { $all: finalMembers, $size: 2 },
@@ -82,11 +87,6 @@ const createConversation = async (req, res) => {
             if (existing) {
                 return res.status(400).json({ message: 'Private chat đã tồn tại' });
             }
-        }
-
-        // Kiểm tra private chat — chỉ 2 thành viên
-        if (type === 'private' && finalMembers.length !== 2) {
-            return res.status(400).json({ message: 'Private chat phải chỉ có 2 thành viên' });
         }
 
         // Kiểm tra members tồn tại
