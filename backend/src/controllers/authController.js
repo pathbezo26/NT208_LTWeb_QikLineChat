@@ -103,15 +103,10 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
     try {
         res.status(200).json({
-            user: {
-                _id: req.user._id,
-                username: req.user.username,
-                email: req.user.email,
-                createdAt: req.user.createdAt,
-            },
+            user: req.user
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Lỗi server' });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi server.', error: err.message });
     }
 };
 
