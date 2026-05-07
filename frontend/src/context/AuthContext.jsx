@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        const data = await loginAPI(email, password);
+        const data = await loginAPI({ email, password });
         localStorage.setItem('token', data.token);
         setToken(data.token);
         setUser(data.user);
@@ -33,12 +33,17 @@ export const AuthProvider = ({ children }) => {
     };
 
     const register = async (username, email, password) => {
-        const data = await registerAPI(username, email, password);
-        //localStorage.setItem('token', data.token);
-        //setToken(data.token);
-        //setUser(data.user);
+        const data = await registerAPI({ username, email, password });
         return data.message;
     };
+
+    // const register = async (username, email, password) => {
+    //     const data = await registerAPI(username, email, password);
+    //     //localStorage.setItem('token', data.token);
+    //     //setToken(data.token);
+    //     //setUser(data.user);
+    //     return data.message;
+    // };
 
     const logout = () => {
         localStorage.removeItem('token');
