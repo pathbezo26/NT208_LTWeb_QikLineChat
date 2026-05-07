@@ -4,6 +4,7 @@ import { getConversationsAPI } from '../api/conversationAPI';
 import ChatWindow from '../components/ChatWindow';
 import useAuth from '../hooks/useAuth';
 import './styles/ChatPage.css';
+import UserFooter from '../components/UserFooter';
 import UserSearch from '../components/UserSearch';
 import CreateGroupModal from '../components/CreateGroupModal';
 
@@ -157,6 +158,7 @@ function ChatPage() {
                         </li>
                     ))}
                 </ul>
+                <UserFooter />
             </aside>
             
             {showUserSearch && (
@@ -165,6 +167,8 @@ function ChatPage() {
                     onSelect={handleNewConversation} 
                 />
             )}
+
+          
 
             {showCreateGroup && (
                 <CreateGroupModal 

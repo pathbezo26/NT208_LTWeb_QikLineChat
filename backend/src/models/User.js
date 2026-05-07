@@ -23,6 +23,10 @@ const UserSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Password là bắt buộc'],
         },
+        avatarUrl: {
+            type: String,
+            default: "", // Empty string means they use the default UI placeholder
+        },
     },
     { timestamps: true }
 );

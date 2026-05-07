@@ -1,0 +1,67 @@
+/* Base styles for Desktop */
+.user-footer-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 260px; /* Adjust based on your sidebar width */
+    background-color: #f8f9fa;
+    border-top: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    padding: 10px 15px;
+    z-index: 100;
+}
+
+.user-footer-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar-wrapper {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.footer-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    font-size: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.footer-username {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+/* LAPTOP ONLY GUARD */
+/* If the screen is smaller than 1024px (Tablets/Phones), hide this component completely */
+@media (max-width: 1023px) {
+    .user-footer-container {
+        display: none !important;
+    }
+}

@@ -3,8 +3,11 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
+
 
 const connectDB = require('./src/config/db');
+const userRoutes = require('./src/routes/userRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const messageRoutes = require('./src/routes/messageRoutes');
 const conversationRoutes = require('./src/routes/conversationRoutes');
@@ -22,9 +25,11 @@ app.use(cors({
     credentials: true,
 }));
 app.use(express.json()); // Parse JSON body
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/conversations', conversationRoutes);
 
