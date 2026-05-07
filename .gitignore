@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Logs
 logs
 *.log
@@ -30,3 +31,6 @@ uploads/
 *.sln
 *.sw?
 
+=======
+/backend/.env
+>>>>>>> 6c9eca73bc1c78e4d6d707f31a28e0ea156a9b21

@@ -26,6 +26,67 @@ const getValidUserIds = async (identifiers) => {
     return userIds;
 };
 
+<<<<<<< HEAD:backend/controllers/conversationController.js
+// ─── POST /api/conversations ───────────────────────────────────────────────────
+// Create a new conversation or return existing one
+const createConversation = async (req, res) => {
+    try {
+        const { targetUserId, type } = req.body;
+
+        // 1. Validate input
+        if (!targetUserId) {
+            return res.status(400).json({ message: 'Vui lòng chọn người dùng để trò chuyện' });
+        }
+
+        // 2. Check target user actually exists
+        const targetUser = await User.findById(targetUserId);
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Người dùng không tồn tại' });
+        }
+
+        // 3. For private chat, check if conversation already exists
+        if (type === 'private') {
+            const existing = await Conversation.findOne({
+                type: 'private',
+                members: { $all: [req.user._id, targetUserId] }
+            });
+
+            // If already exists, just return it instead of creating duplicate
+            if (existing) {
+                return res.status(200).json({ conversation: existing });
+            }
+        }
+
+        // 4. Create new conversation
+        const conversation = await Conversation.create({
+            type: type || 'private',
+            members: [req.user._id, targetUserId],
+            createdBy: req.user._id
+        });
+
+        res.status(201).json({ conversation });
+
+    } catch (error) {
+        console.error('Create conversation error:', error);
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
+// ─── GET /api/conversations ────────────────────────────────────────────────────
+// Get all conversations for the logged in user
+const getConversations = async (req, res) => {
+    try {
+        const conversations = await Conversation.find({
+            members: { $in: [req.user._id] }
+        })
+        .populate('members', 'username email')
+        .sort({ updatedAt: -1 });
+
+        res.status(200).json({ conversations });
+
+    } catch (error) {
+        console.error('Get conversations error:', error);
+=======
 // ─── GET /api/conversations ───────────────────────────────────────────────────
 // Lấy danh sách tất cả cuộc trò chuyện của user hiện tại
 // Sắp xếp theo updatedAt (mới nhất trước)
@@ -43,10 +104,14 @@ const getConversations = async (req, res) => {
         res.status(200).json({ conversations });
     } catch (error) {
         console.error('getConversations error:', error);
+>>>>>>> 47c3c964ea039ce056e956fba4034d283a94b97b:backend/src/controllers/conversationController.js
         res.status(500).json({ message: 'Lỗi server' });
     }
 };
 
+<<<<<<< HEAD:backend/controllers/conversationController.js
+module.exports = { createConversation, getConversations };
+=======
 // ─── POST /api/conversations ──────────────────────────────────────────────────
 // Tạo cuộc trò chuyện private hoặc group
 // Body: { type: 'private' | 'group', name?: string, members: [userId, ...] }
@@ -229,4 +294,9 @@ const removeMember = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 module.exports = { getConversations, createConversation, deleteConversation, addMembers, removeMember };
+=======
+module.exports = { getConversations, createConversation };
+>>>>>>> 47c3c964ea039ce056e956fba4034d283a94b97b:backend/src/controllers/conversationController.js
+>>>>>>> 6c9eca73bc1c78e4d6d707f31a28e0ea156a9b21
