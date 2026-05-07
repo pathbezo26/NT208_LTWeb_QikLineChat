@@ -7,7 +7,7 @@ export const getMessagesAPI = async (conversationId) => {
 };
 
 // Gửi tin nhắn mới (lưu vào DB qua REST — song song với socket)
-export const sendMessageAPI = async (conversationId, content) => {
-    const response = await axiosInstance.post('/messages', { conversationId, content });
+export const sendMessageAPI = async (data) => {
+    const response = await axiosInstance.post('/messages', data);
     return response.data;
 };

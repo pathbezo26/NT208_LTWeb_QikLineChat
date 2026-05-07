@@ -1,18 +1,14 @@
 import axiosInstance from './axiosInstance';
 
 // Đăng ký tài khoản mới
-export const registerAPI = async (username, email, password) => {
-    const response = await axiosInstance.post('/auth/register', {
-        username,
-        email,
-        password,
-    });
+export const registerAPI = async (data) => {
+    const response = await axiosInstance.post('/auth/register', data);
     return response.data; // { message, token, user }
 };
 
 // Đăng nhập
-export const loginAPI = async (email, password) => {
-    const response = await axiosInstance.post('/auth/login', { email, password });
+export const loginAPI = async (data) => {
+    const response = await axiosInstance.post('/auth/login', data);
     return response.data; // { message, token, user }
 };
 
