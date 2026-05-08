@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 
 // GET /api/users/search?q=keyword — search users by username (exclude self)
-router.get('/search', authMiddleware, async (req, res) => {
+router.get('/search', protect, async (req, res) => {
   const { q } = req.query;
   if (!q || !q.trim()) return res.json([]);
 

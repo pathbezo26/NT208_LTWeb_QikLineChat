@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import useAuth from '../hooks/useAuth';
 
@@ -6,41 +6,39 @@ export const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
   const { token } = useAuth();
-  const socketRef = useRef(null);
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
+    // Nếu user chưa đăng nhập (không có token), không tạo kết nối
     if (!token) {
-      // If logged out, disconnect existing socket
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-        setSocket(null);
-      }
+      if (socket) socket.disconnect();
+      setSocket(null);
       return;
     }
 
-    // Create single shared socket for the whole app
-    const newSocket = io('http://localhost:5000', {
+    // Khởi tạo socket khi có token
+    const newSocket = io(import.meta.env.VITE_SOCKET_URL, {
       auth: { token },
       transports: ['websocket'],
     });
 
     newSocket.on('connect', () => {
-      console.log('✅ Socket connected:', newSocket.id);
+      console.log('✅ Đã kết nối Socket:', newSocket.id);
     });
 
     newSocket.on('connect_error', (err) => {
-      console.error('❌ Socket connection error:', err.message);
+      console.error('❌ Lỗi kết nối Socket:', err.message);
     });
 
-    socketRef.current = newSocket;
     setSocket(newSocket);
 
+    // Cleanup: Ngắt kết nối khi component unmount hoặc token thay đổi (đăng xuất)
     return () => {
       newSocket.disconnect();
     };
-  }, [token]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]); // Chỉ chạy lại useEffect này nếu token thay đổi
 
   return (
     <SocketContext.Provider value={socket}>

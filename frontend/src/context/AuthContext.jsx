@@ -1,59 +1,60 @@
 import { createContext, useState, useEffect } from 'react';
-import { loginAPI, registerAPI, getMeAPI } from '../api/authAPI';
-
+import { getMeAPI } from '../api/authAPI';
+import SplashScreen from '../components/SplashScreen';
+import { loginAPI } from '../api/authAPI';
 export const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token') || null);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Khi app khởi động, nếu có token cũ → lấy lại thông tin user
+    // Chạy 1 lần khi ứng dụng vừa tải (F5)
     useEffect(() => {
-        const initAuth = async () => {
-            if (token) {
-                try {
-                    const data = await getMeAPI();
-                    setUser(data.user);
-                } catch {
-                    logout(); // Token hết hạn
-                }
+        const verifyUser = async () => {
+            // Nếu không có token trong localStorage thì kết thúc luôn
+            if (!token) {
+                setIsLoading(false);
+                return;
             }
-            setLoading(false);
-        };
-        initAuth();
-    }, []);
 
-    const login = async (email, password) => {
-        const data = await loginAPI({ email, password });
+            // Nếu có token, gọi API lên server để lấy thông tin user mới nhất
+            try {
+                const data = await getMeAPI();
+                setUser(data.user);
+            } catch (error) {
+                console.error('Token hết hạn hoặc không hợp lệ');
+                logout(); // Xóa thông tin cũ đi
+            } finally {
+                setIsLoading(false); // Render UI
+            }
+        };
+
+        verifyUser();
+    }, [token]);
+
+    const login = async (dataLog) => {
+        const data = await loginAPI(dataLog);
         localStorage.setItem('token', data.token);
-        setToken(data.token);
         setUser(data.user);
+        setToken(data.token);
+
         return data;
     };
-
-    const register = async (username, email, password) => {
-        const data = await registerAPI({ username, email, password });
-        return data.message;
-    };
-
-    // const register = async (username, email, password) => {
-    //     const data = await registerAPI(username, email, password);
-    //     //localStorage.setItem('token', data.token);
-    //     //setToken(data.token);
-    //     //setUser(data.user);
-    //     return data.message;
-    // };
-
     const logout = () => {
-        localStorage.removeItem('token');
-        setToken(null);
         setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
     };
+
+    // Tránh việc chớp màn hình UI khi đang gọi API verify token
+    if (isLoading) {
+        return <SplashScreen />; // Bạn có thể thay bằng component Spinner
+    }
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, token, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
-};
+}

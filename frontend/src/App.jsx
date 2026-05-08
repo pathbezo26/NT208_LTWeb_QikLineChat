@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ChatPage from './pages/ChatPage';
 import useAuth from './hooks/useAuth';
+import { SocketProvider } from './context/SocketContext';
 
 // 1. Chỉ cho phép người ĐÃ đăng nhập (nếu chưa -> đuổi về Login)
 function PrivateRoute({ children }) {
@@ -39,7 +40,7 @@ export default function App() {
 
           <Route
             path="/chat"
-            element={<PrivateRoute><ChatPage /></PrivateRoute>}
+            element={<PrivateRoute><SocketProvider><ChatPage /></SocketProvider></PrivateRoute>}
           />
         </Routes>
       </AuthProvider>

@@ -15,7 +15,7 @@ const getValidUserIds = async (identifiers) => {
             const foundUser = await User.findOne({
                 $or: [{ username: item }, { email: item }]
             });
-            
+
             if (foundUser) {
                 userIds.push(foundUser._id.toString());
             } else {
@@ -40,7 +40,7 @@ const getConversations = async (req, res) => {
             .populate('createdBy', 'username')
             .sort({ updatedAt: -1 });
 
-        res.status(200).json({ conversations });
+        res.status(200).json(conversations);
     } catch (error) {
         console.error('getConversations error:', error);
         res.status(500).json({ message: 'Lỗi server' });
@@ -107,10 +107,7 @@ const createConversation = async (req, res) => {
         await conversation.populate('members', 'username email');
         await conversation.populate('createdBy', 'username');
 
-        res.status(201).json({
-            message: 'Tạo cuộc trò chuyện thành công',
-            conversation,
-        });
+        res.status(201).json(conversation);
     } catch (error) {
         console.error('createConversation error:', error);
         const statusCode = error.status || 500;
@@ -140,9 +137,9 @@ const deleteConversation = async (req, res) => {
         await Message.deleteMany({ conversationId: conversationId });
         await Conversation.findByIdAndDelete(conversationId);
 
-        res.status(200).json({ 
+        res.status(200).json({
             message: 'Đã giải tán nhóm và toàn bộ lịch sử tin nhắn',
-            conversationId 
+            conversationId
         });
     } catch (error) {
         console.error('deleteGroup error:', error);
@@ -205,7 +202,7 @@ const removeMember = async (req, res) => {
         }
 
         // if (!memberId) return res.status(400).json({ message: 'Thiếu memberId' });
-        
+
         // Check người bị xóa có trong nhóm ko
         const exists = conversation.members.some(
             id => id.toString() === memberId

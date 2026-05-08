@@ -31,7 +31,7 @@ const getMessages = async (req, res) => {
             .populate('sender', 'username')
             .sort({ createdAt: 1 });
 
-        res.status(200).json({ messages });
+        res.status(200).json(messages);
     } catch (error) {
         console.error('getMessages error:', error);
         res.status(500).json({ message: 'Lỗi server' });
@@ -79,7 +79,7 @@ const sendMessage = async (req, res) => {
         // 5. Populate sender rồi trả về — frontend dùng ngay để hiển thị
         const populated = await message.populate('sender', 'username');
 
-        res.status(201).json({ message: populated });
+        res.status(201).json(populated);
     } catch (error) {
         console.error('sendMessage error:', error);
         res.status(500).json({ message: 'Lỗi server' });
