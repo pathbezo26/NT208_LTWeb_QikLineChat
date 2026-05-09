@@ -41,4 +41,6 @@ const formatFullTime = (dateString) => {
     return `${hours}:${minutes} - ${dayName}, ${day}/${month}/${year}`;
 };
 
-export { formatTime, formatFullTime };
+const formatMessageTime = formatTime;
+
+export { formatTime, formatMessageTime, formatFullTime };

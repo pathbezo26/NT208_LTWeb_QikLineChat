@@ -1,0 +1,84 @@
+/* frontend/src/components/styles/SplashScreen.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100vh;
+  /* Chiều cao bằng 100% màn hình */
+  width: 100vw;
+  background-color: #f0f2f5;
+  /* Màu nền xám nhạt quen thuộc của các app chat */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Phần logo ở chính giữa màn hình */
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  /* Đẩy cụm này ra giữa */
+}
+
+.icon {
+  font-size: 4rem;
+  margin-bottom: 10px;
+  /* Thêm hiệu ứng nhịp thở (to nhỏ) cho icon thêm sinh động */
+  animation: pulse 1.5s infinite alternate;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #41525d;
+  margin: 0;
+}
+
+/* Vòng tròn xoay vòng Loading */
+.spinner {
+  width: 30px;
+  height: 30px;
+  margin-top: 20px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #00a884;
+  /* Màu xanh lá mạ của nút bấm */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Phần chữ bảo mật ở dưới đáy */
+.footer {
+  margin-top: auto;
+  /* Đẩy cụm này xuống sát đáy */
+  padding-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #8696a0;
+  font-size: 0.85rem;
+}
+
+.footer span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Định nghĩa các Animation (Chuyển động) */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(0.95);
+  }
+
+  to {
+    transform: scale(1.05);
+  }
+}

@@ -1,0 +1,113 @@
+.container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    text-align: left;
+}
+
+.logo {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #667eea;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+    color: #1c1e21;
+    margin-bottom: 24px;
+}
+
+.error {
+    background: #fff0f0;
+    border: 1px solid #ffbdbd;
+    color: #cc0000;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #444;
+    text-align: left;
+}
+
+.field input {
+    padding: 10px 14px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.field input:focus {
+    border-color: #667eea;
+}
+
+.btn {
+    background: #667eea;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 4px;
+    transition: background 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+    background: #5a6fd6;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.switchLink {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #666;
+}
+
+.switchLink a {
+    color: #667eea;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.switchLink a:hover {
+    text-decoration: underline;
+}
