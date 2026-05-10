@@ -84,9 +84,12 @@ const createConversation = async (req, res) => {
             const existing = await Conversation.findOne({
                 type: 'private',
                 members: { $all: finalMembers, $size: 2 },
-            });
+            })
+                .populate('members', 'username email')
+                .populate('createdBy', 'username');
+
             if (existing) {
-                return res.status(400).json({ message: 'Private chat đã tồn tại' });
+                return res.status(200).json(existing);
             }
         }
 

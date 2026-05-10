@@ -8,6 +8,7 @@ const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/authRoutes');
 const messageRoutes = require('./src/routes/messageRoutes');
 const conversationRoutes = require('./src/routes/conversationRoutes');
+const userRoutes = require('./src/routes/userRoutes');
 const socketHandler = require('./src/socket/socketHandler');
 
 // ─── Kết nối MongoDB ──────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ app.use(express.json()); // Parse JSON body
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/users', userRoutes);
 
 // Route kiểm tra server còn sống
 app.get('/api/health', (req, res) => {

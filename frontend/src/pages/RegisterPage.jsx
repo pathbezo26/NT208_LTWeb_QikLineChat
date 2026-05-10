@@ -50,61 +50,104 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.card}>
-                <div className={styles.logo}>💬 QikLine</div>
-                <h2 className={styles.title}>Tạo tài khoản</h2>
-
-                {error && <div className={styles.error}>{error}</div>}
-
-                <form onSubmit={handleSubmit} className={styles.form}>
-                    <div className={styles.field}>
-                        <label htmlFor="username">Tên người dùng</label>
-                        <input
-                            id="username"
-                            type="text"
-                            name="username"
-                            value={formData.username}
-                            onChange={handleChange}
-                            placeholder="nguyenvana"
-                            required
-                        />
+        <div className={styles.pageBackground}>
+            <div className={styles.container}>
+                {/* Cột trái: Text */}
+                <div className={styles.leftSide}>
+                    <div className={styles.brandBadge}>Tạo kết nối mới thật dễ</div>
+                    <h1 className={styles.logo}>QikLine</h1>
+                    <h2 className={styles.tagline}>
+                        Tham gia QikLine ngay hôm nay để kết nối với những người bạn mới.
+                    </h2>
+                    <div className={styles.featureGrid}>
+                        <div className={styles.featureItem}>
+                            <span className={styles.featureIcon}>1</span>
+                            <span>Tạo tài khoản nhanh, bắt đầu ngay</span>
+                        </div>
+                        <div className={styles.featureItem}>
+                            <span className={styles.featureIcon}>2</span>
+                            <span>Tìm và nhắn tin với bạn bè dễ dàng</span>
+                        </div>
+                        <div className={styles.featureItem}>
+                            <span className={styles.featureIcon}>3</span>
+                            <span>Không gian trò chuyện đơn giản, thân thiện</span>
+                        </div>
                     </div>
-
-                    <div className={styles.field}>
-                        <label htmlFor="email">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="email@example.com"
-                            required
-                        />
+                    <div className={styles.chatPreview}>
+                        <div className={styles.previewTop}>
+                            <span className={styles.previewAvatar}>Q</span>
+                            <div>
+                                <strong>QikLine Chat</strong>
+                                <p>Sẵn sàng kết nối</p>
+                            </div>
+                        </div>
+                        <div className={styles.previewBubble}>Chào bạn mới!</div>
+                        <div className={styles.previewBubbleAlt}>Tạo tài khoản để bắt đầu trò chuyện.</div>
                     </div>
+                </div>
 
-                    <div className={styles.field}>
-                        <label htmlFor="password">Mật khẩu</label>
-                        <input
-                            id="password"
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Tối thiểu 6 ký tự"
-                            required
-                        />
+                {/* Cột phải: Form */}
+                <div className={styles.rightSide}>
+                    <div className={styles.card}>
+                        <div className={styles.cardHeader}>
+                            <div className={styles.cardEyebrow}>Bắt đầu</div>
+                            <div className={styles.cardTitle}>Tạo tài khoản mới</div>
+                            <p className={styles.cardSubtitle}>Chỉ cần vài thông tin cơ bản để tham gia QikLine.</p>
+                        </div>
+
+                        {error && <div className={styles.error}>{error}</div>}
+
+                        <form onSubmit={handleSubmit} className={styles.form}>
+                            <div className={styles.field}>
+                                <input
+                                    id="username"
+                                    type="text"
+                                    name="username"
+                                    value={formData.username}
+                                    onChange={handleChange}
+                                    placeholder="Tên người dùng"
+                                    required
+                                />
+                            </div>
+
+                            <div className={styles.field}>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    placeholder="Email của bạn"
+                                    required
+                                />
+                            </div>
+
+                            <div className={styles.field}>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    placeholder="Mật khẩu (Tối thiểu 6 ký tự)"
+                                    required
+                                />
+                            </div>
+
+                            <button type="submit" className={styles.btnPrimary} disabled={isLoading}>
+                                {isLoading ? 'Đang xử lý...' : 'Đăng ký'}
+                            </button>
+                        </form>
+
+                        <hr className={styles.divider} />
+
+                        <div className={styles.switchContainer}>
+                            <Link to="/login" className={styles.btnSecondary}>
+                                Đã có tài khoản? Đăng nhập
+                            </Link>
+                        </div>
                     </div>
-
-                    <button type="submit" className={styles.btn} disabled={isLoading}>
-                        {isLoading ? 'Đang tạo tài khoản...' : 'Đăng ký'}
-                    </button>
-                </form>
-
-                <p className={styles.switchLink}>
-                    Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
-                </p>
+                </div>
             </div>
         </div>
     );

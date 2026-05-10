@@ -76,7 +76,7 @@ export default function UserSearch({ onConversationCreated }) {
                         </div>
                         <div className={styles.info}>
                             <span className={styles.name}>{u.username}</span>
-                            <span className={styles.email}>{u.email}</span>
+                            {/* <span className={styles.email}>{u.email}</span> */}
                         </div>
                         <button
                             className={styles.chatBtn}
