@@ -1,20 +1,27 @@
 const jwt = require('jsonwebtoken');
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
+const User = require('../models/User');
 
 const onlineUsers = new Map(); //Mảng các user đang onl
 
 const socketHandler = (io) => {
   // Authenticate socket on connection
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication error: No token'));
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.user = decoded; // attach user to socket
+      const user = await User.findById(decoded.id).select('_id username');
+      if (!user) return next(new Error('Authentication error: User not found'));
+
+      socket.user = {
+        id: user._id.toString(),
+        username: user.username,
+      };
       next();
-    } catch {
+    } catch (err) {
       next(new Error('Authentication error: Invalid token'));
     }
   });
