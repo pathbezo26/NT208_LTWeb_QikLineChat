@@ -261,3 +261,76 @@
 .deleteBtn:hover {
     background-color: #f2f2f2;
 }
+
+/* --- LỚP PHỦ MÀN HÌNH (Làm tối nền) --- */
+.modalOverlay {
+    position: fixed;
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8); /* Nền mờ sáng giống Messenger */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* --- KHUNG HỘP THOẠI CHÍNH --- */
+.modalContent {
+    background-color: white;
+    width: 320px;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+.modalContent h3 {
+    margin: 0 0 12px;
+    font-size: 20px;
+    color: #050505;
+    font-weight: 700;
+}
+
+.modalContent p {
+    margin: 0 0 24px;
+    font-size: 15px;
+    color: #65676b;
+    line-height: 1.5;
+}
+
+/* --- KHU VỰC CHỨA 2 NÚT BẤM --- */
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.cancelBtn, .confirmBtn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    transition: background-color 0.2s;
+}
+
+/* Nút Hủy */
+.cancelBtn {
+    background-color: transparent;
+    color: #0064d1; /* Màu xanh biển */
+}
+.cancelBtn:hover {
+    background-color: #f2f2f2;
+}
+
+/* Nút Xóa */
+.confirmBtn {
+    background-color: #0064d1;
+    color: white;
+}
+.confirmBtn:hover {
+    background-color: #0053ab;
+}

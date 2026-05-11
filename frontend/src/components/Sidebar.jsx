@@ -19,6 +19,7 @@ export default function Sidebar({ activeConversation, onSelectConversation, onCo
 
     //State lưu trữ ID của đoạn chat đang mở menu 3 chấm
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
     //Click ra ngoài để đóng menu 3 chấm
     useEffect(() => {
@@ -107,28 +108,27 @@ export default function Sidebar({ activeConversation, onSelectConversation, onCo
         setOpenMenuId(openMenuId === convId ? null : convId);
     };
 
-    // HÀM XỬ LÝ KHI NHẤN VÀO "XÓA CUỘC TRÒ CHUYỆN"
-    const handleDeleteConversation = async (e, convId) => {
+    const requestDelete = (e, convId) => {
         e.stopPropagation();
+        setConfirmDeleteId(convId); // Mở hộp thoại xác nhận thay vì xóa ngay
+        setOpenMenuId(null); // Đóng menu 3 chấm lại
+    };
 
-        if (!window.confirm("Bạn có chắc chắn muốn xóa đoạn chat này không?")) return;
+    // HÀM XỬ LÝ KHI NHẤN VÀO "XÓA CUỘC TRÒ CHUYỆN"
+    const executeDelete = async () => {
+        if (!confirmDeleteId) return;
 
         try {
-            // Gọi API xóa dưới Backend
-            await deleteConversationAPI(convId);
+            await deleteConversationAPI(confirmDeleteId);
+            setConversations((prev) => prev.filter((conv) => conv._id !== confirmDeleteId));
 
-            // Xóa khỏi danh sách hiển thị
-            setConversations((prev) => prev.filter((conv) => conv._id !== convId));
-
-            // Nếu đoạn chat bị xóa đang được mở, báo cho ChatPage làm trống khung chat
-            if (activeConversation?._id === convId && onConversationDeleted) {
+            if (activeConversation?._id === confirmDeleteId && onConversationDeleted) {
                 onConversationDeleted();
             }
-
-            setOpenMenuId(null); // Đóng menu
         } catch (error) {
             console.error("Lỗi khi xóa cuộc trò chuyện:", error);
-            alert("Không thể xóa đoạn chat, vui lòng thử lại!");
+        } finally {
+            setConfirmDeleteId(null); // Xóa xong hoặc lỗi đều đóng hộp thoại
         }
     };
     return (
@@ -240,13 +240,29 @@ export default function Sidebar({ activeConversation, onSelectConversation, onCo
                                     <div className={styles.dropdownMenu}>
                                         <button
                                             className={styles.deleteBtn}
-                                            onClick={(e) => handleDeleteConversation(e, conv._id)}
+                                            onClick={(e) => requestDelete(e, conv._id)}
                                         >
                                             Xóa hội thoại
                                         </button>
                                     </div>
                                 )}
                             </div>
+                            {confirmDeleteId && (
+                                <div className={styles.modalOverlay}>
+                                    <div className={styles.modalContent}>
+                                        <h3>Xóa đoạn chat?</h3>
+                                        <p>Xóa cuộc hội thoại(ở phía bạn).</p>
+                                        <div className={styles.modalActions}>
+                                            <button className={styles.cancelBtn} onClick={() => setConfirmDeleteId(null)}>
+                                                Hủy
+                                            </button>
+                                            <button className={styles.confirmBtn} onClick={executeDelete}>
+                                                Xóa
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     );
                 })}

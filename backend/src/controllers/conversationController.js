@@ -1,6 +1,7 @@
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const Message = require('../models/Message');
 
 // Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
 const getValidUserIds = async (identifiers) => {
@@ -35,7 +36,7 @@ const getConversations = async (req, res) => {
 
         // Tìm tất cả conversation mà user là thành viên
         // populate members để frontend hiển thị info người dùng
-        const conversations = await Conversation.find({ members: userId })
+        const conversations = await Conversation.find({ members: userId, deletedBy: { $ne: userId } })
             .populate('members', 'username email')
             .populate('createdBy', 'username')
             .sort({ updatedAt: -1 });
@@ -88,6 +89,15 @@ const createConversation = async (req, res) => {
                 .populate('createdBy', 'username');
 
             if (existing) {
+                // Đảm bảo deletedBy là mảng để không bị lỗi Cannot read properties...
+                const deletedByArray = existing.deletedBy || [];
+
+                if (deletedByArray.includes(userId)) {
+                    existing.deletedBy = deletedByArray.filter(
+                        id => id.toString() !== userId.toString()
+                    );
+                    await existing.save();
+                }
                 return res.status(200).json(existing);
             }
         }
@@ -121,7 +131,7 @@ const createConversation = async (req, res) => {
 // Xóa conversation
 const deleteConversation = async (req, res) => {
     try {
-        const { conversationId } = req.params;
+        const conversationId = req.params.id;
         const userId = req.user._id;
 
         // Kiểm tra conversation có tồn tại ko
@@ -130,18 +140,24 @@ const deleteConversation = async (req, res) => {
             return res.status(404).json({ message: 'Không tìm thấy nhóm chat' });
         }
 
-        // Nếu là nhóm: chỉ người tạo nhóm mới được xóa
-        if (conversation.type === "group" && conversation.createdBy.toString() !== userId.toString()) {
-            return res.status(403).json({ message: 'Chỉ chủ nhóm mới có quyền giải tán nhóm' });
-        }
+        // Thực hiện xóa: Xóa hội thoại và tất cả tin nhắn liên quan(Ở phía bạn)
+        if (!conversation.deletedBy.includes(userId)) {
+            if (!conversation.deletedBy) {
+                conversation.deletedBy = [];
+            }
 
-        // Thực hiện xóa: Xóa hội thoại và tất cả tin nhắn liên quan
-        // Dùng deleteMany để dọn dẹp Message collection
-        await Message.deleteMany({ conversationId: conversationId });
-        await Conversation.findByIdAndDelete(conversationId);
+            if (!conversation.deletedBy.includes(userId)) {
+                conversation.deletedBy.push(userId);
+                await conversation.save();
+            }
+        }
+        await Message.updateMany(
+            { conversationId: conversationId },
+            { $addToSet: { deletedBy: userId } }
+        );
 
         res.status(200).json({
-            message: 'Đã giải tán nhóm và toàn bộ lịch sử tin nhắn',
+            message: 'Đã xóa cuộc trò chuyện (chỉ với bạn)',
             conversationId
         });
     } catch (error) {
