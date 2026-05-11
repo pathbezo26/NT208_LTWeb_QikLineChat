@@ -74,7 +74,7 @@ export default function ChatInput({ conversationId }) {
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"
+                placeholder="Nhập tin nhắn"
                 rows={1}
             />
 

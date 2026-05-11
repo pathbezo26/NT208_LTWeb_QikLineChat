@@ -3,10 +3,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // ─── Hàm tạo JWT token ────────────────────────────────────────────────────────
-const generateToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
+const generateToken = (user) => {
+    return jwt.sign({ id: user._id, username: user.username },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
 };
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
@@ -39,7 +40,8 @@ const register = async (req, res) => {
         const user = await User.create({ username, email, passwordHash });
 
         // 5. Tạo JWT và trả về
-        const token = generateToken(user._id);
+        const token = generateToken(user);
+
 
         res.status(201).json({
             message: 'Đăng ký thành công',
@@ -80,7 +82,7 @@ const login = async (req, res) => {
         }
 
         // 4. Tạo JWT và trả về
-        const token = generateToken(user._id);
+        const token = generateToken(user);
 
         res.status(200).json({
             message: 'Đăng nhập thành công',
