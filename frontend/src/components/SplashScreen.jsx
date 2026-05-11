@@ -12,13 +12,13 @@ export default function SplashScreen() {
                 <div className={styles.spinner}></div>
             </div>
 
-            {/* 2. Phần đáy: Dòng chữ bản quyền/bảo mật
+            {/* 2. Phần đáy: Dòng chữ bản quyền/bảo mật */}
             <div className={styles.footer}>
                 <p>từ nhà phát triển của bạn</p>
                 <span>
                     🔒 End-to-end encrypted
                 </span>
-            </div> */}
+            </div>
 
         </div>
     );
