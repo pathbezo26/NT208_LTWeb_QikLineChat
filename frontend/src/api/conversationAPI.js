@@ -19,3 +19,9 @@ export const searchUsersAPI = async (keyword) => {
     const response = await axiosInstance.get(`/conversations?q=${keyword}`);
     return response.data;
 };
+
+//Xóa conversation
+export const deleteConversationAPI = async (conversationId) => {
+    const response = await axiosInstance.delete(`/conversations/${conversationId}`);
+    return response.data;
+};

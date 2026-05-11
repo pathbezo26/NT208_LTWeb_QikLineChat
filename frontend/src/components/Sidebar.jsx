@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getConversationsAPI } from '../api/conversationAPI';
+import { getConversationsAPI, deleteConversationAPI } from '../api/conversationAPI';
 import useAuth from '../hooks/useAuth';
 import useSocket from '../hooks/useSocket';
 import UserSearch from './UserSearch';
@@ -7,7 +7,7 @@ import CreateGroupModal from './CreateGroupModal';
 import { formatMessageTime } from '../utils/formatTime';
 import styles from './styles/Sidebar.module.css';
 
-export default function Sidebar({ activeConversation, onSelectConversation }) {
+export default function Sidebar({ activeConversation, onSelectConversation, onConversationDeleted }) {
     const { user, logout } = useAuth();
     const socket = useSocket();
 
@@ -16,6 +16,24 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
     // Trạng thái bật/tắt các khung tìm kiếm và tạo nhóm
     const [showSearch, setShowSearch] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
+
+    //State lưu trữ ID của đoạn chat đang mở menu 3 chấm
+    const [openMenuId, setOpenMenuId] = useState(null);
+
+    //Click ra ngoài để đóng menu 3 chấm
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setOpenMenuId(null); // Đóng menu nếu click bất kỳ đâu trên màn hình
+        };
+
+        // Gắn sự kiện click vào toàn bộ trang
+        document.addEventListener('click', handleClickOutside);
+
+        // Dọn dẹp sự kiện khi component đóng lại hoặc chuyển trang
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
 
     // 1. Hàm tải danh sách các cuộc trò chuyện từ Server
     const loadConversations = async () => {
@@ -83,6 +101,36 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
         setShowSearch(false); // Bật tạo nhóm thì phải tắt tìm kiếm đi
     };
 
+    //Bật/tắt menu 3 chấm
+    const toggleMenu = (e, convId) => {
+        e.stopPropagation(); // Ngăn click nhầm vào việc chọn đoạn chat
+        setOpenMenuId(openMenuId === convId ? null : convId);
+    };
+
+    // HÀM XỬ LÝ KHI NHẤN VÀO "XÓA CUỘC TRÒ CHUYỆN"
+    const handleDeleteConversation = async (e, convId) => {
+        e.stopPropagation();
+
+        if (!window.confirm("Bạn có chắc chắn muốn xóa đoạn chat này không?")) return;
+
+        try {
+            // Gọi API xóa dưới Backend
+            await deleteConversationAPI(convId);
+
+            // Xóa khỏi danh sách hiển thị
+            setConversations((prev) => prev.filter((conv) => conv._id !== convId));
+
+            // Nếu đoạn chat bị xóa đang được mở, báo cho ChatPage làm trống khung chat
+            if (activeConversation?._id === convId && onConversationDeleted) {
+                onConversationDeleted();
+            }
+
+            setOpenMenuId(null); // Đóng menu
+        } catch (error) {
+            console.error("Lỗi khi xóa cuộc trò chuyện:", error);
+            alert("Không thể xóa đoạn chat, vui lòng thử lại!");
+        }
+    };
     return (
         <aside className={styles.sidebar}>
             {/* --- PHẦN HEADER (Avatar và tên của MÌNH) --- */}
@@ -177,6 +225,27 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
                                 <span className={styles.convTime}>
                                     {conv.updatedAt ? formatMessageTime(conv.updatedAt) : ''}
                                 </span>
+                            </div>
+
+                            {/*Khu vực chứa nút 3 chấm và dropdown*/}
+                            <div className={styles.optionsWrapper}>
+                                <button
+                                    className={styles.threeDotsBtn}
+                                    onClick={(e) => toggleMenu(e, conv._id)}
+                                >
+                                    ⋮
+                                </button>
+
+                                {openMenuId === conv._id && (
+                                    <div className={styles.dropdownMenu}>
+                                        <button
+                                            className={styles.deleteBtn}
+                                            onClick={(e) => handleDeleteConversation(e, conv._id)}
+                                        >
+                                            Xóa hội thoại
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );

@@ -46,11 +46,18 @@ export default function ChatPage() {
         }
     };
 
+    // HÀM KHI NHẬN ĐƯỢC SỰ KIỆN XÓA CUỘC TRÒ CHUYỆN
+    const handleConversationDeleted = () => {
+        // Xóa cuộc hội thoại đang active để màn hình ChatWindow trở về trạng thái trống
+        setActiveConversation(null);
+    };
+
     return (
         <div className={styles.layout}>
             <Sidebar
                 activeConversation={activeConversation}
                 onSelectConversation={setActiveConversation}
+                onConversationDeleted={handleConversationDeleted}
             />
             <ChatWindow conversation={activeConversation} />
         </div>
