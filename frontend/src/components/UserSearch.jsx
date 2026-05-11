@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { createConversationAPI } from '../api/conversationAPI';
 import useAuth from '../hooks/useAuth';
@@ -10,28 +10,37 @@ export default function UserSearch({ onConversationCreated }) {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [creatingId, setCreatingId] = useState(null);
+    const searchIdRef = useRef(0);
 
     const handleSearch = async (e) => {
         const value = e.target.value;
         setQuery(value);
 
         if (!value.trim()) {
+            searchIdRef.current += 1;
             setResults([]);
+            setLoading(false);
             return;
         }
 
+        const searchId = searchIdRef.current + 1;
+        searchIdRef.current = searchId;
         setLoading(true);
         try {
             // Gọi endpoint search đã định nghĩa trong backend
             const res = await axiosInstance.get(`/users/search?q=${encodeURIComponent(value)}`);
+            if (searchId !== searchIdRef.current) return;
             // Lọc bỏ chính mình khỏi kết quả tìm kiếm
             const filtered = res.data.filter(u => u._id !== currentUser._id);
             setResults(filtered);
         } catch (err) {
+            if (searchId !== searchIdRef.current) return;
             console.error("Search error:", err);
             setResults([]);
         } finally {
-            setLoading(false);
+            if (searchId === searchIdRef.current) {
+                setLoading(false);
+            }
         }
     };
 

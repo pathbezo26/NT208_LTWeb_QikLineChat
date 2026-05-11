@@ -59,30 +59,12 @@ export default function RegisterPage() {
                     <h2 className={styles.tagline}>
                         Tham gia QikLine ngay hôm nay để kết nối với những người bạn mới.
                     </h2>
-                    <div className={styles.featureGrid}>
-                        <div className={styles.featureItem}>
-                            <span className={styles.featureIcon}>1</span>
-                            <span>Tạo tài khoản nhanh, bắt đầu ngay</span>
-                        </div>
-                        <div className={styles.featureItem}>
-                            <span className={styles.featureIcon}>2</span>
-                            <span>Tìm và nhắn tin với bạn bè dễ dàng</span>
-                        </div>
-                        <div className={styles.featureItem}>
-                            <span className={styles.featureIcon}>3</span>
-                            <span>Không gian trò chuyện đơn giản, thân thiện</span>
-                        </div>
-                    </div>
-                    <div className={styles.chatPreview}>
-                        <div className={styles.previewTop}>
-                            <span className={styles.previewAvatar}>Q</span>
-                            <div>
-                                <strong>QikLine Chat</strong>
-                                <p>Sẵn sàng kết nối</p>
-                            </div>
-                        </div>
-                        <div className={styles.previewBubble}>Chào bạn mới!</div>
-                        <div className={styles.previewBubbleAlt}>Tạo tài khoản để bắt đầu trò chuyện.</div>
+                    <p className={styles.sideText}>
+                        Tạo tài khoản và bắt đầu cuộc trò chuyện của bạn trong vài giây.
+                    </p>
+                    <div className={styles.sideStatus}>
+                        <span className={styles.statusDot}></span>
+                        <span>Đăng ký nhanh chóng</span>
                     </div>
                 </div>
 

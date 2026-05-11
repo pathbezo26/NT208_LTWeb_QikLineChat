@@ -45,25 +45,12 @@ export default function LoginPage() {
                     <h2 className={styles.tagline}>
                         Khám phá những điều bạn yêu thích và kết nối với mọi người.
                     </h2>
-                    <div className={styles.featureGrid}>
-                        <div className={styles.featureItem}>
-                            <span>Tin nhắn nhanh</span>
-                        </div>
-                        <div className={styles.featureItem}>
-                            <span>Kết nối bạn bè chỉ trong vài giây</span>
-                        </div>
-
-                    </div>
-                    <div className={styles.chatPreview}>
-                        <div className={styles.previewTop}>
-                            <span className={styles.previewAvatar}>Q</span>
-                            <div>
-                                <strong>QikLine Chat</strong>
-                                <p>Đang hoạt động</p>
-                            </div>
-                        </div>
-                        <div className={styles.previewBubble}>Chào mừng bạn quay lại!</div>
-                        <div className={styles.previewBubbleAlt}>Cùng tiếp tục câu chuyện nhé.</div>
+                    <p className={styles.sideText}>
+                        Một không gian trò chuyện đơn giản, nhanh và dễ bắt đầu.
+                    </p>
+                    <div className={styles.sideStatus}>
+                        <span className={styles.statusDot}></span>
+                        <span>Sẵn sàng kết nối</span>
                     </div>
                 </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import axiosInstance from '../api/axiosInstance';
 import { createConversationAPI } from '../api/conversationAPI';
 import styles from './styles/CreateGroupModal.module.css';
@@ -14,6 +14,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
     const [isSearching, setIsSearching] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+    const searchIdRef = useRef(0);
 
     // 1. Xử lý khi người dùng gõ tìm kiếm thành viên
     const handleSearchUser = async (e) => {
@@ -22,14 +23,20 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
         // Nếu xóa trắng ô tìm kiếm thì ẩn kết quả và dừng lại
         if (!keyword.trim()) {
+            searchIdRef.current += 1;
             setSearchResults([]);
+            setIsSearching(false);
             return;
         }
 
+        const searchId = searchIdRef.current + 1;
+        searchIdRef.current = searchId;
         setIsSearching(true);
         try {
             // Lưu ý: Do gọi axiosInstance trực tiếp nên vẫn cần .data
             const response = await axiosInstance.get(`/users/search?q=${encodeURIComponent(keyword)}`);
+            if (searchId !== searchIdRef.current) return;
+
             const foundUsers = response.data;
 
             // Lọc bỏ những người đã được chọn vào nhóm (không hiển thị lại để tránh chọn trùng)
@@ -40,10 +47,13 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
             setSearchResults(unselectedUsers);
         } catch (error) {
+            if (searchId !== searchIdRef.current) return;
             setSearchResults([]);
             console.error('Lỗi khi tìm kiếm người dùng:', error);
         } finally {
-            setIsSearching(false);
+            if (searchId === searchIdRef.current) {
+                setIsSearching(false);
+            }
         }
     };
 

@@ -65,7 +65,7 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
 
     // Lấy ký tự Avatar (Ví dụ: "Nam" -> "N")
     const getAvatar = (conversation) => {
-        if (conversation.type === 'group') return '👥';
+        if (conversation.type === 'group') return 'G';
 
         const displayName = getConversationName(conversation);
         return displayName.charAt(0).toUpperCase();
@@ -101,10 +101,16 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
 
             {/* --- PHẦN NÚT HÀNH ĐỘNG --- */}
             <div className={styles.actions}>
-                <button className={styles.actionBtn} onClick={toggleSearchPanel}>
+                <button
+                    className={`${styles.actionBtn} ${showSearch ? styles.actionActive : ''}`}
+                    onClick={toggleSearchPanel}
+                >
                     🔍 Tìm người dùng
                 </button>
-                <button className={styles.actionBtn} onClick={toggleGroupModal}>
+                <button
+                    className={`${styles.actionBtn} ${showGroupModal ? styles.actionActive : ''}`}
+                    onClick={toggleGroupModal}
+                >
                     ➕ Tạo nhóm
                 </button>
             </div>
