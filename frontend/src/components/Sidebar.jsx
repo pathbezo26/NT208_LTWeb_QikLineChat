@@ -7,7 +7,7 @@ import CreateGroupModal from './CreateGroupModal';
 import { formatMessageTime } from '../utils/formatTime';
 import styles from './styles/Sidebar.module.css';
 
-export default function Sidebar({ activeConversation, onSelectConversation, onConversationDeleted }) {
+export default function Sidebar({ activeConversation, onSelectConversation }) {
     const { user, logout } = useAuth();
     const socket = useSocket();
 
@@ -120,9 +120,9 @@ export default function Sidebar({ activeConversation, onSelectConversation, onCo
             // Xóa khỏi danh sách hiển thị
             setConversations((prev) => prev.filter((conv) => conv._id !== convId));
 
-            // Nếu đoạn chat bị xóa đang được mở, báo cho ChatPage làm trống khung chat
-            if (activeConversation?._id === convId && onConversationDeleted) {
-                onConversationDeleted();
+            // Nếu đoạn chat bị xóa đang được mở, làm trống khung chat
+            if (activeConversation?._id === convId) {
+                onSelectConversation(null);
             }
 
             setOpenMenuId(null); // Đóng menu
