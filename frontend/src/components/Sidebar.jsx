@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getConversationsAPI } from '../api/conversationAPI';
+import { getConversationsAPI, deleteConversationAPI } from '../api/conversationAPI';
 import useAuth from '../hooks/useAuth';
 import useSocket from '../hooks/useSocket';
 import UserSearch from './UserSearch';
@@ -16,6 +16,31 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
     // Trạng thái bật/tắt các khung tìm kiếm và tạo nhóm
     const [showSearch, setShowSearch] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
+
+    //State lưu trữ ID của đoạn chat đang mở menu 3 chấm
+    const [openMenuId, setOpenMenuId] = useState(null);
+<<<<<<< HEAD
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
+=======
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+>>>>>>> ecd7012ce7414393f736bc4d99f44cc44e41481a
+
+    //Click ra ngoài để đóng menu 3 chấm
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setOpenMenuId(null); // Đóng menu nếu click bất kỳ đâu trên màn hình
+            setDeleteConfirmId(null);
+        };
+
+        // Gắn sự kiện click vào toàn bộ trang
+        document.addEventListener('click', handleClickOutside);
+
+        // Dọn dẹp sự kiện khi component đóng lại hoặc chuyển trang
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
 
     // 1. Hàm tải danh sách các cuộc trò chuyện từ Server
     const loadConversations = async () => {
@@ -83,105 +108,205 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
         setShowSearch(false); // Bật tạo nhóm thì phải tắt tìm kiếm đi
     };
 
-    return (
-        <aside className={styles.sidebar}>
-            {/* --- PHẦN HEADER (Avatar và tên của MÌNH) --- */}
-            <div className={styles.header}>
-                <div className={styles.userInfo}>
-                    <div className={styles.avatar}>
-                        {user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span className={styles.username}>{user.username}</span>
+    //Bật/tắt menu 3 chấm
+    const toggleMenu = (e, convId) => {
+        e.stopPropagation(); // Ngăn click nhầm vào việc chọn đoạn chat
+        setOpenMenuId(openMenuId === convId ? null : convId);
+        setDeleteConfirmId(null);
+    };
+
+    const requestDelete = (e, convId) => {
+        e.stopPropagation();
+        setConfirmDeleteId(convId); // Mở hộp thoại xác nhận thay vì xóa ngay
+        setOpenMenuId(null); // Đóng menu 3 chấm lại
+    };
+
+    setDeletingId(convId);
+
+    try {
+        await deleteConversationAPI(confirmDeleteId);
+        setConversations((prev) => prev.filter((conv) => conv._id !== confirmDeleteId));
+
+        // Xóa khỏi danh sách hiển thị
+        setConversations((prev) => prev.filter((conv) => conv._id !== convId));
+
+        // Nếu đoạn chat bị xóa đang được mở, làm trống khung chat
+        if (activeConversation?._id === convId) {
+            onSelectConversation(null);
+        }
+
+        setOpenMenuId(null); // Đóng menu
+        setDeleteConfirmId(null);
+    } catch (error) {
+        console.error("Lỗi khi xóa cuộc trò chuyện:", error);
+        alert(error.response?.data?.message || "Không thể xóa đoạn chat, vui lòng thử lại!");
+    } finally {
+        setDeletingId(null);
+    }
+};
+return (
+    <aside className={styles.sidebar}>
+        {/* --- PHẦN HEADER (Avatar và tên của MÌNH) --- */}
+        <div className={styles.header}>
+            <div className={styles.userInfo}>
+                <div className={styles.avatar}>
+                    {user.username.charAt(0).toUpperCase()}
                 </div>
-
-                <button className={styles.logoutBtn} onClick={logout} title="Đăng xuất">
-                    ⎋
-                </button>
+                <span className={styles.username}>{user.username}</span>
             </div>
 
-            {/* --- PHẦN NÚT HÀNH ĐỘNG --- */}
-            <div className={styles.actions}>
-                <button
-                    className={`${styles.actionBtn} ${showSearch ? styles.actionActive : ''}`}
-                    onClick={toggleSearchPanel}
-                >
-                    🔍 Tìm người dùng
-                </button>
-                <button
-                    className={`${styles.actionBtn} ${showGroupModal ? styles.actionActive : ''}`}
-                    onClick={toggleGroupModal}
-                >
-                    ➕ Tạo nhóm
-                </button>
-            </div>
+            <button className={styles.logoutBtn} onClick={logout} title="Đăng xuất">
+                ⎋
+            </button>
+        </div>
 
-            {/* --- CÁC KHUNG CHỨC NĂNG (Bật/Tắt) --- */}
-            {showSearch && (
-                <UserSearch
-                    onConversationCreated={(newConversation) => {
-                        setConversations((prev) => {
-                            // Tránh thêm trùng nếu cuộc trò chuyện này đã có sẵn ở Sidebar
-                            const isExist = prev.find((conv) => conv._id === newConversation._id);
-                            if (isExist) return prev;
+        {/* --- PHẦN NÚT HÀNH ĐỘNG --- */}
+        <div className={styles.actions}>
+            <button
+                className={`${styles.actionBtn} ${showSearch ? styles.actionActive : ''}`}
+                onClick={toggleSearchPanel}
+            >
+                🔍 Tìm người dùng
+            </button>
+            <button
+                className={`${styles.actionBtn} ${showGroupModal ? styles.actionActive : ''}`}
+                onClick={toggleGroupModal}
+            >
+                ➕ Tạo nhóm
+            </button>
+        </div>
 
-                            // Thêm phòng mới lên trên cùng
-                            return [newConversation, ...prev];
-                        });
+        {/* --- CÁC KHUNG CHỨC NĂNG (Bật/Tắt) --- */}
+        {showSearch && (
+            <UserSearch
+                onConversationCreated={(newConversation) => {
+                    setConversations((prev) => {
+                        // Tránh thêm trùng nếu cuộc trò chuyện này đã có sẵn ở Sidebar
+                        const isExist = prev.find((conv) => conv._id === newConversation._id);
+                        if (isExist) return prev;
 
-                        // Tự động chọn phòng này để nhảy sang khung chat
-                        onSelectConversation(newConversation);
-                        setShowSearch(false); // Ẩn khung tìm kiếm đi
-                    }}
-                />
+                        // Thêm phòng mới lên trên cùng
+                        return [newConversation, ...prev];
+                    });
+
+                    // Tự động chọn phòng này để nhảy sang khung chat
+                    onSelectConversation(newConversation);
+                    setShowSearch(false); // Ẩn khung tìm kiếm đi
+                }}
+            />
+        )}
+
+        {showGroupModal && (
+            <CreateGroupModal
+                onClose={() => setShowGroupModal(false)}
+                onCreated={(newGroup) => {
+                    // Thêm nhóm mới vào danh sách và đẩy lên đầu
+                    setConversations((prev) => [newGroup, ...prev]);
+
+                    // Nhảy vào chat nhóm đó luôn
+                    onSelectConversation(newGroup);
+                    setShowGroupModal(false);
+                }}
+            />
+        )}
+
+        {/* --- DANH SÁCH CUỘC TRÒ CHUYỆN --- */}
+        <div className={styles.list}>
+            {conversations.length === 0 && (
+                <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
             )}
 
-            {showGroupModal && (
-                <CreateGroupModal
-                    onClose={() => setShowGroupModal(false)}
-                    onCreated={(newGroup) => {
-                        // Thêm nhóm mới vào danh sách và đẩy lên đầu
-                        setConversations((prev) => [newGroup, ...prev]);
+            {conversations.map((conv) => {
+                // Kiểm tra xem đây có phải là phòng chat đang được chọn (đang mở) không
+                const isCurrentlyActive = activeConversation?._id === conv._id;
 
-                        // Nhảy vào chat nhóm đó luôn
-                        onSelectConversation(newGroup);
-                        setShowGroupModal(false);
-                    }}
-                />
-            )}
-
-            {/* --- DANH SÁCH CUỘC TRÒ CHUYỆN --- */}
-            <div className={styles.list}>
-                {conversations.length === 0 && (
-                    <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
-                )}
-
-                {conversations.map((conv) => {
-                    // Kiểm tra xem đây có phải là phòng chat đang được chọn (đang mở) không
-                    const isCurrentlyActive = activeConversation?._id === conv._id;
-
-                    return (
-                        <div
-                            key={conv._id}
-                            className={`${styles.item} ${isCurrentlyActive ? styles.active : ''}`}
-                            onClick={() => onSelectConversation(conv)}
-                        >
-                            <div className={styles.convAvatar}>
-                                {getAvatar(conv)}
-                            </div>
-
-                            <div className={styles.convInfo}>
-                                <span className={styles.convName}>
-                                    {getConversationName(conv)}
-                                </span>
-
-                                <span className={styles.convTime}>
-                                    {conv.updatedAt ? formatMessageTime(conv.updatedAt) : ''}
-                                </span>
-                            </div>
+                return (
+                    <div
+                        key={conv._id}
+                        className={`${styles.item} ${isCurrentlyActive ? styles.active : ''}`}
+                        onClick={() => onSelectConversation(conv)}
+                    >
+                        <div className={styles.convAvatar}>
+                            {getAvatar(conv)}
                         </div>
-                    );
-                })}
-            </div>
-        </aside>
-    );
+
+                        <div className={styles.convInfo}>
+                            <span className={styles.convName}>
+                                {getConversationName(conv)}
+                            </span>
+
+                            <span className={styles.convTime}>
+                                {conv.updatedAt ? formatMessageTime(conv.updatedAt) : ''}
+                            </span>
+                        </div>
+
+                        {/*Khu vực chứa nút 3 chấm và dropdown*/}
+                        <div className={styles.optionsWrapper}>
+                            <button
+                                className={styles.threeDotsBtn}
+                                onClick={(e) => toggleMenu(e, conv._id)}
+                            >
+                                ⋮
+                            </button>
+
+                            {openMenuId === conv._id && (
+                                <div
+                                    className={styles.dropdownMenu}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {deleteConfirmId === conv._id ? (
+                                        <>
+                                            <p className={styles.confirmText}>
+                                                Xóa cuộc trò chuyện này?
+                                            </p>
+                                            <div className={styles.confirmActions}>
+                                                <button
+                                                    className={styles.cancelDeleteBtn}
+                                                    onClick={() => setDeleteConfirmId(null)}
+                                                    disabled={deletingId === conv._id}
+                                                >
+                                                    Hủy
+                                                </button>
+                                                <button
+                                                    className={styles.confirmDeleteBtn}
+                                                    onClick={(e) => handleDeleteConversation(e, conv._id)}
+                                                    disabled={deletingId === conv._id}
+                                                >
+                                                    {deletingId === conv._id ? 'Đang xóa...' : 'Xóa'}
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <button
+                                            className={styles.deleteBtn}
+                                            onClick={() => setDeleteConfirmId(conv._id)}
+                                        >
+                                            Xóa hội thoại
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {confirmDeleteId && (
+                            <div className={styles.modalOverlay}>
+                                <div className={styles.modalContent}>
+                                    <h3>Xóa đoạn chat?</h3>
+                                    <p>Xóa cuộc hội thoại(ở phía bạn).</p>
+                                    <div className={styles.modalActions}>
+                                        <button className={styles.cancelBtn} onClick={() => setConfirmDeleteId(null)}>
+                                            Hủy
+                                        </button>
+                                        <button className={styles.confirmBtn} onClick={executeDelete}>
+                                            Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    </aside>
+);
 }

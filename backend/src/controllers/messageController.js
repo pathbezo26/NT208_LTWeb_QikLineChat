@@ -27,7 +27,7 @@ const getMessages = async (req, res) => {
 
         // 3. Lấy tin nhắn, sắp xếp từ cũ đến mới (createdAt tăng dần)
         //    populate sender để frontend hiển thị tên người gửi
-        const messages = await Message.find({ conversationId })
+        const messages = await Message.find({ conversationId, deletedBy: { $ne: userId } })
             .populate('sender', 'username')
             .sort({ createdAt: 1 });
 
