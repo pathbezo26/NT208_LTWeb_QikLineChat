@@ -12,7 +12,8 @@ export default function RegisterPage() {
     const [formData, setFormData] = useState({
         username: '',
         email: '',
-        password: ''
+        password: '',
+        confirmPassword: ''
     });
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +30,12 @@ export default function RegisterPage() {
 
         // Xử lý validate ngay từ đầu
         if (formData.password.length < 6) {
-            setError('Mật khẩu phải có ít nhất 6 ký tự.');
+            setError('Mật khẩu phải có ít nhất 6 ký tự!');
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Mật khẩu xác nhận không khớp!');
             return;
         }
 
@@ -37,7 +43,12 @@ export default function RegisterPage() {
 
         try {
             // Gọi API: Đã tối ưu destructuring lấy thẳng user và token
-            const { user, token } = await registerAPI(formData);
+            const registerData = {
+                username: formData.username,
+                email: formData.email,
+                password: formData.password
+            };
+            const { user, token } = await registerAPI(registerData);
 
             // Đăng ký thành công thì tự động đăng nhập luôn và chuyển hướng
             login(user, token);
@@ -99,7 +110,7 @@ export default function RegisterPage() {
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    placeholder="Email của bạn"
+                                    placeholder="Email"
                                     required
                                 />
                             </div>
@@ -111,7 +122,19 @@ export default function RegisterPage() {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    placeholder="Mật khẩu (Tối thiểu 6 ký tự)"
+                                    placeholder="Mật khẩu"
+                                    required
+                                />
+                            </div>
+
+                            <div className={styles.field}>
+                                <input
+                                    id="confirmPassword"
+                                    type="password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    placeholder="Xác nhận lại mật khẩu"
                                     required
                                 />
                             </div>
