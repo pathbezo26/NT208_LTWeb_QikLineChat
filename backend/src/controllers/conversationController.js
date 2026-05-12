@@ -1,6 +1,7 @@
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const Message = require('../models/Message');
 
 // Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
 const getValidUserIds = async (identifiers) => {
