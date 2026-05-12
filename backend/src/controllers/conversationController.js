@@ -35,7 +35,10 @@ const getConversations = async (req, res) => {
 
         // Tìm tất cả conversation mà user là thành viên
         // populate members để frontend hiển thị info người dùng
-        const conversations = await Conversation.find({ members: userId })
+        const conversations = await Conversation.find({
+            members: userId,
+            deletedFor: { $ne: userId },
+        })
             .populate('members', 'username email')
             .populate('createdBy', 'username')
             .sort({ updatedAt: -1 });
@@ -88,6 +91,10 @@ const createConversation = async (req, res) => {
                 .populate('createdBy', 'username');
 
             if (existing) {
+                existing.deletedFor = (existing.deletedFor || []).filter(
+                    (id) => id.toString() !== userId.toString()
+                );
+                await existing.save();
                 return res.status(200).json(existing);
             }
         }
@@ -118,35 +125,39 @@ const createConversation = async (req, res) => {
     }
 };
 
-// Xóa conversation
+// Xóa conversation khỏi danh sách của user hiện tại
 const deleteConversation = async (req, res) => {
     try {
-        const { conversationId } = req.params;
+        const conversationId = req.params.id;
         const userId = req.user._id;
 
-        // Kiểm tra conversation có tồn tại ko
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Không tìm thấy nhóm chat' });
+            return res.status(404).json({ message: 'Không tìm thấy cuộc trò chuyện' });
         }
 
-        // Nếu là nhóm: chỉ người tạo nhóm mới được xóa
-        if (conversation.type === "group" && conversation.createdBy.toString() !== userId.toString()) {
-            return res.status(403).json({ message: 'Chỉ chủ nhóm mới có quyền giải tán nhóm' });
+        const isMember = conversation.members.some(
+            (memberId) => memberId.toString() === userId.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: 'Bạn không có quyền xóa cuộc trò chuyện này' });
         }
 
-        // Thực hiện xóa: Xóa hội thoại và tất cả tin nhắn liên quan
-        // Dùng deleteMany để dọn dẹp Message collection
-        await Message.deleteMany({ conversationId: conversationId });
-        await Conversation.findByIdAndDelete(conversationId);
+        const alreadyDeleted = (conversation.deletedFor || []).some(
+            (deletedUserId) => deletedUserId.toString() === userId.toString()
+        );
+        if (!alreadyDeleted) {
+            conversation.deletedFor.push(userId);
+            await conversation.save();
+        }
 
         res.status(200).json({
-            message: 'Đã giải tán nhóm và toàn bộ lịch sử tin nhắn',
-            conversationId
+            message: 'Đã xóa cuộc trò chuyện khỏi danh sách của bạn',
+            conversationId,
         });
     } catch (error) {
-        console.error('deleteGroup error:', error);
-        res.status(500).json({ message: 'Lỗi server khi xóa nhóm' });
+        console.error('deleteConversation error:', error);
+        res.status(500).json({ message: 'Lỗi server khi xóa cuộc trò chuyện' });
     }
 };
 

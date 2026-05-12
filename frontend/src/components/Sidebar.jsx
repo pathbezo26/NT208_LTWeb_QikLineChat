@@ -19,11 +19,14 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
 
     //State lưu trữ ID của đoạn chat đang mở menu 3 chấm
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     //Click ra ngoài để đóng menu 3 chấm
     useEffect(() => {
         const handleClickOutside = () => {
             setOpenMenuId(null); // Đóng menu nếu click bất kỳ đâu trên màn hình
+            setDeleteConfirmId(null);
         };
 
         // Gắn sự kiện click vào toàn bộ trang
@@ -105,13 +108,14 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
     const toggleMenu = (e, convId) => {
         e.stopPropagation(); // Ngăn click nhầm vào việc chọn đoạn chat
         setOpenMenuId(openMenuId === convId ? null : convId);
+        setDeleteConfirmId(null);
     };
 
     // HÀM XỬ LÝ KHI NHẤN VÀO "XÓA CUỘC TRÒ CHUYỆN"
     const handleDeleteConversation = async (e, convId) => {
         e.stopPropagation();
 
-        if (!window.confirm("Bạn có chắc chắn muốn xóa đoạn chat này không?")) return;
+        setDeletingId(convId);
 
         try {
             // Gọi API xóa dưới Backend
@@ -126,9 +130,12 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
             }
 
             setOpenMenuId(null); // Đóng menu
+            setDeleteConfirmId(null);
         } catch (error) {
             console.error("Lỗi khi xóa cuộc trò chuyện:", error);
-            alert("Không thể xóa đoạn chat, vui lòng thử lại!");
+            alert(error.response?.data?.message || "Không thể xóa đoạn chat, vui lòng thử lại!");
+        } finally {
+            setDeletingId(null);
         }
     };
     return (
@@ -237,13 +244,40 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
                                 </button>
 
                                 {openMenuId === conv._id && (
-                                    <div className={styles.dropdownMenu}>
-                                        <button
-                                            className={styles.deleteBtn}
-                                            onClick={(e) => handleDeleteConversation(e, conv._id)}
-                                        >
-                                            Xóa hội thoại
-                                        </button>
+                                    <div
+                                        className={styles.dropdownMenu}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {deleteConfirmId === conv._id ? (
+                                            <>
+                                                <p className={styles.confirmText}>
+                                                    Xóa cuộc trò chuyện này?
+                                                </p>
+                                                <div className={styles.confirmActions}>
+                                                    <button
+                                                        className={styles.cancelDeleteBtn}
+                                                        onClick={() => setDeleteConfirmId(null)}
+                                                        disabled={deletingId === conv._id}
+                                                    >
+                                                        Hủy
+                                                    </button>
+                                                    <button
+                                                        className={styles.confirmDeleteBtn}
+                                                        onClick={(e) => handleDeleteConversation(e, conv._id)}
+                                                        disabled={deletingId === conv._id}
+                                                    >
+                                                        {deletingId === conv._id ? 'Đang xóa...' : 'Xóa'}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <button
+                                                className={styles.deleteBtn}
+                                                onClick={() => setDeleteConfirmId(conv._id)}
+                                            >
+                                                Xóa hội thoại
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>

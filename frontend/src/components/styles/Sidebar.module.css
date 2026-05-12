@@ -126,6 +126,7 @@
   border: 1px solid transparent;
   border-radius: 12px;
   cursor: pointer;
+  position: relative;
   transition: background 0.15s, border-color 0.15s;
 }
 
@@ -170,94 +171,116 @@
   font-size: 12px;
 }
 
-/* --- Tùy chỉnh Khung từng đoạn chat (.item) --- */
-.item {
-    display: flex;
-    align-items: center;
-    padding: 10px 12px;
-    margin: 4px 8px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    position: relative; /* Quan trọng để giữ nút 3 chấm và dropdown theo đúng vị trí */
-}
-
-/* Messenger: hover vào đoạn chat sẽ có màu nền xám nhạt */
-.item:hover {
-    background-color: #f2f2f2;
-}
-
-/* Khi đang chọn đoạn chat đó (active) */
-.item.active {
-    background-color: #ebf5ff; /* Màu xanh nhạt */
-}
-
-/* --- Khu vực chứa nút 3 chấm --- */
 .optionsWrapper {
-    margin-left: auto; /* Tự động đẩy ra sát mép phải */
-    position: relative;
-    display: flex;
-    align-items: center;
+  margin-left: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-/* --- Nút 3 chấm mang phong cách Messenger --- */
 .threeDotsBtn {
-    background-color: transparent;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%; /* Nút hình tròn */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 18px;
-    color: #65676b;
-    cursor: pointer;
-    opacity: 0; /* Ẩn đi theo mặc định */
-    transition: opacity 0.2s ease, background-color 0.2s ease;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
-/* CHỈ HIỆN nút 3 chấm khi di chuột vào đoạn chat, HOẶC khi menu đang mở */
 .item:hover .threeDotsBtn,
 .optionsWrapper:focus-within .threeDotsBtn {
-    opacity: 1;
+  opacity: 1;
 }
 
-/* Hiệu ứng khi di chuột vào chính nút 3 chấm */
 .threeDotsBtn:hover {
-    background-color: #e4e6eb; /* Màu xám đậm hơn một chút */
+  background: #e8eef6;
+  color: #1f2937;
 }
 
-/* --- Khung menu nổi lên (Dropdown) --- */
 .dropdownMenu {
-    position: absolute;
-    right: 16px; /* Cách mép phải một chút */
-    top: 36px; /* Nằm ngay dưới nút 3 chấm */
-    background-color: #ffffff;
-    border-radius: 8px;
-    /* Đổ bóng mềm mại, sang trọng giống fb */
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2); 
-    z-index: 100;
-    min-width: 150px;
-    padding: 8px; /* Lề trong để tạo khoảng trống với các nút */
+  position: absolute;
+  top: 38px;
+  right: 0;
+  z-index: 100;
+  width: 220px;
+  padding: 8px;
+  border: 1px solid #e5edf6;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
 }
 
-/* --- Nút Xóa bên trong Menu --- */
 .deleteBtn {
-    width: 100%;
-    background-color: transparent;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    color: #fa383e; /* Màu đỏ Messenger */
-    font-size: 15px;
-    font-weight: 500;
-    text-align: left;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  transition: background 0.2s ease;
 }
 
-/* Đổi màu nền khi hover vào nút Xóa */
 .deleteBtn:hover {
-    background-color: #f2f2f2;
+  background: #fef2f2;
+}
+
+.confirmText {
+  margin: 2px 4px 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.confirmActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cancelDeleteBtn,
+.confirmDeleteBtn {
+  min-height: 34px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.cancelDeleteBtn {
+  border: 1px solid #dbe5ef;
+  background: #ffffff;
+  color: #475569;
+}
+
+.cancelDeleteBtn:hover {
+  background: #f8fafc;
+}
+
+.confirmDeleteBtn {
+  border: 1px solid #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.confirmDeleteBtn:hover {
+  background: #b91c1c;
+}
+
+.cancelDeleteBtn:disabled,
+.confirmDeleteBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
