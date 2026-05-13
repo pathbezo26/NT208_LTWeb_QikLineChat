@@ -53,33 +53,36 @@
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 42px;
+  align-items: center;
   gap: 8px;
   padding: 12px;
   background: #ffffff;
   border-bottom: 1px solid #e8eef5;
 }
 
-.actionBtn {
-  min-height: 38px;
-  padding: 0 10px;
+.createGroupBtn {
+  width: 42px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #dbe5ef;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #f8fbff;
   color: #475569;
-  font-size: 13px;
-  font-weight: 750;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+  font-size: 18px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
-.actionBtn:hover,
-.actionActive {
+.createGroupBtn:hover,
+.createGroupActive {
   border-color: #b9d7ff;
   background: #edf6ff;
   color: #156bd8;
 }
 
-.actionBtn:hover {
+.createGroupBtn:hover {
   transform: translateY(-1px);
 }
 

@@ -1,0 +1,125 @@
+.searchArea {
+  position: relative;
+  min-width: 0;
+}
+
+.searchBox {
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  background: #f8fbff;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.searchBox:focus-within {
+  border-color: #1877f2;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.11);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: #8a97a8;
+  font-size: 16px;
+}
+
+.searchInput {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #172033;
+  font-size: 14px;
+}
+
+.searchInput::placeholder {
+  color: #8a97a8;
+}
+
+.results {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  z-index: 30;
+  width: calc(100% + 50px);
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #e5edf6;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+}
+
+.status {
+  margin: 0;
+  padding: 10px 6px;
+  color: #8391a5;
+  font-size: 13px;
+  text-align: center;
+}
+
+.resultItem {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.resultItem:hover:not(:disabled) {
+  border-color: #e3ebf5;
+  background: #f8fbff;
+}
+
+.resultItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eaf4ff;
+  color: #156bd8;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action {
+  flex-shrink: 0;
+  min-width: 44px;
+  color: #1877f2;
+  font-size: 13px;
+  font-weight: 750;
+  text-align: right;
+}
