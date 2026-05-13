@@ -11,7 +11,6 @@
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 18px 16px 14px;
   background: #ffffff;
   border-bottom: 1px solid #e8eef5;
@@ -50,23 +49,6 @@
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.logoutBtn {
-  width: 34px;
-  height: 34px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: #f2f6fb;
-  color: #64748b;
-  font-size: 18px;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-}
-
-.logoutBtn:hover {
-  border-color: #d8e3f0;
-  background: #ffffff;
-  color: #1877f2;
 }
 
 .actions {
