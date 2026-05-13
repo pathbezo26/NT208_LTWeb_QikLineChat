@@ -17,8 +17,8 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
 
     const [conversations, setConversations] = useState([]);
     const [showGroupModal, setShowGroupModal] = useState(false);
-    const [openenuId, setOpenMenuId] = useState(null);
-    const [deleteConMfirmId, setDeleteConfirmId] = useState(null);
+    const [openMenuId, setOpenMenuId] = useState(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
 
     const loadConversations = async () => {
