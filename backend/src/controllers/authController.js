@@ -4,13 +4,26 @@ const User = require('../models/User');
 
 // ─── Hàm tạo JWT token ────────────────────────────────────────────────────────
 const generateToken = (user) => {
-    return jwt.sign({ id: user._id, username: user.username },
+    return jwt.sign(
+        { id: user._id, username: user.username },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 };
 
-// ─── POST /api/auth/register ──────────────────────────────────────────────────
+const formatAuthUser = (user) => ({
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    avatar: {
+        url: user.avatar?.url || null,
+        publicId: user.avatar?.publicId || null,
+        updatedAt: user.avatar?.updatedAt || null,
+    },
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+});
+
 const register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -42,16 +55,10 @@ const register = async (req, res) => {
         // 5. Tạo JWT và trả về
         const token = generateToken(user);
 
-
         res.status(201).json({
             message: 'Đăng ký thành công',
             token,
-            user: {
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                createdAt: user.createdAt,
-            },
+            user: formatAuthUser(user),
         });
     } catch (error) {
         console.error('Register error:', error);
@@ -87,12 +94,7 @@ const login = async (req, res) => {
         res.status(200).json({
             message: 'Đăng nhập thành công',
             token,
-            user: {
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                createdAt: user.createdAt,
-            },
+            user: formatAuthUser(user),
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -105,7 +107,7 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
     try {
         res.status(200).json({
-            user: req.user
+            user: formatAuthUser(req.user),
         });
     } catch (err) {
         res.status(500).json({ message: 'Lỗi server.', error: err.message });

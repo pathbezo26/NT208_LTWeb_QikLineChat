@@ -5,6 +5,7 @@ import {
     MessageOutlined,
     SettingOutlined,
     TeamOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
 import useAuth from '../hooks/useAuth';
 import styles from './styles/AppNavRail.module.css';
@@ -28,7 +29,7 @@ const navItems = [
 ];
 
 export default function AppNavRail({ activeSection, onSectionChange }) {
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsRef = useRef(null);
 
@@ -58,8 +59,8 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
 
     return (
         <nav className={styles.rail} aria-label="Điều hướng chính">
-            <div className={styles.brand} title="QikLineChat">
-                <img src="/qikline_logo.png" alt="" className={styles.logo} />
+            <div className={styles.userIcon} title={user?.username || 'Tài khoản'}>
+                <UserOutlined />
             </div>
 
             <div className={styles.navList}>

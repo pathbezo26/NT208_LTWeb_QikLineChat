@@ -13,7 +13,14 @@ import SidebarSearch from './SidebarSearch';
 import { formatMessageTime } from '../utils/formatTime';
 import styles from './styles/Sidebar.module.css';
 
-export default function Sidebar({ activeConversation, onSelectConversation }) {
+const sectionTitles = {
+    messages: 'Tin nhắn',
+    contacts: 'Danh bạ',
+    groups: 'Nhóm',
+    settings: 'Cài đặt',
+};
+
+export default function Sidebar({ activeSection, activeConversation, onSelectConversation }) {
     const { user } = useAuth();
     const socket = useSocket();
 
@@ -165,12 +172,9 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
     return (
         <aside className={styles.sidebar}>
             <div className={styles.header}>
-                <div className={styles.userInfo}>
-                    <div className={styles.avatar}>
-                        {user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span className={styles.username}>{user.username}</span>
-                </div>
+                <h2 className={styles.title}>
+                    {sectionTitles[activeSection] || sectionTitles.messages}
+                </h2>
             </div>
 
             <div className={styles.actions}>

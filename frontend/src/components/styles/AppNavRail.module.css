@@ -11,22 +11,18 @@
   box-shadow: 1px 0 0 rgba(15, 23, 42, 0.02);
 }
 
-.brand {
+.userIcon {
   width: 42px;
   height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid #dbeafe;
-  border-radius: 12px;
+  border-radius: 50%;
   background: linear-gradient(180deg, #f8fbff 0%, #edf6ff 100%);
+  color: #1877f2;
+  font-size: 20px;
   box-shadow: 0 8px 18px rgba(24, 119, 242, 0.12);
-}
-
-.logo {
-  width: 25px;
-  height: 25px;
-  object-fit: contain;
 }
 
 .navList {

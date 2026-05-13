@@ -15,6 +15,7 @@ export default function ChatPage() {
                 onSectionChange={setActiveSection}
             />
             <Sidebar
+                activeSection={activeSection}
                 activeConversation={activeConversation}
                 onSelectConversation={setActiveConversation}
             />

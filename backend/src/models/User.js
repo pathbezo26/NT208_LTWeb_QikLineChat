@@ -23,6 +23,20 @@ const UserSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Password là bắt buộc'],
         },
+        avatar: {
+            url: {
+                type: String,
+                default: null,
+            },
+            publicId: {
+                type: String,
+                default: null,
+            },
+            updatedAt: {
+                type: Date,
+                default: null,
+            },
+        },
     },
     { timestamps: true }
 );

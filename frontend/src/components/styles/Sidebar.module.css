@@ -8,22 +8,6 @@
   overflow: hidden;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  padding: 18px 16px 14px;
-  background: #ffffff;
-  border-bottom: 1px solid #e8eef5;
-}
-
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-}
-
-.avatar,
 .convAvatar {
   display: flex;
   align-items: center;
@@ -35,18 +19,18 @@
   font-weight: 800;
 }
 
-.avatar {
-  width: 38px;
-  height: 38px;
-  font-size: 15px;
-  box-shadow: 0 8px 18px rgba(24, 119, 242, 0.18);
+.header {
+  padding: 22px 16px 12px;
+  background: #ffffff;
 }
 
-.username {
+.title {
+  margin: 0;
   overflow: hidden;
   color: #162033;
-  font-size: 15px;
-  font-weight: 750;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
