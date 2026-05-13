@@ -12,17 +12,36 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #8a8d91;
-    gap: 12px;
+    color: #64748b;
+    gap: 10px;
+    padding: 24px;
+    text-align: center;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
 }
 
 .emptyIcon {
-    font-size: 56px;
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 24px;
+    background: #edf7ff;
+    color: #2a5fa6;
+    font-size: 38px;
+    box-shadow: 0 12px 30px rgba(42, 95, 166, 0.12);
 }
 
 .empty p {
+    margin: 8px 0 0;
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
+    color: #243447;
+}
+
+.empty span {
+    max-width: 360px;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .header {

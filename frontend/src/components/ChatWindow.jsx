@@ -4,6 +4,7 @@ import useSocket from '../hooks/useSocket';
 import useAuth from '../hooks/useAuth';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
+import { MessageOutlined } from '@ant-design/icons';
 import styles from './styles/ChatWindow.module.css';
 
 export default function ChatWindow({ conversation }) {
@@ -120,8 +121,11 @@ export default function ChatWindow({ conversation }) {
     if (!conversation) {
         return (
             <div className={styles.empty}>
-                <div className={styles.emptyIcon}>💬</div>
+                <div className={styles.emptyIcon}>
+                    <MessageOutlined />
+                </div>
                 <p>Chọn một cuộc trò chuyện để bắt đầu</p>
+                <span>Nhắn tin riêng tư hoặc tạo nhóm để trò chuyện cùng bạn bè.</span>
             </div>
         );
     }
