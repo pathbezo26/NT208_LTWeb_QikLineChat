@@ -17,7 +17,7 @@ router.get('/', protect, getConversations);
 router.post('/', protect, createConversation);
 
 // DELETE /api/conversations/:id - Xóa conversation theo id
-router.delete('/:conversationId', protect, deleteConversation);
+router.delete('/:id', protect, deleteConversation);
 
 // PUT /api/conversations:id/add - thêm thành viên theo id (add để phân biệt vs removeMember)
 router.put('/:id/add', protect, addMembers);
