@@ -159,6 +159,7 @@
   width: 42px;
   height: 42px;
   font-size: 16px;
+  object-fit: cover;
 }
 
 .convInfo {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { MessageOutlined } from '@ant-design/icons';
 import { getMessagesAPI } from '../api/messageAPI';
 import useSocket from '../hooks/useSocket';
 import useAuth from '../hooks/useAuth';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
-import { MessageOutlined } from '@ant-design/icons';
+import UserAvatar from './UserAvatar';
 import styles from './styles/ChatWindow.module.css';
 
 export default function ChatWindow({ conversation }) {
@@ -15,17 +16,17 @@ export default function ChatWindow({ conversation }) {
     const [isLoading, setIsLoading] = useState(false);
     const [typingUsers, setTypingUsers] = useState([]);
 
-    // 1. Tải lịch sử tin nhắn mỗi khi đổi người chat (đổi conversation)
+    // 1. Tải lịch sử tin nhắn mỗi khi đổi conversation.
     useEffect(() => {
         // Nếu chưa chọn ai để chat thì dừng lại
         if (!conversation) return;
         // TẠO CỜ ĐÁNH DẤU: Mặc định là chưa hủy
         let ignore = false;
-        // Định nghĩa hàm tải dữ liệu ngay trong useEffect cho dễ quản lý
+        // Định nghĩa hàm tải dữ liệu ngay trong useEffect 
         const fetchMessages = async () => {
             setIsLoading(true);
+
             try {
-                // Gọi API: (Lưu ý đã bỏ .data vì messageAPI đã xử lý)
                 const data = await getMessagesAPI(conversation._id);
                 // KIỂM TRA TRƯỚC KHI CẬP NHẬT: 
                 // Nếu người dùng chưa chuyển sang phòng khác thì mới set State
@@ -40,16 +41,17 @@ export default function ChatWindow({ conversation }) {
             }
         };
 
-        // Làm sạch màn hình trước khi tải tin nhắn của người mới
+        // Làm sạch màn hình trước khi chuyển sang cuộc trò chuyện khác.
         setMessages([]);
         setTypingUsers([]);
-
-        // Bắt đầu tải
         fetchMessages();
 
+        return () => {
+            ignore = true;
+        };
     }, [conversation]); // Hàm này sẽ tự động chạy lại mỗi khi biến 'conversation' thay đổi
 
-    // 2. Xử lý tham gia và rời khỏi phòng chat (Socket Room)
+    // 2. Tham gia và rời khỏi Socket Room tương ứng với conversation hiện tại.
     useEffect(() => {
         if (!socket || !conversation) return;
 
@@ -62,7 +64,7 @@ export default function ChatWindow({ conversation }) {
         };
     }, [socket, conversation]);
 
-    // 3. Lắng nghe tin nhắn mới từ người khác gửi tới
+    // 3. Lắng nghe tin nhắn mới từ socket và tránh thêm trùng message đã có.
     useEffect(() => {
         if (!socket) return;
 
@@ -79,11 +81,10 @@ export default function ChatWindow({ conversation }) {
 
         socket.on('newMessage', handleNewMessage);
 
-        // Cleanup: Ngắt lắng nghe khi component đóng
         return () => socket.off('newMessage', handleNewMessage);
     }, [socket]);
 
-    // 4. Lắng nghe hiệu ứng "ai đó đang gõ..."
+    // 4. Lắng nghe trạng thái "đang nhập" của người khác trong room.
     useEffect(() => {
         if (!socket || !user) return;
 
@@ -93,7 +94,7 @@ export default function ChatWindow({ conversation }) {
 
             setTypingUsers((prevUsers) => {
                 // Nếu người này đã có trong danh sách đang gõ rồi thì không thêm nữa
-                const isAlreadyTyping = prevUsers.find((u) => u.userId === userId);
+                const isAlreadyTyping = prevUsers.find((typingUser) => typingUser.userId === userId);
                 if (isAlreadyTyping) return prevUsers;
 
                 // Cập nhật danh sách: giữ nguyên người cũ, thêm người mới vào
@@ -102,8 +103,7 @@ export default function ChatWindow({ conversation }) {
         };
 
         const handleUserStopTyping = ({ userId }) => {
-            // Lọc bỏ người dùng đã ngừng gõ ra khỏi danh sách
-            setTypingUsers((prevUsers) => prevUsers.filter((u) => u.userId !== userId));
+            setTypingUsers((prevUsers) => prevUsers.filter((typingUser) => typingUser.userId !== userId));
         };
 
         socket.on('typing', handleUserTyping);
@@ -115,9 +115,6 @@ export default function ChatWindow({ conversation }) {
         };
     }, [socket, user]);
 
-    // --- PHẦN RENDER GIAO DIỆN ---
-
-    // Giao diện khi mới vào web, chưa chọn ai để chat
     if (!conversation) {
         return (
             <div className={styles.empty}>
@@ -130,24 +127,29 @@ export default function ChatWindow({ conversation }) {
         );
     }
 
-    // Hàm phụ giúp lấy tên hiển thị (Tên nhóm hoặc tên người đối diện)
+    // Lấy thành viên còn lại trong private chat để hiển thị tên và avatar.
+    const getOtherMember = () => {
+        return conversation.members.find((member) => member._id !== user._id);
+    };
+
     const getChatName = () => {
         if (conversation.type === 'group') {
             return conversation.name || 'Nhóm chat';
         }
 
-        // Chat cá nhân: Tìm thành viên không phải là mình
-        const otherMember = conversation.members.find((member) => member._id !== user._id);
-        return otherMember?.username || 'Người dùng';
+        return getOtherMember()?.username || 'Người dùng';
     };
 
     return (
         <div className={styles.window}>
-            {/* Phần tiêu đề phía trên */}
             <div className={styles.header}>
-                <div className={styles.headerAvatar}>
-                    {conversation.type === 'group' ? '👥' : getChatName().charAt(0).toUpperCase()}
-                </div>
+                <UserAvatar
+                    user={conversation.type === 'private' ? getOtherMember() : null}
+                    name={conversation.type === 'group' ? (conversation.name || 'Nhóm') : getChatName()}
+                    className={styles.headerAvatar}
+                    fallback={conversation.type === 'group' ? 'G' : '?'}
+                />
+
                 <div className={styles.headerInfo}>
                     <span className={styles.headerName}>{getChatName()}</span>
                     {conversation.type === 'group' && (
@@ -158,21 +160,18 @@ export default function ChatWindow({ conversation }) {
                 </div>
             </div>
 
-            {/* Phần danh sách tin nhắn ở giữa */}
             {isLoading ? (
                 <div className={styles.loading}>Đang tải tin nhắn...</div>
             ) : (
                 <MessageList messages={messages} currentUserId={user._id} />
             )}
 
-            {/* Hiển thị dòng chữ "Nguyễn Văn A đang nhập..." */}
             {typingUsers.length > 0 && (
                 <div className={styles.typing}>
-                    {typingUsers.map((u) => u.username).join(', ')} đang nhập...
+                    {typingUsers.map((typingUser) => typingUser.username).join(', ')} đang nhập...
                 </div>
             )}
 
-            {/* Khung nhập tin nhắn phía dưới cùng */}
             <ChatInput conversationId={conversation._id} />
         </div>
     );

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const SOCKET_USER_FIELDS = '_id username email avatar'; // Field user gui qua socket, bao gom avatar cho realtime message.
 
 const onlineUsers = new Map(); //Mảng các user đang onl
 
@@ -61,8 +62,8 @@ const socketHandler = (io) => {
         // Update conversation's updatedAt for sidebar sorting
         await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() });
 
-        // Populate sender info before broadcasting
-        const populated = await message.populate('sender', '_id username email');
+        // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
+        const populated = await message.populate('sender', SOCKET_USER_FIELDS);
 
         // Broadcast to everyone in the room (including sender)
         io.to(conversationId).emit('newMessage', populated);

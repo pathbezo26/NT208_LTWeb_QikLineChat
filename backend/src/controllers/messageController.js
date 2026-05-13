@@ -1,6 +1,9 @@
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 
+// Cac field sender duoc tra ve kem tin nhan; avatar giup frontend hien anh nguoi gui.
+const SENDER_PUBLIC_FIELDS = 'username avatar';
+
 // ─── GET /api/messages/:conversationId ───────────────────────────────────────
 // Lấy toàn bộ lịch sử tin nhắn của 1 conversation
 // Frontend gọi khi người dùng mở 1 đoạn chat
@@ -26,9 +29,9 @@ const getMessages = async (req, res) => {
         }
 
         // 3. Lấy tin nhắn, sắp xếp từ cũ đến mới (createdAt tăng dần)
-        //    populate sender để frontend hiển thị tên người gửi
+        //    populate sender để frontend hiển thị tên và avatar người gửi
         const messages = await Message.find({ conversationId, deletedBy: { $ne: userId } })
-            .populate('sender', 'username')
+            .populate('sender', SENDER_PUBLIC_FIELDS)
             .sort({ createdAt: 1 });
 
         res.status(200).json(messages);
@@ -76,8 +79,8 @@ const sendMessage = async (req, res) => {
         //    Dùng để Sidebar sort conversation theo tin nhắn mới nhất
         await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() });
 
-        // 5. Populate sender rồi trả về — frontend dùng ngay để hiển thị
-        const populated = await message.populate('sender', 'username');
+        // 5. Populate sender rồi trả về — frontend dùng ngay để hiển thị tên/avatar
+        const populated = await message.populate('sender', SENDER_PUBLIC_FIELDS);
 
         res.status(201).json(populated);
     } catch (error) {

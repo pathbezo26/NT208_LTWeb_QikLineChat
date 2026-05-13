@@ -51,7 +51,8 @@ router.get('/search', protect, async (req, res) => {
       username: { $regex: q.trim(), $options: 'i' },
       _id: { $ne: req.user.id },
     })
-      .select('_id username email')
+      // Tra them avatar de frontend hien anh trong ket qua tim kiem user.
+      .select('_id username email avatar')
       .limit(20);
 
     res.json(users);

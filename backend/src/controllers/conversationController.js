@@ -3,6 +3,11 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
 
+// Cac field user duoc phep tra ve khi populate trong conversation.
+// Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
+const USER_PUBLIC_FIELDS = 'username email avatar';
+const USER_COMPACT_FIELDS = 'username avatar';
+
 // Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
 const getValidUserIds = async (identifiers) => {
     const userIds = [];
@@ -35,13 +40,13 @@ const getConversations = async (req, res) => {
         const userId = req.user._id;
 
         // Tìm tất cả conversation mà user là thành viên
-        // populate members để frontend hiển thị info người dùng
+        // populate members để frontend hiển thị info người dùng, bao gồm avatar
         const conversations = await Conversation.find({
             members: userId,
             deletedFor: { $ne: userId },
         })
-            .populate('members', 'username email')
-            .populate('createdBy', 'username')
+            .populate('members', USER_PUBLIC_FIELDS)
+            .populate('createdBy', USER_COMPACT_FIELDS)
             .sort({ updatedAt: -1 });
 
         res.status(200).json(conversations);
@@ -88,8 +93,8 @@ const createConversation = async (req, res) => {
                 type: 'private',
                 members: { $all: finalMembers, $size: 2 },
             })
-                .populate('members', 'username email')
-                .populate('createdBy', 'username');
+                .populate('members', USER_PUBLIC_FIELDS)
+                .populate('createdBy', USER_COMPACT_FIELDS);
 
             if (existing) {
                 existing.deletedFor = (existing.deletedFor || []).filter(
@@ -114,9 +119,9 @@ const createConversation = async (req, res) => {
             createdBy: userId,
         });
 
-        // Populate data trước khi trả về
-        await conversation.populate('members', 'username email');
-        await conversation.populate('createdBy', 'username');
+        // Populate data trước khi trả về, bao gồm avatar để UI dùng ngay
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
         res.status(201).json(conversation);
     } catch (error) {
@@ -188,7 +193,8 @@ const addMembers = async (req, res) => {
         conversation.updatedAt = new Date();
         await conversation.save();
 
-        await conversation.populate('members', 'username email');
+        // Populate members sau khi thêm thành viên, bao gồm avatar của từng người.
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
 
         res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
     } catch (error) {

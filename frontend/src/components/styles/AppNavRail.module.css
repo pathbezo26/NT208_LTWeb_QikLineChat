@@ -11,6 +11,21 @@
   box-shadow: 1px 0 0 rgba(15, 23, 42, 0.02);
 }
 
+.userIconButton {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.userIconButton:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .userIcon {
   width: 42px;
   height: 42px;
@@ -22,6 +37,7 @@
   background: linear-gradient(180deg, #f8fbff 0%, #edf6ff 100%);
   color: #1877f2;
   font-size: 20px;
+  object-fit: cover;
   box-shadow: 0 8px 18px rgba(24, 119, 242, 0.12);
 }
 
@@ -76,41 +92,38 @@
   font-size: 21px;
 }
 
-.settingsMenu {
-  position: absolute;
-  left: 52px;
-  bottom: 0;
-  z-index: 30;
-  min-width: 164px;
-  padding: 8px;
-  border: 1px solid #e5edf6;
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+.profileMenu {
+  width: 220px;
 }
 
-.menuItem {
-  width: 100%;
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #dc2626;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  transition: background 0.2s, color 0.2s;
+.settingMenu {
+  width: 164px;
 }
 
-.menuItem:hover {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.menuIcon {
+.profileName {
+  margin-bottom: 8px;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid #edf2f7;
+  color: #172033;
   font-size: 16px;
+  font-weight: 800;
+}
+
+.profileError {
+  margin-bottom: 8px;
+}
+
+.menuUpload {
+  display: block;
+  width: 100%;
+}
+
+.menuUpload :global(.ant-upload) {
+  display: block;
+  width: 100%;
+}
+
+.menuButton {
+  justify-content: flex-start;
+  text-align: left;
 }

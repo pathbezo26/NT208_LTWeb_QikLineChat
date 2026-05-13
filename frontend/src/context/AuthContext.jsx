@@ -1,8 +1,8 @@
-import { createContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getMeAPI } from '../api/authAPI';
 import SplashScreen from '../components/SplashScreen';
 import { loginAPI } from '../api/authAPI';
-export const AuthContext = createContext(null);
+import { AuthContext } from './AuthContextValue';
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
             try {
                 const data = await getMeAPI();
                 setUser(data.user);
-            } catch (error) {
+            } catch {
                 console.error('Token hết hạn hoặc không hợp lệ');
                 logout(); // Xóa thông tin cũ đi
             } finally {
@@ -47,13 +47,18 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('token');
     };
 
+    // Cho cac component cap nhat lai user sau khi doi avatar/profile thanh cong
+    const updateUser = (newUser) => {
+        setUser(newUser);
+    };
+
     // Tránh việc chớp màn hình UI khi đang gọi API verify token
     if (isLoading) {
         return <SplashScreen />; // Bạn có thể thay bằng component Spinner
     }
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout }}>
+        <AuthContext.Provider value={{ user, token, login, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

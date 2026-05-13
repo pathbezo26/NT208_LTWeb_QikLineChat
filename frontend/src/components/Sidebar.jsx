@@ -10,6 +10,7 @@ import useAuth from '../hooks/useAuth';
 import useSocket from '../hooks/useSocket';
 import CreateGroupModal from './CreateGroupModal';
 import SidebarSearch from './SidebarSearch';
+import UserAvatar from './UserAvatar';
 import { formatMessageTime } from '../utils/formatTime';
 import styles from './styles/Sidebar.module.css';
 
@@ -81,10 +82,8 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
         return otherMember?.username || 'Người dùng';
     };
 
-    const getAvatar = (conversation) => {
-        if (conversation.type === 'group') return 'G';
-
-        return getConversationName(conversation).charAt(0).toUpperCase();
+    const getOtherMember = (conversation) => {
+        return conversation.members.find((member) => member._id !== user._id);
     };
 
     const handleConversationCreated = (newConversation) => {
@@ -221,9 +220,10 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                 onClick={() => handleStartChat(searchUser)}
                                 disabled={creatingUserId === searchUser._id}
                             >
-                                <span className={styles.convAvatar}>
-                                    {searchUser.username?.charAt(0).toUpperCase()}
-                                </span>
+                                <UserAvatar
+                                    user={searchUser}
+                                    className={styles.convAvatar}
+                                />
                                 <span className={styles.searchName}>{searchUser.username}</span>
                                 <span className={styles.searchAction}>
                                     {creatingUserId === searchUser._id ? '...' : 'Chat'}
@@ -235,6 +235,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                     <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
                 ) : conversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
+                    const otherMember = conv.type === 'private' ? getOtherMember(conv) : null;
 
                     return (
                         <div
@@ -242,9 +243,12 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                             className={`${styles.item} ${isCurrentlyActive ? styles.active : ''}`}
                             onClick={() => onSelectConversation(conv)}
                         >
-                            <div className={styles.convAvatar}>
-                                {getAvatar(conv)}
-                            </div>
+                            <UserAvatar
+                                user={otherMember}
+                                name={conv.type === 'group' ? (conv.name || 'Nhóm') : otherMember?.username}
+                                className={styles.convAvatar}
+                                fallback={conv.type === 'group' ? 'G' : '?'}
+                            />
 
                             <div className={styles.convInfo}>
                                 <span className={styles.convName}>

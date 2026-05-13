@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
+import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
 
 export default function MessageList({ messages, currentUserId }) {
@@ -56,9 +57,8 @@ export default function MessageList({ messages, currentUserId }) {
                     }
                 }
 
-                // Lấy tên người gửi và cắt chữ cái đầu tiên (VD: "Nam" -> "N")
+                // Lấy tên người gửi; UserAvatar tự fallback về chữ cái đầu nếu chưa có ảnh.
                 const senderName = message.sender?.username || 'Người dùng';
-                const firstLetter = senderName.charAt(0).toUpperCase();
 
                 return (
                     <div
@@ -69,9 +69,11 @@ export default function MessageList({ messages, currentUserId }) {
                         {!isMyMessage && (
                             <div className={styles.avatarSlot}>
                                 {shouldShowAvatar ? (
-                                    <div className={styles.avatar} title={senderName}>
-                                        {firstLetter}
-                                    </div>
+                                    <UserAvatar
+                                        user={message.sender}
+                                        name={senderName}
+                                        className={styles.avatar}
+                                    />
                                 ) : (
                                     // Thẻ div trống (tàng hình) để giữ chỗ, giúp các bong bóng chat thẳng hàng nhau
                                     <div className={styles.avatarBlank} />
