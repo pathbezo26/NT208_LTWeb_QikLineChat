@@ -19,7 +19,10 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: [
+        "http://localhost:5173", // Để bạn tiếp tục code trên máy không bị lỗi
+        "https://nt208-qikline.vercel.app" // Cho phép Vercel truy cập
+    ],
     credentials: true,
 }));
 app.use(express.json()); // Parse JSON body

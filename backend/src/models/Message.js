@@ -17,6 +17,7 @@ const MessageSchema = new mongoose.Schema(
             required: [true, 'Nội dung tin nhắn không được rỗng'],
             trim: true,
         },
+        deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },
     { timestamps: true }
 );
