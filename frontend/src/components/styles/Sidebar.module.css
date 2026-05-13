@@ -115,6 +115,52 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
+.searchItem {
+  width: 100%;
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 2px 0;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.searchItem:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: #e3ebf5;
+}
+
+.searchItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.searchName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchAction {
+  flex-shrink: 0;
+  min-width: 44px;
+  color: #1877f2;
+  font-size: 13px;
+  font-weight: 750;
+  text-align: right;
+}
+
 .item:hover {
   background: #ffffff;
   border-color: #e3ebf5;

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { UsergroupAddOutlined } from '@ant-design/icons';
+import axiosInstance from '../api/axiosInstance';
 import {
+    createConversationAPI,
     deleteConversationAPI,
     getConversationsAPI,
 } from '../api/conversationAPI';
@@ -17,6 +19,10 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
 
     const [conversations, setConversations] = useState([]);
     const [showGroupModal, setShowGroupModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [creatingUserId, setCreatingUserId] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
@@ -85,6 +91,48 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
         onSelectConversation(newConversation);
     };
 
+    const handleSearchUsers = async (e) => {
+        const value = e.target.value;
+        setSearchQuery(value);
+
+        if (!value.trim()) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+
+        setSearchLoading(true);
+
+        try {
+            const res = await axiosInstance.get(`/users/search?q=${encodeURIComponent(value)}`);
+            setSearchResults(res.data.filter((searchUser) => searchUser._id !== user._id));
+        } catch (error) {
+            console.error('Search error:', error);
+            setSearchResults([]);
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    const handleStartChat = async (targetUser) => {
+        setCreatingUserId(targetUser._id);
+
+        try {
+            const newConversation = await createConversationAPI({
+                type: 'private',
+                members: [targetUser._id],
+            });
+
+            handleConversationCreated(newConversation);
+            setSearchQuery('');
+            setSearchResults([]);
+        } catch (error) {
+            alert(error.response?.data?.message || 'Không thể tạo cuộc trò chuyện');
+        } finally {
+            setCreatingUserId(null);
+        }
+    };
+
     const handleDeleteConversation = async (e, convId) => {
         e.stopPropagation();
         setDeletingId(convId);
@@ -127,8 +175,8 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
 
             <div className={styles.actions}>
                 <SidebarSearch
-                    currentUserId={user._id}
-                    onConversationCreated={handleConversationCreated}
+                    value={searchQuery}
+                    onChange={handleSearchUsers}
                 />
 
                 <button
@@ -153,11 +201,35 @@ export default function Sidebar({ activeConversation, onSelectConversation }) {
             )}
 
             <div className={styles.list}>
-                {conversations.length === 0 && (
-                    <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
-                )}
+                {searchQuery.trim() ? (
+                    <>
+                        {searchLoading && <p className={styles.empty}>Đang tìm...</p>}
 
-                {conversations.map((conv) => {
+                        {!searchLoading && searchResults.length === 0 && (
+                            <p className={styles.empty}>Không tìm thấy kết quả nào.</p>
+                        )}
+
+                        {!searchLoading && searchResults.map((searchUser) => (
+                            <button
+                                key={searchUser._id}
+                                type="button"
+                                className={styles.searchItem}
+                                onClick={() => handleStartChat(searchUser)}
+                                disabled={creatingUserId === searchUser._id}
+                            >
+                                <span className={styles.convAvatar}>
+                                    {searchUser.username?.charAt(0).toUpperCase()}
+                                </span>
+                                <span className={styles.searchName}>{searchUser.username}</span>
+                                <span className={styles.searchAction}>
+                                    {creatingUserId === searchUser._id ? '...' : 'Chat'}
+                                </span>
+                            </button>
+                        ))}
+                    </>
+                ) : conversations.length === 0 ? (
+                    <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
+                ) : conversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
 
                     return (
