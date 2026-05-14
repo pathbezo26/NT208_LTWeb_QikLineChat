@@ -64,7 +64,7 @@ const socketHandler = (io) => {
         const conversation = await Conversation.findByIdAndUpdate(
           conversationId,
           { updatedAt: new Date() },
-          { new: true }
+          { returnDocument: 'after' }
         ).select('members deletedFor');
 
         // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime

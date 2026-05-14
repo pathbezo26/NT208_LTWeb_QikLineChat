@@ -13,6 +13,19 @@ export const createConversationAPI = async (data) => {
     return response.data;
 };
 
+export const uploadGroupAvatarAPI = async (conversationId, file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const response = await axiosInstance.patch(`/conversations/${conversationId}/avatar`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+
+    return response.data; // { message, conversation }
+};
+
 //Tìm kiếm users
 export const searchUsersAPI = async (keyword) => {
     // Sửa lại đường dẫn /users/search cho đúng với API bên Backend của bạn

@@ -2,11 +2,43 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
+const cloudinary = require('../config/cloudinary');
 
 // Cac field user duoc phep tra ve khi populate trong conversation.
 // Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
 const USER_PUBLIC_FIELDS = 'username email avatar';
 const USER_COMPACT_FIELDS = 'username avatar';
+
+// const hasCloudinaryConfig = () => {
+//     return Boolean(
+//         process.env.CLOUDINARY_CLOUD_NAME &&
+//         process.env.CLOUDINARY_API_KEY &&
+//         process.env.CLOUDINARY_API_SECRET
+//     );
+// };
+
+const uploadGroupAvatarToCloudinary = (fileBuffer, conversationId) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'qikline/group-avatars',
+                public_id: `group_${conversationId}_${Date.now()}`,
+                resource_type: 'image',
+                overwrite: true,
+                transformation: [
+                    { width: 400, height: 400, crop: 'fill', gravity: 'auto' },
+                    { quality: 'auto', fetch_format: 'auto' },
+                ],
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
+
+        uploadStream.end(fileBuffer);
+    });
+};
 
 // Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
 const getValidUserIds = async (identifiers) => {
@@ -167,6 +199,62 @@ const deleteConversation = async (req, res) => {
     }
 };
 
+// Upload avatar rieng cho group conversation.
+const uploadGroupAvatar = async (req, res) => {
+    try {
+        if (!hasCloudinaryConfig()) {
+            return res.status(500).json({ message: 'Chua cau hinh Cloudinary cho server' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'Vui long chon anh nhom' });
+        }
+
+        const conversation = await Conversation.findById(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Khong tim thay cuoc tro chuyen' });
+        }
+
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Chi group chat moi co anh nhom' });
+        }
+
+        const isMember = conversation.members.some(
+            (memberId) => memberId.toString() === req.user._id.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: 'Ban khong co quyen cap nhat nhom nay' });
+        }
+
+        const oldAvatarPublicId = conversation.avatar?.publicId;
+        const uploadedAvatar = await uploadGroupAvatarToCloudinary(req.file.buffer, conversation._id);
+
+        conversation.avatar = {
+            url: uploadedAvatar.secure_url,
+            publicId: uploadedAvatar.public_id,
+            updatedAt: new Date(),
+        };
+        await conversation.save();
+
+        if (oldAvatarPublicId) {
+            cloudinary.uploader.destroy(oldAvatarPublicId).catch((error) => {
+                console.error('Delete old group avatar error:', error);
+            });
+        }
+
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+
+        res.status(200).json({
+            message: 'Cap nhat anh nhom thanh cong',
+            conversation,
+        });
+    } catch (error) {
+        console.error('Upload group avatar error:', error);
+        res.status(500).json({ message: 'Loi server khi cap nhat anh nhom' });
+    }
+};
+
 // Thêm các thành viên vào group
 const addMembers = async (req, res) => {
     try {
@@ -247,4 +335,11 @@ const removeMember = async (req, res) => {
     }
 };
 
-module.exports = { getConversations, createConversation, deleteConversation, addMembers, removeMember };
+module.exports = {
+    getConversations,
+    createConversation,
+    deleteConversation,
+    uploadGroupAvatar,
+    addMembers,
+    removeMember,
+};

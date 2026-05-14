@@ -1,22 +1,58 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { CameraOutlined } from '@ant-design/icons';
 import axiosInstance from '../api/axiosInstance';
-import { createConversationAPI } from '../api/conversationAPI';
+import { createConversationAPI, uploadGroupAvatarAPI } from '../api/conversationAPI';
 import styles from './styles/CreateGroupModal.module.css';
 
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export default function CreateGroupModal({ onClose, onCreated }) {
-    // Đổi tên state cho chuẩn và dễ hiểu hơn
     const [groupName, setGroupName] = useState('');
+    const [groupAvatarFile, setGroupAvatarFile] = useState(null);
+    const [groupAvatarPreview, setGroupAvatarPreview] = useState('');
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [selectedMembers, setSelectedMembers] = useState([]);
-
-    // Trạng thái Loading / Lỗi
     const [isSearching, setIsSearching] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
-    const searchIdRef = useRef(0);
 
-    // 1. Xử lý khi người dùng gõ tìm kiếm thành viên
+    const searchIdRef = useRef(0);
+    const avatarInputRef = useRef(null);
+
+    useEffect(() => {
+        if (!groupAvatarFile) {
+            setGroupAvatarPreview('');
+            return undefined;
+        }
+
+        const previewUrl = URL.createObjectURL(groupAvatarFile);
+        setGroupAvatarPreview(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [groupAvatarFile]);
+
+    const handlePickGroupAvatar = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+
+        if (!file) return;
+
+        if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+            setErrorMessage('Ảnh nhóm chỉ hỗ trợ JPG, PNG hoặc WEBP.');
+            return;
+        }
+
+        if (file.size > MAX_AVATAR_SIZE) {
+            setErrorMessage('Ảnh nhóm không được vượt quá 2MB.');
+            return;
+        }
+
+        setErrorMessage('');
+        setGroupAvatarFile(file);
+    };
+
     const handleSearchUser = async (e) => {
         const keyword = e.target.value;
         setSearchKeyword(keyword);
@@ -32,24 +68,20 @@ export default function CreateGroupModal({ onClose, onCreated }) {
         const searchId = searchIdRef.current + 1;
         searchIdRef.current = searchId;
         setIsSearching(true);
+
         try {
-            // Lưu ý: Do gọi axiosInstance trực tiếp nên vẫn cần .data
             const response = await axiosInstance.get(`/users/search?q=${encodeURIComponent(keyword)}`);
             if (searchId !== searchIdRef.current) return;
 
-            const foundUsers = response.data;
-
-            // Lọc bỏ những người đã được chọn vào nhóm (không hiển thị lại để tránh chọn trùng)
-            const unselectedUsers = foundUsers.filter((user) => {
-                const isAlreadySelected = selectedMembers.find((member) => member._id === user._id);
-                return !isAlreadySelected;
+            const unselectedUsers = response.data.filter((searchUser) => {
+                return !selectedMembers.find((member) => member._id === searchUser._id);
             });
 
             setSearchResults(unselectedUsers);
         } catch (error) {
             if (searchId !== searchIdRef.current) return;
+            console.error('Search users error:', error);
             setSearchResults([]);
-            console.error('Lỗi khi tìm kiếm người dùng:', error);
         } finally {
             if (searchId === searchIdRef.current) {
                 setIsSearching(false);
@@ -57,28 +89,24 @@ export default function CreateGroupModal({ onClose, onCreated }) {
         }
     };
 
-    // 2. Thêm người dùng vào danh sách nhóm
     const handleAddMember = (userToAdd) => {
-        // Thêm vào mảng đã chọn
         setSelectedMembers((prevMembers) => [...prevMembers, userToAdd]);
-
-        // Reset lại ô tìm kiếm cho sạch sẽ giao diện để gõ tìm người tiếp theo
         setSearchKeyword('');
         setSearchResults([]);
     };
 
-    // 3. Xóa người dùng khỏi danh sách đã chọn
     const handleRemoveMember = (userIdToRemove) => {
-        setSelectedMembers((prevMembers) => prevMembers.filter((user) => user._id !== userIdToRemove));
+        setSelectedMembers((prevMembers) => {
+            return prevMembers.filter((member) => member._id !== userIdToRemove);
+        });
     };
 
-    // 4. Bấm nút Tạo Nhóm
     const handleCreateGroup = async () => {
-        // Validate cơ bản
         if (!groupName.trim()) {
             setErrorMessage('Vui lòng nhập tên nhóm.');
             return;
         }
+
         if (selectedMembers.length < 1) {
             setErrorMessage('Nhóm phải có ít nhất 1 thành viên khác.');
             return;
@@ -88,15 +116,17 @@ export default function CreateGroupModal({ onClose, onCreated }) {
         setIsCreating(true);
 
         try {
-            // Gọi API: Đã bỏ .data vì createConversationAPI đã được tối ưu trả về sẵn data (ở các bước trước)
-            const newGroup = await createConversationAPI({
+            let newGroup = await createConversationAPI({
                 type: 'group',
                 name: groupName.trim(),
-                // Backend chỉ cần mảng chứa các ID của thành viên
                 members: selectedMembers.map((member) => member._id),
             });
 
-            // Báo cho ChatPage biết là đã tạo xong (để đóng Modal và load lại danh sách)
+            if (groupAvatarFile) {
+                const data = await uploadGroupAvatarAPI(newGroup._id, groupAvatarFile);
+                newGroup = data.conversation;
+            }
+
             onCreated(newGroup);
         } catch (err) {
             setErrorMessage(err.response?.data?.message || 'Tạo nhóm thất bại. Vui lòng thử lại.');
@@ -108,16 +138,45 @@ export default function CreateGroupModal({ onClose, onCreated }) {
     return (
         <div className={styles.overlay}>
             <div className={styles.modal}>
-                {/* Tiêu đề Modal */}
                 <div className={styles.modalHeader}>
                     <h3>Tạo nhóm chat</h3>
-                    <button className={styles.closeBtn} onClick={onClose} title="Đóng">✕</button>
+                    <button className={styles.closeBtn} onClick={onClose} title="Đóng" type="button">×</button>
                 </div>
 
-                {/* Báo lỗi nếu có */}
                 {errorMessage && <div className={styles.error}>{errorMessage}</div>}
 
-                {/* Nhập tên nhóm */}
+                <div className={styles.avatarPicker}>
+                    <button
+                        className={styles.groupAvatarButton}
+                        onClick={() => avatarInputRef.current?.click()}
+                        type="button"
+                        aria-label="Chọn ảnh nhóm"
+                    >
+                        {groupAvatarPreview ? (
+                            <img src={groupAvatarPreview} alt="Ảnh nhóm xem trước" />
+                        ) : (
+                            <>
+                                <CameraOutlined className={styles.cameraIcon} />
+                                <span>{groupName.trim().charAt(0).toUpperCase() || 'G'}</span>
+                            </>
+                        )}
+                    </button>
+                    <button
+                        className={styles.avatarTextButton}
+                        onClick={() => avatarInputRef.current?.click()}
+                        type="button"
+                    >
+                        Chọn ảnh nhóm
+                    </button>
+                    <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className={styles.hiddenInput}
+                        onChange={handlePickGroupAvatar}
+                    />
+                </div>
+
                 <div className={styles.field}>
                     <label htmlFor="groupName">Tên nhóm</label>
                     <input
@@ -146,11 +205,17 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                 {/* Danh sách kết quả tìm kiếm */}
                 {searchResults.length > 0 && (
                     <ul className={styles.searchList}>
-                        {searchResults.map((user) => (
-                            <li key={user._id} className={styles.searchItem} onClick={() => handleAddMember(user)}>
-                                <div className={styles.avatar}>{user.username.charAt(0).toUpperCase()}</div>
-                                <span>{user.username}</span>
-                                <span className={styles.addIcon}>＋</span>
+                        {searchResults.map((searchUser) => (
+                            <li
+                                key={searchUser._id}
+                                className={styles.searchItem}
+                                onClick={() => handleAddMember(searchUser)}
+                            >
+                                <div className={styles.avatar}>
+                                    {searchUser.username.charAt(0).toUpperCase()}
+                                </div>
+                                <span>{searchUser.username}</span>
+                                <span className={styles.addIcon}>+</span>
                             </li>
                         ))}
                     </ul>
@@ -164,7 +229,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                             {selectedMembers.map((member) => (
                                 <span key={member._id} className={styles.chip}>
                                     {member.username}
-                                    <button onClick={() => handleRemoveMember(member._id)}>✕</button>
+                                    <button onClick={() => handleRemoveMember(member._id)} type="button">×</button>
                                 </span>
                             ))}
                         </div>
@@ -173,11 +238,12 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
                 {/* Nút hành động */}
                 <div className={styles.footer}>
-                    <button className={styles.cancelBtn} onClick={onClose}>Hủy</button>
+                    <button className={styles.cancelBtn} onClick={onClose} type="button">Hủy</button>
                     <button
                         className={styles.createBtn}
                         onClick={handleCreateGroup}
                         disabled={isCreating}
+                        type="button"
                     >
                         {isCreating ? 'Đang tạo...' : 'Tạo nhóm'}
                     </button>

@@ -146,6 +146,7 @@ export default function ChatWindow({ conversation }) {
                 <UserAvatar
                     user={conversation.type === 'private' ? getOtherMember() : null}
                     name={conversation.type === 'group' ? (conversation.name || 'Nhóm') : getChatName()}
+                    src={conversation.type === 'group' ? conversation.avatar?.url : undefined}
                     className={styles.headerAvatar}
                     fallback={conversation.type === 'group' ? 'G' : '?'}
                 />

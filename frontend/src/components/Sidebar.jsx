@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { UsergroupAddOutlined } from '@ant-design/icons';
+import { TeamOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 import axiosInstance from '../api/axiosInstance';
 import {
     createConversationAPI,
@@ -303,13 +303,19 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                             <UserAvatar
                                 user={otherMember}
                                 name={conv.type === 'group' ? (conv.name || 'Nhóm') : otherMember?.username}
-                                className={styles.convAvatar}
+                                src={conv.type === 'group' ? conv.avatar?.url : undefined}
+                                className={`${styles.convAvatar} ${conv.type === 'group' ? styles.groupAvatar : ''}`}
                                 fallback={conv.type === 'group' ? 'G' : '?'}
                             />
 
                             <div className={styles.convInfo}>
                                 <span className={styles.convName}>
-                                    {getConversationName(conv)}
+                                    {conv.type === 'group' && (
+                                        <TeamOutlined className={styles.groupNameIcon} />
+                                    )}
+                                    <span className={styles.convNameText}>
+                                        {getConversationName(conv)}
+                                    </span>
                                 </span>
 
                                 <span className={styles.convTime}>

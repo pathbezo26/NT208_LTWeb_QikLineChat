@@ -172,6 +172,13 @@
   object-fit: cover;
 }
 
+.groupAvatar {
+  border: 1px solid #b9d7ff;
+  background: #edf6ff;
+  color: #156bd8;
+  font-size: 15px;
+}
+
 .convInfo {
   flex: 1;
   min-width: 0;
@@ -179,7 +186,6 @@
   gap: 3px;
 }
 
-.convName,
 .convTime {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,9 +193,26 @@
 }
 
 .convName {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
   color: #172033;
   font-size: 14px;
   font-weight: 750;
+}
+
+.convNameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupNameIcon {
+  flex-shrink: 0;
+  color: #156bd8;
+  font-size: 13px;
 }
 
 .convTime {

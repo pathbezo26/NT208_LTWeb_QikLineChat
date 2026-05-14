@@ -22,6 +22,20 @@ const ConversationSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
+        avatar: {
+            url: {
+                type: String,
+                default: null,
+            },
+            publicId: {
+                type: String,
+                default: null,
+            },
+            updatedAt: {
+                type: Date,
+                default: null,
+            },
+        },
         deletedFor: [
             {
                 type: mongoose.Schema.Types.ObjectId,
