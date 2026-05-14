@@ -46,6 +46,47 @@ const hasCloudinaryConfig = () => {
     );
 };
 
+// PATCH /api/users/me/username
+// Doi username cua user hien tai, validate trung username truoc khi luu.
+const updateUsername = async (req, res) => {
+    try {
+        const username = req.body.username?.trim();
+
+        if (!username) {
+            return res.status(400).json({ message: 'Vui lòng nhập username' });
+        }
+
+        if (username.length < 3 || username.length > 30) {
+            return res.status(400).json({ message: 'Username phải từ 3 đến 30 ký tự' });
+        }
+
+        const existingUser = await User.findOne({
+            username,
+            _id: { $ne: req.user._id },
+        });
+
+        if (existingUser) {
+            return res.status(409).json({ message: 'Username đã được sử dụng' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User không tồn tại' });
+        }
+
+        user.username = username;
+        await user.save();
+
+        res.status(200).json({
+            message: 'Cập nhật username thành công',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('Update username error:', error);
+        res.status(500).json({ message: 'Lỗi server khi cập nhật username' });
+    }
+};
+
 // PATCH /api/users/me/avatar
 // Nhan file avatar tu frontend, upload len Cloudinary, roi chi luu URL/publicId vao MongoDB.
 const uploadAvatar = async (req, res) => {
@@ -126,4 +167,4 @@ const deleteAvatar = async (req, res) => {
     }
 };
 
-module.exports = { uploadAvatar, deleteAvatar };
+module.exports = { uploadAvatar, deleteAvatar, updateUsername };

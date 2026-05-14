@@ -3,7 +3,7 @@ const multer = require('multer');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
-const { uploadAvatar, deleteAvatar } = require('../controllers/userController');
+const { uploadAvatar, deleteAvatar, updateUsername } = require('../controllers/userController');
 
 // Cau hinh multer de nhan file avatar trong RAM, sau do controller upload thang len Cloudinary.
 const upload = multer({
@@ -40,6 +40,8 @@ router.patch('/me/avatar', protect, handleAvatarUpload, uploadAvatar);
 
 // DELETE /api/users/me/avatar — xóa avatar của user hiện tại
 router.delete('/me/avatar', protect, deleteAvatar);
+// PATCH /api/users/me/username - doi username cua user hien tai
+router.patch('/me/username', protect, updateUsername);
 
 // GET /api/users/search?q=keyword — search users by username (exclude self)
 router.get('/search', protect, async (req, res) => {

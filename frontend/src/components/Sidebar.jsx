@@ -26,6 +26,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     const socket = useSocket();
 
     const [conversations, setConversations] = useState([]);
+    const [unreadConversationIds, setUnreadConversationIds] = useState(new Set());
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -62,16 +63,56 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     }, []);
 
     useEffect(() => {
-        if (!socket) return;
+        if (!activeConversation) return;
 
-        const handleNewMessage = () => {
-            loadConversations();
+        setUnreadConversationIds((prev) => {
+            const next = new Set(prev);
+            next.delete(activeConversation._id);
+            return next;
+        });
+    }, [activeConversation]);
+
+    useEffect(() => {
+        if (!socket || !user) return;
+
+        const handleConversationUpdated = async ({ conversationId, senderId }) => {
+
+            try {
+                const freshConversations = await getConversationsAPI();
+
+                setConversations(() => {
+                    const updatedConversation = freshConversations.find(
+                        (conversation) => conversation._id === conversationId
+                    );
+
+                    if (!updatedConversation) return freshConversations;
+
+                    const otherConversations = freshConversations.filter(
+                        (conversation) => conversation._id !== conversationId
+                    );
+
+                    return [updatedConversation, ...otherConversations];
+                });
+            } catch (error) {
+                console.error('Sidebar update error:', error);
+            }
+
+            const isMyMessage = senderId === user._id;
+            const isActiveConversation = activeConversation?._id === conversationId;
+
+            if (!isMyMessage && !isActiveConversation) {
+                setUnreadConversationIds((prev) => {
+                    const next = new Set(prev);
+                    next.add(conversationId);
+                    return next;
+                });
+            }
         };
 
-        socket.on('newMessage', handleNewMessage);
+        socket.on('conversationUpdated', handleConversationUpdated);
 
-        return () => socket.off('newMessage', handleNewMessage);
-    }, [socket]);
+        return () => socket.off('conversationUpdated', handleConversationUpdated);
+    }, [socket, user, activeConversation]);
 
     const getConversationName = (conversation) => {
         if (conversation.type === 'group') {
@@ -95,6 +136,16 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
         });
 
         onSelectConversation(newConversation);
+    };
+
+    const handleSelectConversation = (conversation) => {
+        setUnreadConversationIds((prev) => {
+            const next = new Set(prev);
+            next.delete(conversation._id);
+            return next;
+        });
+
+        onSelectConversation(conversation);
     };
 
     const handleSearchUsers = async (e) => {
@@ -147,6 +198,11 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
             await deleteConversationAPI(convId);
 
             setConversations((prev) => prev.filter((conv) => conv._id !== convId));
+            setUnreadConversationIds((prev) => {
+                const next = new Set(prev);
+                next.delete(convId);
+                return next;
+            });
 
             if (activeConversation?._id === convId) {
                 onSelectConversation(null);
@@ -235,13 +291,14 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                     <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
                 ) : conversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
+                    const hasUnread = unreadConversationIds.has(conv._id);
                     const otherMember = conv.type === 'private' ? getOtherMember(conv) : null;
 
                     return (
                         <div
                             key={conv._id}
-                            className={`${styles.item} ${isCurrentlyActive ? styles.active : ''}`}
-                            onClick={() => onSelectConversation(conv)}
+                            className={`${styles.item} ${isCurrentlyActive ? styles.active : ''} ${hasUnread ? styles.unread : ''}`}
+                            onClick={() => handleSelectConversation(conv)}
                         >
                             <UserAvatar
                                 user={otherMember}
@@ -259,6 +316,8 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                     {conv.updatedAt ? formatMessageTime(conv.updatedAt) : ''}
                                 </span>
                             </div>
+
+                            {hasUnread && <span className={styles.unreadDot} />}
 
                             <div className={styles.optionsWrapper}>
                                 <button

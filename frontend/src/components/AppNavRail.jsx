@@ -3,13 +3,14 @@ import { Alert, Button, Popover, Upload } from 'antd';
 import {
     ContactsOutlined,
     DeleteOutlined,
+    EditOutlined,
     LogoutOutlined,
     MessageOutlined,
     SettingOutlined,
     TeamOutlined,
     UploadOutlined,
 } from '@ant-design/icons';
-import { deleteAvatarAPI, uploadAvatarAPI } from '../api/userAPI';
+import { deleteAvatarAPI, updateUsernameAPI, uploadAvatarAPI } from '../api/userAPI';
 import useAuth from '../hooks/useAuth';
 import UserAvatar from './UserAvatar';
 import styles from './styles/AppNavRail.module.css';
@@ -37,7 +38,11 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isSettingOpen, setIsSettingOpen] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const [isEditingUsername, setIsEditingUsername] = useState(false);
+    const [isSavingUsername, setIsSavingUsername] = useState(false);
+    const [usernameDraft, setUsernameDraft] = useState(user?.username || '');
     const [avatarError, setAvatarError] = useState('');
+    const [usernameError, setUsernameError] = useState('');
 
     const handleLogout = () => {
         setIsProfileOpen(false);
@@ -78,6 +83,50 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
         return Upload.LIST_IGNORE;
     };
 
+    const openUsernameForm = () => {
+        setUsernameDraft(user?.username || '');
+        setUsernameError('');
+        setIsEditingUsername(true);
+    };
+
+    const closeUsernameForm = () => {
+        setIsEditingUsername(false);
+        setUsernameError('');
+        setUsernameDraft(user?.username || '');
+    };
+
+    const handleSaveUsername = async () => {
+        const nextUsername = usernameDraft.trim();
+
+        if (!nextUsername) {
+            setUsernameError('Vui lòng nhập username');
+            return;
+        }
+
+        if (nextUsername.length < 3 || nextUsername.length > 30) {
+            setUsernameError('Username phải từ 3 đến 30 ký tự');
+            return;
+        }
+
+        if (nextUsername === user?.username) {
+            closeUsernameForm();
+            return;
+        }
+
+        setIsSavingUsername(true);
+        setUsernameError('');
+
+        try {
+            const data = await updateUsernameAPI(nextUsername);
+            updateUser(data.user);
+            setIsEditingUsername(false);
+        } catch (error) {
+            setUsernameError(error.response?.data?.message || 'Không thể cập nhật username');
+        } finally {
+            setIsSavingUsername(false);
+        }
+    };
+
     const handleDeleteAvatar = async () => {
         setAvatarError('');
 
@@ -101,6 +150,54 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                     message={avatarError}
                     showIcon
                 />
+            )}
+
+            {usernameError && (
+                <Alert
+                    className={styles.profileError}
+                    type="error"
+                    message={usernameError}
+                    showIcon
+                />
+            )}
+
+            {isEditingUsername ? (
+                <div className={styles.usernameForm}>
+                    <input
+                        className={styles.usernameInput}
+                        value={usernameDraft}
+                        onChange={(event) => setUsernameDraft(event.target.value)}
+                        placeholder="Username mới"
+                        maxLength={30}
+                    />
+                    <div className={styles.usernameActions}>
+                        <Button
+                            type="primary"
+                            size="small"
+                            loading={isSavingUsername}
+                            onClick={handleSaveUsername}
+                        >
+                            Lưu
+                        </Button>
+                        <Button
+                            size="small"
+                            onClick={closeUsernameForm}
+                            disabled={isSavingUsername}
+                        >
+                            Hủy
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <Button
+                    className={styles.menuButton}
+                    type="text"
+                    icon={<EditOutlined />}
+                    block
+                    onClick={openUsernameForm}
+                >
+                    Đổi username
+                </Button>
             )}
 
             <Upload
@@ -170,7 +267,10 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                 open={isProfileOpen}
                 onOpenChange={(open) => {
                     setIsProfileOpen(open);
-                    if (!open) setAvatarError('');
+                    if (!open) {
+                        setAvatarError('');
+                        closeUsernameForm();
+                    }
                 }}
             >
                 <button

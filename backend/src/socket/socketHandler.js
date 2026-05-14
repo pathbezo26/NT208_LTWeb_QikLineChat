@@ -33,6 +33,7 @@ const socketHandler = (io) => {
 
     // Track online users
     onlineUsers.set(userId, socket.id);
+    socket.join(`user:${userId}`);
     io.emit('userOnline', { userId, username });
 
     // Join a conversation room
@@ -60,13 +61,35 @@ const socketHandler = (io) => {
         });
 
         // Update conversation's updatedAt for sidebar sorting
-        await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() });
+        const conversation = await Conversation.findByIdAndUpdate(
+          conversationId,
+          { updatedAt: new Date() },
+          { new: true }
+        ).select('members deletedFor');
 
         // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
         const populated = await message.populate('sender', SOCKET_USER_FIELDS);
 
         // Broadcast to everyone in the room (including sender)
         io.to(conversationId).emit('newMessage', populated);
+
+        if (conversation) {
+          const deletedUserIds = new Set(
+            (conversation.deletedFor || []).map((deletedUserId) => deletedUserId.toString())
+          );
+
+          conversation.members.forEach((memberId) => {
+            const memberIdString = memberId.toString();
+
+            if (deletedUserIds.has(memberIdString)) return;
+
+            io.to(`user:${memberIdString}`).emit('conversationUpdated', {
+              conversationId,
+              senderId: userId,
+              messageId: populated._id,
+            });
+          });
+        }
       } catch (err) {
         console.error('Error saving message:', err.message);
         socket.emit('messageError', { message: 'Không thể gửi tin nhắn.' });

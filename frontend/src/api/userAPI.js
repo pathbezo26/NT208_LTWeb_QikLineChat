@@ -20,3 +20,9 @@ export const deleteAvatarAPI = async () => {
     const response = await axiosInstance.delete('/users/me/avatar');
     return response.data; // { message, user }
 };
+
+// Doi username cua user hien tai.
+export const updateUsernameAPI = async (username) => {
+    const response = await axiosInstance.patch('/users/me/username', { username });
+    return response.data; // { message, user }
+};
