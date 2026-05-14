@@ -9,13 +9,13 @@ const cloudinary = require('../config/cloudinary');
 const USER_PUBLIC_FIELDS = 'username email avatar';
 const USER_COMPACT_FIELDS = 'username avatar';
 
-// const hasCloudinaryConfig = () => {
-//     return Boolean(
-//         process.env.CLOUDINARY_CLOUD_NAME &&
-//         process.env.CLOUDINARY_API_KEY &&
-//         process.env.CLOUDINARY_API_SECRET
-//     );
-// };
+const hasCloudinaryConfig = () => {
+    return Boolean(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+    );
+};
 
 const uploadGroupAvatarToCloudinary = (fileBuffer, conversationId) => {
     return new Promise((resolve, reject) => {
@@ -258,8 +258,13 @@ const uploadGroupAvatar = async (req, res) => {
 // Thêm các thành viên vào group
 const addMembers = async (req, res) => {
     try {
-        const { conversationId, newMemberIds } = req.body; // newMemberIds là mảng [id1, id2...]
+        const conversationId = req.params.id;
+        const { newMemberIds } = req.body; // newMemberIds là mảng [id1, id2...]
         const userId = req.user._id;
+
+        if (!Array.isArray(newMemberIds) || newMemberIds.length === 0) {
+            return res.status(400).json({ message: 'Thiếu danh sách thành viên cần thêm' });
+        }
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
@@ -283,6 +288,7 @@ const addMembers = async (req, res) => {
 
         // Populate members sau khi thêm thành viên, bao gồm avatar của từng người.
         await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
         res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
     } catch (error) {
@@ -295,8 +301,13 @@ const addMembers = async (req, res) => {
 // Xóa thành viên khỏi group
 const removeMember = async (req, res) => {
     try {
-        const { conversationId, memberId } = req.body; // MemberId là người bị xóa
+        const conversationId = req.params.id;
+        const { memberId } = req.body; // MemberId là người bị xóa
         const userId = req.user._id;
+
+        if (!memberId) {
+            return res.status(400).json({ message: 'Thiếu memberId' });
+        }
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
@@ -328,6 +339,9 @@ const removeMember = async (req, res) => {
         // Cập nhật DB
         conversation.updatedAt = new Date();
         await conversation.save();
+
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
         res.status(200).json({ message: 'Xóa thành viên thành công', conversation });
     } catch (error) {

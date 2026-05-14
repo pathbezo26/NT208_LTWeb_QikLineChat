@@ -26,6 +26,22 @@ export const uploadGroupAvatarAPI = async (conversationId, file) => {
     return response.data; // { message, conversation }
 };
 
+export const addGroupMembersAPI = async (conversationId, memberIds) => {
+    const response = await axiosInstance.put(`/conversations/${conversationId}/add`, {
+        newMemberIds: memberIds,
+    });
+
+    return response.data; // { message, conversation }
+};
+
+export const removeGroupMemberAPI = async (conversationId, memberId) => {
+    const response = await axiosInstance.put(`/conversations/${conversationId}/remove`, {
+        memberId,
+    });
+
+    return response.data; // { message, conversation }
+};
+
 //Tìm kiếm users
 export const searchUsersAPI = async (keyword) => {
     // Sửa lại đường dẫn /users/search cho đúng với API bên Backend của bạn

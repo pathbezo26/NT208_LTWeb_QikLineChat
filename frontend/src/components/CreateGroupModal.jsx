@@ -184,7 +184,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                         type="text"
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
-                        placeholder="VD: Nhóm Đồ Án NT208"
+                        placeholder="Nhập tên nhóm"
                     />
                 </div>
 

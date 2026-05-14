@@ -8,6 +8,10 @@ export default function ChatPage() {
     const [activeSection, setActiveSection] = useState('messages');
     const [activeConversation, setActiveConversation] = useState(null);
 
+    const handleConversationUpdated = (updatedConversation) => {
+        setActiveConversation(updatedConversation);
+    };
+
     return (
         <div className={styles.layout}>
             <AppNavRail
@@ -19,7 +23,10 @@ export default function ChatPage() {
                 activeConversation={activeConversation}
                 onSelectConversation={setActiveConversation}
             />
-            <ChatWindow conversation={activeConversation} />
+            <ChatWindow
+                conversation={activeConversation}
+                onConversationUpdated={handleConversationUpdated}
+            />
         </div>
     );
 }
