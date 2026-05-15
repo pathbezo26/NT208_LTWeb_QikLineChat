@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Drawer, Input, List, Spin } from 'antd';
 import { DeleteOutlined, MessageOutlined, TeamOutlined, UserAddOutlined } from '@ant-design/icons';
 import axiosInstance from '../api/axiosInstance';
@@ -14,13 +14,43 @@ import ChatInput from './ChatInput';
 import UserAvatar from './UserAvatar';
 import styles from './styles/ChatWindow.module.css';
 
+const MESSAGE_PAGE_SIZE = 30;
+
+const createClientMessageId = () => {
+    return `client-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const getMessageKey = (message) => message._id || message.clientMessageId;
+
+const mergeMessages = (currentMessages, incomingMessages) => {
+    const messagesById = new Map();
+
+    [...currentMessages, ...incomingMessages].forEach((message) => {
+        const key = getMessageKey(message);
+        if (!key) return;
+
+        messagesById.set(key, message);
+    });
+
+    return Array.from(messagesById.values()).sort((first, second) => {
+        return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
+    });
+};
+
 export default function ChatWindow({ conversation, onConversationUpdated }) {
     const socket = useSocket();
     const { user } = useAuth();
 
     const [messages, setMessages] = useState([]);
+    const [messagesConversationId, setMessagesConversationId] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(false);
+    const [nextCursor, setNextCursor] = useState(null);
     const [typingUsers, setTypingUsers] = useState([]);
+    const activeConversationIdRef = useRef(null);
+    const isLoadingOlderRef = useRef(false);
+    const messageCacheRef = useRef(new Map());
 
     const [isMemberDrawerOpen, setIsMemberDrawerOpen] = useState(false);
     const [memberSearchQuery, setMemberSearchQuery] = useState('');
@@ -30,16 +60,46 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
     const [memberError, setMemberError] = useState('');
 
     useEffect(() => {
+        activeConversationIdRef.current = conversation?._id || null;
+    }, [conversation?._id]);
+
+    useEffect(() => {
+        if (!messagesConversationId) return;
+
+        messageCacheRef.current.set(messagesConversationId, {
+            messages,
+            hasMore: hasMoreMessages,
+            nextCursor,
+        });
+    }, [hasMoreMessages, messages, messagesConversationId, nextCursor]);
+
+    useEffect(() => {
         if (!conversation) return;
 
         let ignore = false;
+        const requestConversationId = conversation._id;
+        const cachedState = messageCacheRef.current.get(requestConversationId);
 
         const fetchMessages = async () => {
-            setIsLoading(true);
+            setIsLoading(!cachedState);
 
             try {
-                const data = await getMessagesAPI(conversation._id);
-                if (!ignore) setMessages(data);
+                const data = await getMessagesAPI(requestConversationId, { limit: MESSAGE_PAGE_SIZE });
+
+                if (!ignore && activeConversationIdRef.current === requestConversationId) {
+                    if (cachedState) {
+                        setMessages((prevMessages) => mergeMessages(prevMessages, data.messages || []));
+                        setMessagesConversationId(requestConversationId);
+                        setHasMoreMessages(Boolean(cachedState.hasMore || data.hasMore));
+                        setNextCursor(cachedState.nextCursor || data.nextCursor || null);
+                        return;
+                    }
+
+                    setMessages(data.messages || []);
+                    setMessagesConversationId(requestConversationId);
+                    setHasMoreMessages(Boolean(data.hasMore));
+                    setNextCursor(data.nextCursor || null);
+                }
             } catch (error) {
                 console.error('Load messages error:', error);
             } finally {
@@ -47,7 +107,20 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
             }
         };
 
-        setMessages([]);
+        if (cachedState) {
+            setMessages(cachedState.messages || []);
+            setMessagesConversationId(requestConversationId);
+            setHasMoreMessages(Boolean(cachedState.hasMore));
+            setNextCursor(cachedState.nextCursor || null);
+        } else {
+            setMessages([]);
+            setMessagesConversationId(requestConversationId);
+            setHasMoreMessages(false);
+            setNextCursor(null);
+        }
+
+        isLoadingOlderRef.current = false;
+        setIsLoadingOlder(false);
         setTypingUsers([]);
         fetchMessages();
 
@@ -70,9 +143,29 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         if (!socket) return;
 
         const handleNewMessage = (newMessage) => {
+            if (newMessage.conversationId?.toString() !== activeConversationIdRef.current) return;
+
             setMessages((prevMessages) => {
+                const matchingClientMessage = newMessage.clientMessageId
+                    ? prevMessages.find((msg) => msg.clientMessageId === newMessage.clientMessageId)
+                    : null;
+
+                if (matchingClientMessage) {
+                    return prevMessages.map((msg) => {
+                        if (msg.clientMessageId !== newMessage.clientMessageId) return msg;
+
+                        return newMessage;
+                    });
+                }
+
                 const isMessageExist = prevMessages.find((msg) => msg._id === newMessage._id);
-                if (isMessageExist) return prevMessages;
+                if (isMessageExist) {
+                    return prevMessages.map((msg) => {
+                        if (msg._id !== newMessage._id) return msg;
+
+                        return { ...msg, status: msg.status || 'sent' };
+                    });
+                }
 
                 return [...prevMessages, newMessage];
             });
@@ -118,6 +211,119 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         setMemberSearchResults([]);
         setMemberError('');
     }, [conversation?._id]);
+
+    const loadOlderMessages = useCallback(async () => {
+        if (!conversation || !nextCursor || !hasMoreMessages || isLoadingOlderRef.current) return;
+
+        const requestConversationId = conversation._id;
+
+        isLoadingOlderRef.current = true;
+        setIsLoadingOlder(true);
+
+        try {
+            const data = await getMessagesAPI(requestConversationId, {
+                before: nextCursor,
+                limit: MESSAGE_PAGE_SIZE,
+            });
+
+            if (activeConversationIdRef.current !== requestConversationId) return;
+
+            const olderMessages = data.messages || [];
+
+            setMessages((prevMessages) => {
+                const existingIds = new Set(prevMessages.map((message) => message._id));
+                const uniqueOlderMessages = olderMessages.filter((message) => !existingIds.has(message._id));
+
+                return [...uniqueOlderMessages, ...prevMessages];
+            });
+            setHasMoreMessages(Boolean(data.hasMore));
+            setNextCursor(data.nextCursor || null);
+        } catch (error) {
+            console.error('Load older messages error:', error);
+        } finally {
+            isLoadingOlderRef.current = false;
+
+            if (activeConversationIdRef.current === requestConversationId) {
+                setIsLoadingOlder(false);
+            }
+        }
+    }, [conversation, hasMoreMessages, nextCursor]);
+
+    const markMessageFailed = useCallback((clientMessageId, errorMessage = 'Could not send message.') => {
+        setMessages((prevMessages) => {
+            return prevMessages.map((message) => {
+                if (message.clientMessageId !== clientMessageId) return message;
+
+                return {
+                    ...message,
+                    status: 'failed',
+                    errorMessage,
+                };
+            });
+        });
+    }, []);
+
+    const handleSendMessage = useCallback((content, retryClientMessageId = null) => {
+        if (!socket || !conversation || !user) return;
+
+        const clientMessageId = retryClientMessageId || createClientMessageId();
+
+        if (!retryClientMessageId) {
+            const optimisticMessage = {
+                _id: clientMessageId,
+                clientMessageId,
+                conversationId: conversation._id,
+                sender: {
+                    _id: user._id,
+                    username: user.username,
+                    avatar: user.avatar,
+                },
+                content,
+                createdAt: new Date().toISOString(),
+                status: 'sending',
+            };
+
+            setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+        } else {
+            setMessages((prevMessages) => {
+                return prevMessages.map((message) => {
+                    if (message.clientMessageId !== retryClientMessageId) return message;
+
+                    return {
+                        ...message,
+                        status: 'sending',
+                        errorMessage: '',
+                    };
+                });
+            });
+        }
+
+        socket.timeout(10000).emit(
+            'sendMessage',
+            { conversationId: conversation._id, content, clientMessageId },
+            (error, response) => {
+                if (activeConversationIdRef.current !== conversation._id) return;
+
+                if (error || !response?.ok) {
+                    markMessageFailed(clientMessageId, response?.message);
+                    return;
+                }
+
+                setMessages((prevMessages) => {
+                    const serverMessage = response.message;
+                    const withoutOptimistic = prevMessages.filter((message) => {
+                        return message.clientMessageId !== clientMessageId && message._id !== serverMessage._id;
+                    });
+
+                    return [...withoutOptimistic, serverMessage];
+                });
+            }
+        );
+    }, [conversation, markMessageFailed, socket, user]);
+
+    const handleRetryMessage = useCallback((message) => {
+        handleSendMessage(message.content, message.clientMessageId);
+    }, [handleSendMessage]);
 
     if (!conversation) {
         return (
@@ -212,6 +418,18 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         }
     };
 
+    const cachedDisplayState = messageCacheRef.current.get(conversation._id);
+    const isMessageStateReady = messagesConversationId === conversation._id;
+    const displayedMessages = isMessageStateReady
+        ? messages
+        : cachedDisplayState?.messages || [];
+    const displayedHasMoreMessages = isMessageStateReady
+        ? hasMoreMessages
+        : Boolean(cachedDisplayState?.hasMore);
+    const shouldShowInitialSkeleton = !isMessageStateReady
+        ? !cachedDisplayState
+        : isLoading && displayedMessages.length === 0;
+
     return (
         <div className={styles.window}>
             <div className={styles.header}>
@@ -241,11 +459,15 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                 </div>
             </div>
 
-            {isLoading ? (
-                <div className={styles.loading}>Loading messages...</div>
-            ) : (
-                <MessageList messages={messages} currentUserId={user._id} />
-            )}
+            <MessageList
+                messages={displayedMessages}
+                currentUserId={user._id}
+                hasMore={displayedHasMoreMessages}
+                isInitialLoading={shouldShowInitialSkeleton}
+                isLoadingOlder={isLoadingOlder}
+                onLoadOlder={loadOlderMessages}
+                onRetryMessage={handleRetryMessage}
+            />
 
             {typingUsers.length > 0 && (
                 <div className={styles.typing}>
@@ -253,7 +475,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                 </div>
             )}
 
-            <ChatInput conversationId={conversation._id} />
+            <ChatInput conversationId={conversation._id} onSendMessage={handleSendMessage} />
 
             <Drawer
                 title="Group members"

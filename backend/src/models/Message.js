@@ -16,6 +16,7 @@ const MessageSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Message content cannot be empty'],
             trim: true,
+            maxlength: [5000, 'Message content cannot exceed 5000 characters'],
         },
         deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },

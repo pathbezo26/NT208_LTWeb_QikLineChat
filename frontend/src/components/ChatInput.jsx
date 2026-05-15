@@ -3,7 +3,9 @@ import { SendOutlined } from '@ant-design/icons';
 import useSocket from '../hooks/useSocket';
 import styles from './styles/ChatInput.module.css';
 
-export default function ChatInput({ conversationId }) {
+const MAX_MESSAGE_LENGTH = 5000;
+
+export default function ChatInput({ conversationId, onSendMessage }) {
     const socket = useSocket();
 
     const [message, setMessage] = useState('');
@@ -31,15 +33,17 @@ export default function ChatInput({ conversationId }) {
     }, [socket, conversationId, stopTyping]);
 
     const handleChange = (e) => {
-        setMessage(e.target.value);
+        const nextMessage = e.target.value.slice(0, MAX_MESSAGE_LENGTH);
+
+        setMessage(nextMessage);
         handleTypingIndicator();
     };
 
     const handleSend = () => {
         const content = message.trim();
-        if (!content || !socket) return;
+        if (!content || !socket || !onSendMessage) return;
 
-        socket.emit('sendMessage', { conversationId, content });
+        onSendMessage(content);
         setMessage('');
         stopTyping();
     };
@@ -55,6 +59,7 @@ export default function ChatInput({ conversationId }) {
         <div className={styles.inputBar}>
             <textarea
                 className={styles.textarea}
+                maxLength={MAX_MESSAGE_LENGTH}
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
@@ -72,6 +77,9 @@ export default function ChatInput({ conversationId }) {
             >
                 <SendOutlined />
             </button>
+            <span className={styles.counter}>
+                {message.length}/{MAX_MESSAGE_LENGTH}
+            </span>
         </div>
     );
 }

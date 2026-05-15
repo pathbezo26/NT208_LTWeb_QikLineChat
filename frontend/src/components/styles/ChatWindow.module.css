@@ -125,15 +125,6 @@
     object-fit: cover;
 }
 
-.loading {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #8a8d91;
-    font-size: 14px;
-}
-
 .typing {
     padding: 6px 20px;
     font-size: 13px;
@@ -174,8 +165,7 @@
 
 :global([data-theme='dark']) .memberCount,
 :global([data-theme='dark']) .chatStatus,
-:global([data-theme='dark']) .typing,
-:global([data-theme='dark']) .loading {
+:global([data-theme='dark']) .typing {
     color: #94a3b8;
 }
 

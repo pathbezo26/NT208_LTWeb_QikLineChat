@@ -5,6 +5,7 @@
     padding: 12px 20px 16px;
     border-top: 1px solid #e4eaf2;
     background: #ffffff;
+    position: relative;
 }
 
 .textarea {
@@ -79,6 +80,16 @@
     opacity: 0.85;
 }
 
+.counter {
+    position: absolute;
+    right: 70px;
+    bottom: 2px;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1;
+    pointer-events: none;
+}
+
 :global([data-theme='dark']) .inputBar {
     border-top-color: #263244;
     background: #101826;
@@ -110,4 +121,8 @@
 
 :global([data-theme='dark']) .sendBtn:disabled {
     background: #334155 !important;
+}
+
+:global([data-theme='dark']) .counter {
+    color: #64748b;
 }

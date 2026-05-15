@@ -4,6 +4,7 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 const SOCKET_USER_FIELDS = '_id username email avatar'; // Field user gui qua socket, bao gom avatar cho realtime message.
+const MAX_MESSAGE_LENGTH = 5000;
 
 const onlineUsers = new Map(); //Mảng các user đang onl
 
@@ -50,47 +51,80 @@ const socketHandler = (io) => {
     });
 
     // Handle sending a message
-    socket.on('sendMessage', async ({ conversationId, content }) => {
-      if (!conversationId || !content?.trim()) return;
+    socket.on('sendMessage', async ({ conversationId, content, clientMessageId }, ack) => {
+      const trimmedContent = content?.trim();
+
+      const fail = (message) => {
+        if (typeof ack === 'function') ack({ ok: false, message });
+      };
+
+      if (!conversationId || !trimmedContent) {
+        fail('Missing conversationId or message content.');
+        return;
+      }
+
+      if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+        fail(`Message cannot exceed ${MAX_MESSAGE_LENGTH} characters.`);
+        return;
+      }
 
       try {
+        const conversation = await Conversation.findById(conversationId).select('members deletedFor unreadCounts');
+        if (!conversation) {
+          fail('Conversation not found.');
+          return;
+        }
+
+        const isMember = conversation.members
+          .map((memberId) => memberId.toString())
+          .includes(userId);
+
+        if (!isMember) {
+          fail('You do not have permission to send messages here.');
+          return;
+        }
+
         // Save to DB
         const message = await Message.create({
           conversationId,
           sender: userId,
-          content: content.trim(),
+          content: trimmedContent,
         });
-
-        const conversation = await Conversation.findById(conversationId).select('members deletedFor unreadCounts');
 
         // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
         const populated = await message.populate('sender', SOCKET_USER_FIELDS);
+        const payload = {
+          ...populated.toObject(),
+          clientMessageId,
+          status: 'sent',
+        };
 
         // Broadcast to everyone in the room (including sender)
-        io.to(conversationId).emit('newMessage', populated);
+        io.to(conversationId).emit('newMessage', payload);
 
-        if (conversation) {
-          await updateConversationAfterMessage(conversation, message, userId);
+        await updateConversationAfterMessage(conversation, message, userId);
 
-          const deletedUserIds = new Set(
-            (conversation.deletedFor || []).map((deletedUserId) => deletedUserId.toString())
-          );
+        const deletedUserIds = new Set(
+          (conversation.deletedFor || []).map((deletedUserId) => deletedUserId.toString())
+        );
 
-          conversation.members.forEach((memberId) => {
-            const memberIdString = memberId.toString();
+        conversation.members.forEach((memberId) => {
+          const memberIdString = memberId.toString();
 
-            if (deletedUserIds.has(memberIdString)) return;
+          if (deletedUserIds.has(memberIdString)) return;
 
-            io.to(`user:${memberIdString}`).emit('conversationUpdated', {
-              conversationId,
-              senderId: userId,
-              messageId: populated._id,
-            });
+          io.to(`user:${memberIdString}`).emit('conversationUpdated', {
+            conversationId,
+            senderId: userId,
+            messageId: populated._id,
           });
-        }
+        });
+
+        if (typeof ack === 'function') ack({ ok: true, message: payload });
       } catch (err) {
         console.error('Error saving message:', err.message);
         socket.emit('messageError', { message: 'Could not send message.' });
+        fail('Could not send message.');
       }
     });
 
