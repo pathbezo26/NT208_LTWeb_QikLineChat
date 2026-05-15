@@ -21,7 +21,7 @@ const upload = multer({
         const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
         if (!allowedMimeTypes.includes(file.mimetype)) {
-            return cb(new Error('Anh nhom chi ho tro JPG, PNG hoac WEBP'));
+            return cb(new Error('Group image only supports JPG, PNG, or WEBP'));
         }
 
         cb(null, true);
@@ -33,10 +33,10 @@ const handleGroupAvatarUpload = (req, res, next) => {
         if (!err) return next();
 
         if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ message: 'Anh nhom khong duoc vuot qua 2MB' });
+            return res.status(400).json({ message: 'Group image must not exceed 2MB' });
         }
 
-        return res.status(400).json({ message: err.message || 'File anh nhom khong hop le' });
+        return res.status(400).json({ message: err.message || 'Invalid group image file' });
     });
 };
 

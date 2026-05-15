@@ -17,7 +17,7 @@ export default function MessageList({ messages, currentUserId }) {
     if (!messages || messages.length === 0) {
         return (
             <div className={styles.empty}>
-                <p>Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!</p>
+                <p>No messages yet. Start the conversation!</p>
             </div>
         );
     }
@@ -31,7 +31,7 @@ export default function MessageList({ messages, currentUserId }) {
                 const previousSenderId = previousMessage ? getSenderId(previousMessage) : null;
                 const isFirstInGroup = previousSenderId !== senderId;
                 const shouldShowAvatar = !isMyMessage && isFirstInGroup;
-                const senderName = message.sender?.username || 'Người dùng';
+                const senderName = message.sender?.username || 'User';
 
                 return (
                     <div

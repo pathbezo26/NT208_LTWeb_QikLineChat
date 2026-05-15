@@ -74,7 +74,7 @@ export default function ChatInput({ conversationId }) {
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Nhập tin nhắn"
+                placeholder="Type a message"
                 rows={1}
             />
 
@@ -82,7 +82,7 @@ export default function ChatInput({ conversationId }) {
                 className={styles.sendBtn}
                 onClick={handleSend}
                 disabled={!message.trim()} // Vô hiệu hóa nút nếu chỉ có khoảng trắng
-                title="Gửi tin nhắn"
+                title="Send message"
             >
                 ➤
             </button>

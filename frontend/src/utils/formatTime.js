@@ -16,8 +16,8 @@ const formatTime = (dateString) => {
     const timeStr = `${hours}:${minutes}`;
 
     if (diffDays === 0) return timeStr;           // Hôm nay → chỉ hiện giờ
-    if (diffDays === 1) return `Hôm qua`;         // Hôm qua
-    if (diffDays < 7) return `${diffDays} ngày trước`; // Trong tuần
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
 
     // Lâu hơn 1 tuần → hiển thị ngày/tháng
     const day = date.getDate().toString().padStart(2, '0');
@@ -29,7 +29,7 @@ const formatTime = (dateString) => {
 // Ví dụ: "14:35 - Thứ Ba, 20/04/2025"
 const formatFullTime = (dateString) => {
     const date = new Date(dateString);
-    const days = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');

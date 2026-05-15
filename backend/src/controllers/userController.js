@@ -53,11 +53,11 @@ const updateUsername = async (req, res) => {
         const username = req.body.username?.trim();
 
         if (!username) {
-            return res.status(400).json({ message: 'Vui lòng nhập username' });
+            return res.status(400).json({ message: 'Please enter a username' });
         }
 
         if (username.length < 3 || username.length > 30) {
-            return res.status(400).json({ message: 'Username phải từ 3 đến 30 ký tự' });
+            return res.status(400).json({ message: 'Username must be 3 to 30 characters' });
         }
 
         const existingUser = await User.findOne({
@@ -66,24 +66,24 @@ const updateUsername = async (req, res) => {
         });
 
         if (existingUser) {
-            return res.status(409).json({ message: 'Username đã được sử dụng' });
+            return res.status(409).json({ message: 'Username is already taken' });
         }
 
         const user = await User.findById(req.user._id);
         if (!user) {
-            return res.status(404).json({ message: 'User không tồn tại' });
+            return res.status(404).json({ message: 'User not found' });
         }
 
         user.username = username;
         await user.save();
 
         res.status(200).json({
-            message: 'Cập nhật username thành công',
+            message: 'Username updated successfully',
             user: getPublicUser(user),
         });
     } catch (error) {
         console.error('Update username error:', error);
-        res.status(500).json({ message: 'Lỗi server khi cập nhật username' });
+        res.status(500).json({ message: 'Server error while updating username' });
     }
 };
 
@@ -92,16 +92,16 @@ const updateUsername = async (req, res) => {
 const uploadAvatar = async (req, res) => {
     try {
         if (!hasCloudinaryConfig()) {
-            return res.status(500).json({ message: 'Chưa cấu hình Cloudinary cho server' });
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
         }
 
         if (!req.file) {
-            return res.status(400).json({ message: 'Vui lòng chọn ảnh avatar' });
+            return res.status(400).json({ message: 'Please select an avatar image' });
         }
 
         const user = await User.findById(req.user._id);
         if (!user) {
-            return res.status(404).json({ message: 'User không tồn tại' });
+            return res.status(404).json({ message: 'User not found' });
         }
 
         const oldAvatarPublicId = user.avatar?.publicId;
@@ -123,12 +123,12 @@ const uploadAvatar = async (req, res) => {
         }
 
         res.status(200).json({
-            message: 'Cập nhật avatar thành công',
+            message: 'Avatar updated successfully',
             user: getPublicUser(user),
         });
     } catch (error) {
         console.error('Upload avatar error:', error);
-        res.status(500).json({ message: 'Lỗi server khi cập nhật avatar' });
+        res.status(500).json({ message: 'Server error while updating avatar' });
     }
 };
 
@@ -137,12 +137,12 @@ const uploadAvatar = async (req, res) => {
 const deleteAvatar = async (req, res) => {
     try {
         if (!hasCloudinaryConfig()) {
-            return res.status(500).json({ message: 'Chưa cấu hình Cloudinary cho server' });
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
         }
 
         const user = await User.findById(req.user._id);
         if (!user) {
-            return res.status(404).json({ message: 'User không tồn tại' });
+            return res.status(404).json({ message: 'User not found' });
         }
 
         if (user.avatar?.publicId) {
@@ -158,12 +158,12 @@ const deleteAvatar = async (req, res) => {
         await user.save();
 
         res.status(200).json({
-            message: 'Xóa avatar thành công',
+            message: 'Avatar deleted successfully',
             user: getPublicUser(user),
         });
     } catch (error) {
         console.error('Delete avatar error:', error);
-        res.status(500).json({ message: 'Lỗi server khi xóa avatar' });
+        res.status(500).json({ message: 'Server error while deleting avatar' });
     }
 };
 

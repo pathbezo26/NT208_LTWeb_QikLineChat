@@ -18,17 +18,17 @@ import styles from './styles/AppNavRail.module.css';
 const navItems = [
     {
         id: 'messages',
-        label: 'Tin nhắn',
+        label: 'Messages',
         icon: <MessageOutlined />,
     },
     {
         id: 'contacts',
-        label: 'Danh bạ',
+        label: 'Contacts',
         icon: <ContactsOutlined />,
     },
     {
         id: 'groups',
-        label: 'Nhóm',
+        label: 'Groups',
         icon: <TeamOutlined />,
     },
 ];
@@ -54,12 +54,12 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
         // Validate nhanh ở frontend để người dùng biết lỗi trước khi gửi file lên server.
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
-            setAvatarError('Avatar chỉ hỗ trợ JPG, PNG hoặc WEBP');
+            setAvatarError('Avatar only supports JPG, PNG, or WEBP');
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
-            setAvatarError('Avatar không được vượt quá 2MB');
+            setAvatarError('Avatar must not exceed 2MB');
             return;
         }
 
@@ -71,7 +71,7 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
             updateUser(data.user);
             setIsProfileOpen(false);
         } catch (error) {
-            setAvatarError(error.response?.data?.message || 'Không thể cập nhật avatar');
+            setAvatarError(error.response?.data?.message || 'Could not update avatar');
         } finally {
             setIsUploadingAvatar(false);
         }
@@ -99,12 +99,12 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
         const nextUsername = usernameDraft.trim();
 
         if (!nextUsername) {
-            setUsernameError('Vui lòng nhập username');
+            setUsernameError('Please enter a username');
             return;
         }
 
         if (nextUsername.length < 3 || nextUsername.length > 30) {
-            setUsernameError('Username phải từ 3 đến 30 ký tự');
+            setUsernameError('Username must be 3 to 30 characters');
             return;
         }
 
@@ -121,7 +121,7 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
             updateUser(data.user);
             setIsEditingUsername(false);
         } catch (error) {
-            setUsernameError(error.response?.data?.message || 'Không thể cập nhật username');
+            setUsernameError(error.response?.data?.message || 'Could not update username');
         } finally {
             setIsSavingUsername(false);
         }
@@ -135,13 +135,13 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
             updateUser(data.user);
             setIsProfileOpen(false);
         } catch (error) {
-            setAvatarError(error.response?.data?.message || 'Không thể xóa avatar');
+            setAvatarError(error.response?.data?.message || 'Could not delete avatar');
         }
     };
 
     const profileMenu = (
         <div className={styles.profileMenu}>
-            <div className={styles.profileName}>{user?.username || 'Tài khoản'}</div>
+            <div className={styles.profileName}>{user?.username || 'Account'}</div>
 
             {avatarError && (
                 <Alert
@@ -167,7 +167,7 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                         className={styles.usernameInput}
                         value={usernameDraft}
                         onChange={(event) => setUsernameDraft(event.target.value)}
-                        placeholder="Username mới"
+                        placeholder="New username"
                         maxLength={30}
                     />
                     <div className={styles.usernameActions}>
@@ -177,14 +177,14 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                             loading={isSavingUsername}
                             onClick={handleSaveUsername}
                         >
-                            Lưu
+                            Save
                         </Button>
                         <Button
                             size="small"
                             onClick={closeUsernameForm}
                             disabled={isSavingUsername}
                         >
-                            Hủy
+                            Cancel
                         </Button>
                     </div>
                 </div>
@@ -196,7 +196,7 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                     block
                     onClick={openUsernameForm}
                 >
-                    Đổi username
+                    Change username
                 </Button>
             )}
 
@@ -226,7 +226,7 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                     block
                     onClick={handleDeleteAvatar}
                 >
-                    Xóa avatar
+                    Remove avatar
                 </Button>
             )}
 
@@ -238,7 +238,7 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                 danger
                 onClick={handleLogout}
             >
-                Đăng xuất
+                Log out
             </Button>
         </div>
     );
@@ -253,13 +253,13 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                 danger
                 onClick={handleLogout}
             >
-                Đăng xuất
+                Log out
             </Button>
         </div>
     );
 
     return (
-        <nav className={styles.rail} aria-label="Điều hướng chính">
+        <nav className={styles.rail} aria-label="Main navigation">
             <Popover
                 content={profileMenu}
                 trigger="click"
@@ -276,8 +276,8 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                 <button
                     type="button"
                     className={styles.userIconButton}
-                    title={user?.username || 'Tài khoản'}
-                    aria-label="Mở menu tài khoản"
+                    title={user?.username || 'Account'}
+                    aria-label="Open account menu"
                 >
                     <UserAvatar
                         user={user}
@@ -319,8 +319,8 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                         type="button"
                         className={`${styles.navButton} ${activeSection === 'settings' ? styles.active : ''}`}
                         onClick={() => onSectionChange('settings')}
-                        title="Cài đặt"
-                        aria-label="Cài đặt"
+                        title="Settings"
+                        aria-label="Settings"
                         aria-pressed={activeSection === 'settings'}
                     >
                         <span className={styles.icon}>

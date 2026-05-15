@@ -57,7 +57,7 @@ const getValidUserIds = async (identifiers) => {
             if (foundUser) {
                 userIds.push(foundUser._id.toString());
             } else {
-                throw new Error(`Người dùng "${item}" không tồn tại.`);
+                throw new Error(`User "${item}" does not exist.`);
             }
         }
     }
@@ -84,7 +84,7 @@ const getConversations = async (req, res) => {
         res.status(200).json(conversations);
     } catch (error) {
         console.error('getConversations error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
@@ -98,15 +98,15 @@ const createConversation = async (req, res) => {
 
         // Validate input
         if (!type || !['private', 'group'].includes(type)) {
-            return res.status(400).json({ message: 'Type phải là "private" hoặc "group"' });
+            return res.status(400).json({ message: 'Type must be "private" or "group"' });
         }
 
         if (type === 'group' && !name) {
-            return res.status(400).json({ message: 'Group chat phải có tên' });
+            return res.status(400).json({ message: 'Group chat must have a name' });
         }
 
         if (!members || members.length < 1) {
-            return res.status(400).json({ message: 'Phải có ít nhất 1 thành viên' });
+            return res.status(400).json({ message: 'Must have at least 1 member' });
         }
 
         // Hàm lấy Id chuẩn
@@ -118,7 +118,7 @@ const createConversation = async (req, res) => {
         if (type === 'private') {
             // Kiểm tra private chat — chỉ 2 thành viên
             if (finalMembers.length !== 2) {
-                return res.status(400).json({ message: 'Private chat phải chỉ có 2 thành viên' });
+                return res.status(400).json({ message: 'Private chat must have exactly 2 members' });
             }
 
             const existing = await Conversation.findOne({
@@ -140,7 +140,7 @@ const createConversation = async (req, res) => {
         // Kiểm tra members tồn tại
         const validUsers = await User.find({ _id: { $in: finalMembers } });
         if (validUsers.length !== finalMembers.length) {
-            return res.status(400).json({ message: 'Một số user không tồn tại' });
+            return res.status(400).json({ message: 'Some users do not exist' });
         }
 
         // Tạo conversation mới
@@ -159,7 +159,7 @@ const createConversation = async (req, res) => {
     } catch (error) {
         console.error('createConversation error:', error);
         const statusCode = error.status || 500;
-        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
+        res.status(statusCode).json({ message: error.message || 'Server error!' });
     }
 };
 
@@ -171,14 +171,14 @@ const deleteConversation = async (req, res) => {
 
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Không tìm thấy cuộc trò chuyện' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
         const isMember = conversation.members.some(
             (memberId) => memberId.toString() === userId.toString()
         );
         if (!isMember) {
-            return res.status(403).json({ message: 'Bạn không có quyền xóa cuộc trò chuyện này' });
+            return res.status(403).json({ message: 'You do not have permission to delete this conversation' });
         }
 
         const alreadyDeleted = (conversation.deletedFor || []).some(
@@ -190,12 +190,12 @@ const deleteConversation = async (req, res) => {
         }
 
         res.status(200).json({
-            message: 'Đã xóa cuộc trò chuyện khỏi danh sách của bạn',
+            message: 'Conversation removed from your list',
             conversationId,
         });
     } catch (error) {
         console.error('deleteConversation error:', error);
-        res.status(500).json({ message: 'Lỗi server khi xóa cuộc trò chuyện' });
+        res.status(500).json({ message: 'Server error while deleting conversation' });
     }
 };
 
@@ -203,27 +203,27 @@ const deleteConversation = async (req, res) => {
 const uploadGroupAvatar = async (req, res) => {
     try {
         if (!hasCloudinaryConfig()) {
-            return res.status(500).json({ message: 'Chua cau hinh Cloudinary cho server' });
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
         }
 
         if (!req.file) {
-            return res.status(400).json({ message: 'Vui long chon anh nhom' });
+            return res.status(400).json({ message: 'Please select a group image' });
         }
 
         const conversation = await Conversation.findById(req.params.id);
         if (!conversation) {
-            return res.status(404).json({ message: 'Khong tim thay cuoc tro chuyen' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
         if (conversation.type !== 'group') {
-            return res.status(400).json({ message: 'Chi group chat moi co anh nhom' });
+            return res.status(400).json({ message: 'Only group chats can have a group image' });
         }
 
         const isMember = conversation.members.some(
             (memberId) => memberId.toString() === req.user._id.toString()
         );
         if (!isMember) {
-            return res.status(403).json({ message: 'Ban khong co quyen cap nhat nhom nay' });
+            return res.status(403).json({ message: 'You do not have permission to update this group' });
         }
 
         const oldAvatarPublicId = conversation.avatar?.publicId;
@@ -246,12 +246,12 @@ const uploadGroupAvatar = async (req, res) => {
         await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
         res.status(200).json({
-            message: 'Cap nhat anh nhom thanh cong',
+            message: 'Group image updated successfully',
             conversation,
         });
     } catch (error) {
         console.error('Upload group avatar error:', error);
-        res.status(500).json({ message: 'Loi server khi cap nhat anh nhom' });
+        res.status(500).json({ message: 'Server error while updating group image' });
     }
 };
 
@@ -263,14 +263,14 @@ const addMembers = async (req, res) => {
         const userId = req.user._id;
 
         if (!Array.isArray(newMemberIds) || newMemberIds.length === 0) {
-            return res.status(400).json({ message: 'Thiếu danh sách thành viên cần thêm' });
+            return res.status(400).json({ message: 'Missing list of members to add' });
         }
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
-        if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
         if (conversation.type !== 'group') {
-            return res.status(400).json({ message: 'Chỉ có thể thêm thành viên vào nhóm' });
+            return res.status(400).json({ message: 'Members can only be added to a group' });
         }
 
         // Bỏ người bị trùng
@@ -278,7 +278,7 @@ const addMembers = async (req, res) => {
         const toAdd = newMemberIds.filter(id => !currentMembers.includes(id));
 
         if (toAdd.length === 0) {
-            return res.status(400).json({ message: 'Các thành viên này đã ở trong nhóm' });
+            return res.status(400).json({ message: 'These members are already in the group' });
         }
 
         // Cập nhật DB
@@ -290,11 +290,11 @@ const addMembers = async (req, res) => {
         await conversation.populate('members', USER_PUBLIC_FIELDS);
         await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
-        res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
+        res.status(200).json({ message: 'Members added successfully', conversation });
     } catch (error) {
         console.error('createConversation error:', error);
         const statusCode = error.status || 500;
-        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
+        res.status(statusCode).json({ message: error.message || 'Server error!' });
     }
 };
 
@@ -306,19 +306,19 @@ const removeMember = async (req, res) => {
         const userId = req.user._id;
 
         if (!memberId) {
-            return res.status(400).json({ message: 'Thiếu memberId' });
+            return res.status(400).json({ message: 'Missing memberId' });
         }
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
-        if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
         if (conversation.type !== 'group') {
-            return res.status(400).json({ message: 'Chỉ có thể xóa thành viên khỏi nhóm' });
+            return res.status(400).json({ message: 'Members can only be removed from a group' });
         }
 
         // Check admin
         if (conversation.createdBy.toString() !== userId.toString()) {
-            return res.status(403).json({ message: 'Bạn không có quyền xóa thành viên' });
+            return res.status(403).json({ message: 'You do not have permission to remove members' });
         }
 
         // if (!memberId) return res.status(400).json({ message: 'Thiếu memberId' });
@@ -328,7 +328,7 @@ const removeMember = async (req, res) => {
             id => id.toString() === memberId
         );
         if (!exists) {
-            return res.status(400).json({ message: 'Người dùng này không có trong nhóm' });
+            return res.status(400).json({ message: 'This user is not in the group' });
         }
 
         // Xóa khỏi nhóm
@@ -343,9 +343,9 @@ const removeMember = async (req, res) => {
         await conversation.populate('members', USER_PUBLIC_FIELDS);
         await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
-        res.status(200).json({ message: 'Xóa thành viên thành công', conversation });
+        res.status(200).json({ message: 'Member removed successfully', conversation });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 

@@ -15,7 +15,7 @@ const getMessages = async (req, res) => {
         // 1. Kiểm tra conversation có tồn tại không
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
         // 2. Kiểm tra user có phải thành viên của conversation không
@@ -25,7 +25,7 @@ const getMessages = async (req, res) => {
             .includes(userId.toString());
 
         if (!isMember) {
-            return res.status(403).json({ message: 'Bạn không có quyền xem cuộc trò chuyện này' });
+            return res.status(403).json({ message: 'You do not have permission to view this conversation' });
         }
 
         // 3. Lấy tin nhắn, sắp xếp từ cũ đến mới (createdAt tăng dần)
@@ -37,7 +37,7 @@ const getMessages = async (req, res) => {
         res.status(200).json(messages);
     } catch (error) {
         console.error('getMessages error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
@@ -51,13 +51,13 @@ const sendMessage = async (req, res) => {
 
         // 1. Validate đầu vào
         if (!conversationId || !content?.trim()) {
-            return res.status(400).json({ message: 'Thiếu conversationId hoặc nội dung tin nhắn' });
+            return res.status(400).json({ message: 'Missing conversationId or message content' });
         }
 
         // 2. Kiểm tra conversation tồn tại và user là thành viên
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
         const isMember = conversation.members
@@ -65,7 +65,7 @@ const sendMessage = async (req, res) => {
             .includes(userId.toString());
 
         if (!isMember) {
-            return res.status(403).json({ message: 'Bạn không có quyền gửi tin nhắn vào đây' });
+            return res.status(403).json({ message: 'You do not have permission to send messages here' });
         }
 
         // 3. Lưu tin nhắn vào DB
@@ -85,7 +85,7 @@ const sendMessage = async (req, res) => {
         res.status(201).json(populated);
     } catch (error) {
         console.error('sendMessage error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 

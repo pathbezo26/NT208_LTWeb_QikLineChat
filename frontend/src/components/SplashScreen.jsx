@@ -15,13 +15,13 @@ export default function SplashScreen() {
                 </div>
 
                 <h2 className={styles.title}>QikLine</h2>
-                <p className={styles.subtitle}>Kết nối nhanh, trò chuyện liền mạch</p>
+                <p className={styles.subtitle}>Connect fast, chat seamlessly</p>
                 <div className={styles.spinner}></div>
             </div>
 
             {/* Phần đáy: Dòng bảo mật */}
             <div className={styles.footer}>
-                <p>từ nhà phát triển của bạn</p>
+                <p>from your developers</p>
                 <span>
                     🔒 End-to-end encrypted
                 </span>

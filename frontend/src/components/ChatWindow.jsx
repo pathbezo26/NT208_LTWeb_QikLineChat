@@ -125,8 +125,8 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                 <div className={styles.emptyIcon}>
                     <MessageOutlined />
                 </div>
-                <p>Chọn một cuộc trò chuyện để bắt đầu</p>
-                <span>Nhắn tin riêng tư hoặc tạo nhóm để trò chuyện cùng bạn bè.</span>
+                <p>Select a conversation to get started</p>
+                <span>Send a private message or create a group to chat with friends.</span>
             </div>
         );
     }
@@ -137,10 +137,10 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
 
     const getChatName = () => {
         if (conversation.type === 'group') {
-            return conversation.name || 'Nhóm chat';
+            return conversation.name || 'Group chat';
         }
 
-        return getOtherMember()?.username || 'Người dùng';
+        return getOtherMember()?.username || 'User';
     };
 
     const getUserId = (targetUser) => {
@@ -177,7 +177,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         } catch (error) {
             console.error('Search group members error:', error);
             setMemberSearchResults([]);
-            setMemberError('Không thể tìm người dùng.');
+            setMemberError('Could not find users.');
         } finally {
             setIsSearchingMembers(false);
         }
@@ -192,7 +192,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
             onConversationUpdated(data.conversation);
             resetMemberSearch();
         } catch (error) {
-            setMemberError(error.response?.data?.message || 'Không thể thêm thành viên.');
+            setMemberError(error.response?.data?.message || 'Could not add member.');
         } finally {
             setMemberActionId(null);
         }
@@ -206,7 +206,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
             const data = await removeGroupMemberAPI(conversation._id, member._id);
             onConversationUpdated(data.conversation);
         } catch (error) {
-            setMemberError(error.response?.data?.message || 'Không thể xóa thành viên.');
+            setMemberError(error.response?.data?.message || 'Could not remove member.');
         } finally {
             setMemberActionId(null);
         }
@@ -217,7 +217,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
             <div className={styles.header}>
                 <UserAvatar
                     user={conversation.type === 'private' ? getOtherMember() : null}
-                    name={conversation.type === 'group' ? (conversation.name || 'Nhóm') : getChatName()}
+                    name={conversation.type === 'group' ? (conversation.name || 'Group') : getChatName()}
                     src={conversation.type === 'group' ? conversation.avatar?.url : undefined}
                     className={styles.headerAvatar}
                     fallback={conversation.type === 'group' ? 'G' : '?'}
@@ -231,28 +231,28 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                             onClick={() => setIsMemberDrawerOpen(true)}
                             type="button"
                         >
-                            {conversation.members.length} thành viên
+                            {conversation.members.length} members
                         </button>
                     )}
                 </div>
             </div>
 
             {isLoading ? (
-                <div className={styles.loading}>Đang tải tin nhắn...</div>
+                <div className={styles.loading}>Loading messages...</div>
             ) : (
                 <MessageList messages={messages} currentUserId={user._id} />
             )}
 
             {typingUsers.length > 0 && (
                 <div className={styles.typing}>
-                    {typingUsers.map((typingUser) => typingUser.username).join(', ')} đang nhập...
+                    {typingUsers.map((typingUser) => typingUser.username).join(', ')} typing...
                 </div>
             )}
 
             <ChatInput conversationId={conversation._id} />
 
             <Drawer
-                title="Thành viên nhóm"
+                title="Group members"
                 open={isMemberDrawerOpen}
                 onClose={() => setIsMemberDrawerOpen(false)}
                 width={360}
@@ -270,7 +270,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                     prefix={<UserAddOutlined />}
                     value={memberSearchQuery}
                     onChange={handleSearchMembers}
-                    placeholder="Tìm người để thêm vào nhóm"
+                    placeholder="Search people to add to the group"
                     allowClear
                     style={{ marginBottom: 12 }}
                 />
@@ -293,7 +293,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                                         loading={memberActionId === searchUser._id}
                                         onClick={() => handleAddMember(searchUser)}
                                     >
-                                        Thêm
+                                        Add
                                     </Button>,
                                 ]}
                             >

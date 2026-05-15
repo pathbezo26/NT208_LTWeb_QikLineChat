@@ -30,12 +30,12 @@ export default function RegisterPage() {
 
         // Xử lý validate ngay từ đầu
         if (formData.password.length < 6) {
-            setError('Mật khẩu phải có ít nhất 6 ký tự!');
+            setError('Password must be at least 6 characters!');
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
-            setError('Mật khẩu xác nhận không khớp!');
+            setError('Passwords do not match!');
             return;
         }
 
@@ -54,7 +54,7 @@ export default function RegisterPage() {
             login(user, token);
             navigate('/chat');
         } catch (err) {
-            setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+            setError(err.response?.data?.message || 'Registration failed. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -65,17 +65,17 @@ export default function RegisterPage() {
             <div className={styles.container}>
                 {/* Cột trái: Text */}
                 <div className={styles.leftSide}>
-                    <div className={styles.brandBadge}>Tạo kết nối mới thật dễ</div>
+                    <div className={styles.brandBadge}>Make new connections easily</div>
                     <h1 className={styles.logo}>QikLine</h1>
                     <h2 className={styles.tagline}>
-                        Tham gia QikLine ngay hôm nay để kết nối với những người bạn mới.
+                        Join QikLine today to connect with new people.
                     </h2>
                     <p className={styles.sideText}>
-                        Tạo tài khoản và bắt đầu cuộc trò chuyện của bạn trong vài giây.
+                        Create an account and start your conversation in seconds.
                     </p>
                     <div className={styles.sideStatus}>
                         <span className={styles.statusDot}></span>
-                        <span>Đăng ký nhanh chóng</span>
+                        <span>Quick sign-up</span>
                     </div>
                 </div>
 
@@ -83,9 +83,9 @@ export default function RegisterPage() {
                 <div className={styles.rightSide}>
                     <div className={styles.card}>
                         <div className={styles.cardHeader}>
-                            <div className={styles.cardEyebrow}>Bắt đầu</div>
-                            <div className={styles.cardTitle}>Tạo tài khoản mới</div>
-                            <p className={styles.cardSubtitle}>Chỉ cần vài thông tin cơ bản để tham gia QikLine.</p>
+                            <div className={styles.cardEyebrow}>Get started</div>
+                            <div className={styles.cardTitle}>Create a new account</div>
+                            <p className={styles.cardSubtitle}>Just a few details to join QikLine.</p>
                         </div>
 
                         {error && <div className={styles.error}>{error}</div>}
@@ -98,7 +98,7 @@ export default function RegisterPage() {
                                     name="username"
                                     value={formData.username}
                                     onChange={handleChange}
-                                    placeholder="Tên người dùng"
+                                    placeholder="Username"
                                     required
                                 />
                             </div>
@@ -122,7 +122,7 @@ export default function RegisterPage() {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    placeholder="Mật khẩu"
+                                    placeholder="Password"
                                     required
                                 />
                             </div>
@@ -134,13 +134,13 @@ export default function RegisterPage() {
                                     name="confirmPassword"
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
-                                    placeholder="Xác nhận lại mật khẩu"
+                                    placeholder="Confirm password"
                                     required
                                 />
                             </div>
 
                             <button type="submit" className={styles.btnPrimary} disabled={isLoading}>
-                                {isLoading ? 'Đang xử lý...' : 'Đăng ký'}
+                                {isLoading ? 'Processing...' : 'Sign up'}
                             </button>
                         </form>
 
@@ -148,7 +148,7 @@ export default function RegisterPage() {
 
                         <div className={styles.switchContainer}>
                             <Link to="/login" className={styles.btnSecondary}>
-                                Đã có tài khoản? Đăng nhập
+                                Already have an account? Sign in
                             </Link>
                         </div>
                     </div>

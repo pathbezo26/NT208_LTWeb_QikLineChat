@@ -14,7 +14,7 @@ const MessageSchema = new mongoose.Schema(
         },
         content: {
             type: String,
-            required: [true, 'Nội dung tin nhắn không được rỗng'],
+            required: [true, 'Message content cannot be empty'],
             trim: true,
         },
         deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]

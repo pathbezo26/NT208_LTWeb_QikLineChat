@@ -92,7 +92,7 @@ const socketHandler = (io) => {
         }
       } catch (err) {
         console.error('Error saving message:', err.message);
-        socket.emit('messageError', { message: 'Không thể gửi tin nhắn.' });
+        socket.emit('messageError', { message: 'Could not send message.' });
       }
     });
 

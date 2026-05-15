@@ -15,7 +15,7 @@ const upload = multer({
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      return cb(new Error('Avatar chỉ hỗ trợ JPG, PNG hoặc WEBP'));
+      return cb(new Error('Avatar only supports JPG, PNG, or WEBP'));
     }
 
     cb(null, true);
@@ -28,10 +28,10 @@ const handleAvatarUpload = (req, res, next) => {
     if (!err) return next();
 
     if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'Avatar không được vượt quá 2MB' });
+      return res.status(400).json({ message: 'Avatar must not exceed 2MB' });
     }
 
-    return res.status(400).json({ message: err.message || 'File avatar không hợp lệ' });
+    return res.status(400).json({ message: err.message || 'Invalid avatar file' });
   });
 };
 
@@ -59,7 +59,7 @@ router.get('/search', protect, async (req, res) => {
 
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server.', error: err.message });
+    res.status(500).json({ message: 'Server error.', error: err.message });
   }
 });
 

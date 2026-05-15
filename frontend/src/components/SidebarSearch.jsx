@@ -10,7 +10,7 @@ export default function SidebarSearch({ value, onChange }) {
                 type="text"
                 value={value}
                 onChange={onChange}
-                placeholder="Tìm kiếm"
+                placeholder="Search"
             />
         </div>
     );

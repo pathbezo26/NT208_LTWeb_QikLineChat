@@ -40,12 +40,12 @@ export default function CreateGroupModal({ onClose, onCreated }) {
         if (!file) return;
 
         if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-            setErrorMessage('Ảnh nhóm chỉ hỗ trợ JPG, PNG hoặc WEBP.');
+            setErrorMessage('Group image only supports JPG, PNG, or WEBP.');
             return;
         }
 
         if (file.size > MAX_AVATAR_SIZE) {
-            setErrorMessage('Ảnh nhóm không được vượt quá 2MB.');
+            setErrorMessage('Group image must not exceed 2MB.');
             return;
         }
 
@@ -103,12 +103,12 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
     const handleCreateGroup = async () => {
         if (!groupName.trim()) {
-            setErrorMessage('Vui lòng nhập tên nhóm.');
+            setErrorMessage('Please enter a group name.');
             return;
         }
 
         if (selectedMembers.length < 1) {
-            setErrorMessage('Nhóm phải có ít nhất 1 thành viên khác.');
+            setErrorMessage('The group must have at least 1 other member.');
             return;
         }
 
@@ -129,7 +129,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
             onCreated(newGroup);
         } catch (err) {
-            setErrorMessage(err.response?.data?.message || 'Tạo nhóm thất bại. Vui lòng thử lại.');
+            setErrorMessage(err.response?.data?.message || 'Failed to create group. Please try again.');
         } finally {
             setIsCreating(false);
         }
@@ -139,8 +139,8 @@ export default function CreateGroupModal({ onClose, onCreated }) {
         <div className={styles.overlay}>
             <div className={styles.modal}>
                 <div className={styles.modalHeader}>
-                    <h3>Tạo nhóm chat</h3>
-                    <button className={styles.closeBtn} onClick={onClose} title="Đóng" type="button">×</button>
+                    <h3>Create group chat</h3>
+                    <button className={styles.closeBtn} onClick={onClose} title="Close" type="button">×</button>
                 </div>
 
                 {errorMessage && <div className={styles.error}>{errorMessage}</div>}
@@ -150,10 +150,10 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                         className={styles.groupAvatarButton}
                         onClick={() => avatarInputRef.current?.click()}
                         type="button"
-                        aria-label="Chọn ảnh nhóm"
+                        aria-label="Choose group image"
                     >
                         {groupAvatarPreview ? (
-                            <img src={groupAvatarPreview} alt="Ảnh nhóm xem trước" />
+                            <img src={groupAvatarPreview} alt="Group image preview" />
                         ) : (
                             <>
                                 <CameraOutlined className={styles.cameraIcon} />
@@ -166,7 +166,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                         onClick={() => avatarInputRef.current?.click()}
                         type="button"
                     >
-                        Chọn ảnh nhóm
+                        Choose group image
                     </button>
                     <input
                         ref={avatarInputRef}
@@ -178,29 +178,29 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                 </div>
 
                 <div className={styles.field}>
-                    <label htmlFor="groupName">Tên nhóm</label>
+                    <label htmlFor="groupName">Group name</label>
                     <input
                         id="groupName"
                         type="text"
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
-                        placeholder="Nhập tên nhóm"
+                        placeholder="Enter group name"
                     />
                 </div>
 
                 {/* Tìm và thêm thành viên */}
                 <div className={styles.field}>
-                    <label htmlFor="searchUser">Thêm thành viên</label>
+                    <label htmlFor="searchUser">Add members</label>
                     <input
                         id="searchUser"
                         type="text"
                         value={searchKeyword}
                         onChange={handleSearchUser}
-                        placeholder="Tìm theo tên người dùng..."
+                        placeholder="Search by username..."
                     />
                 </div>
 
-                {isSearching && <p className={styles.hint}>Đang tìm...</p>}
+                {isSearching && <p className={styles.hint}>Searching...</p>}
 
                 {/* Danh sách kết quả tìm kiếm */}
                 {searchResults.length > 0 && (
@@ -224,7 +224,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                 {/* Danh sách những người ĐÃ ĐƯỢC CHỌN (Chips) */}
                 {selectedMembers.length > 0 && (
                     <div className={styles.selectedList}>
-                        <p className={styles.selectedLabel}>Đã chọn ({selectedMembers.length}):</p>
+                        <p className={styles.selectedLabel}>Selected ({selectedMembers.length}):</p>
                         <div className={styles.chips}>
                             {selectedMembers.map((member) => (
                                 <span key={member._id} className={styles.chip}>
@@ -238,14 +238,14 @@ export default function CreateGroupModal({ onClose, onCreated }) {
 
                 {/* Nút hành động */}
                 <div className={styles.footer}>
-                    <button className={styles.cancelBtn} onClick={onClose} type="button">Hủy</button>
+                    <button className={styles.cancelBtn} onClick={onClose} type="button">Cancel</button>
                     <button
                         className={styles.createBtn}
                         onClick={handleCreateGroup}
                         disabled={isCreating}
                         type="button"
                     >
-                        {isCreating ? 'Đang tạo...' : 'Tạo nhóm'}
+                        {isCreating ? 'Creating...' : 'Create group'}
                     </button>
                 </div>
             </div>

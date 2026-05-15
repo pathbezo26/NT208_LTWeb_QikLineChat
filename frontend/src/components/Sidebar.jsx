@@ -15,10 +15,10 @@ import { formatMessageTime } from '../utils/formatTime';
 import styles from './styles/Sidebar.module.css';
 
 const sectionTitles = {
-    messages: 'Tin nhắn',
-    contacts: 'Danh bạ',
-    groups: 'Nhóm',
-    settings: 'Cài đặt',
+    messages: 'Messages',
+    contacts: 'Contacts',
+    groups: 'Groups',
+    settings: 'Settings',
 };
 
 export default function Sidebar({ activeSection, activeConversation, onSelectConversation }) {
@@ -26,6 +26,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     const socket = useSocket();
 
     const [conversations, setConversations] = useState([]);
+    const [isLoadingConversations, setIsLoadingConversations] = useState(true);
     const [unreadConversationIds, setUnreadConversationIds] = useState(new Set());
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -37,11 +38,14 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     const [deletingId, setDeletingId] = useState(null);
 
     const loadConversations = async () => {
+        setIsLoadingConversations(true);
         try {
             const data = await getConversationsAPI();
             setConversations(data);
         } catch (error) {
             console.error('Lỗi khi tải danh sách cuộc trò chuyện:', error);
+        } finally {
+            setIsLoadingConversations(false);
         }
     };
 
@@ -116,11 +120,11 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
 
     const getConversationName = (conversation) => {
         if (conversation.type === 'group') {
-            return conversation.name || 'Nhóm không tên';
+            return conversation.name || 'Unnamed group';
         }
 
         const otherMember = conversation.members.find((member) => member._id !== user._id);
-        return otherMember?.username || 'Người dùng';
+        return otherMember?.username || 'User';
     };
 
     const getOtherMember = (conversation) => {
@@ -184,7 +188,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
             setSearchQuery('');
             setSearchResults([]);
         } catch (error) {
-            alert(error.response?.data?.message || 'Không thể tạo cuộc trò chuyện');
+            alert(error.response?.data?.message || 'Could not create conversation');
         } finally {
             setCreatingUserId(null);
         }
@@ -212,7 +216,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
             setDeleteConfirmId(null);
         } catch (error) {
             console.error('Lỗi khi xóa cuộc trò chuyện:', error);
-            alert(error.response?.data?.message || 'Không thể xóa đoạn chat, vui lòng thử lại!');
+            alert(error.response?.data?.message || 'Could not delete chat. Please try again!');
         } finally {
             setDeletingId(null);
         }
@@ -241,8 +245,8 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                 <button
                     className={`${styles.createGroupBtn} ${showGroupModal ? styles.createGroupActive : ''}`}
                     onClick={() => setShowGroupModal((current) => !current)}
-                    title="Tạo nhóm"
-                    aria-label="Tạo nhóm"
+                    title="Create group"
+                    aria-label="Create group"
                     type="button"
                 >
                     <UsergroupAddOutlined />
@@ -262,10 +266,10 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
             <div className={styles.list}>
                 {searchQuery.trim() ? (
                     <>
-                        {searchLoading && <p className={styles.empty}>Đang tìm...</p>}
+                        {searchLoading && <p className={styles.empty}>Searching...</p>}
 
                         {!searchLoading && searchResults.length === 0 && (
-                            <p className={styles.empty}>Không tìm thấy kết quả nào.</p>
+                            <p className={styles.empty}>No results found.</p>
                         )}
 
                         {!searchLoading && searchResults.map((searchUser) => (
@@ -287,8 +291,10 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                             </button>
                         ))}
                     </>
+                ) : isLoadingConversations ? (
+                    <p className={styles.empty}>Loading conversations...</p>
                 ) : conversations.length === 0 ? (
-                    <p className={styles.empty}>Chưa có cuộc trò chuyện nào.</p>
+                    <p className={styles.empty}>No conversations yet.</p>
                 ) : conversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
                     const hasUnread = unreadConversationIds.has(conv._id);
@@ -302,7 +308,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                         >
                             <UserAvatar
                                 user={otherMember}
-                                name={conv.type === 'group' ? (conv.name || 'Nhóm') : otherMember?.username}
+                                name={conv.type === 'group' ? (conv.name || 'Group') : otherMember?.username}
                                 src={conv.type === 'group' ? conv.avatar?.url : undefined}
                                 className={`${styles.convAvatar} ${conv.type === 'group' ? styles.groupAvatar : ''}`}
                                 fallback={conv.type === 'group' ? 'G' : '?'}
@@ -330,7 +336,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                     className={styles.threeDotsBtn}
                                     onClick={(e) => toggleMenu(e, conv._id)}
                                     type="button"
-                                    aria-label="Tùy chọn hội thoại"
+                                    aria-label="Conversation options"
                                 >
                                     ⋮
                                 </button>
@@ -343,7 +349,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                         {deleteConfirmId === conv._id ? (
                                             <>
                                                 <p className={styles.confirmText}>
-                                                    Xóa cuộc trò chuyện này?
+                                                    Delete this conversation?
                                                 </p>
                                                 <div className={styles.confirmActions}>
                                                     <button
@@ -352,7 +358,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                                         disabled={deletingId === conv._id}
                                                         type="button"
                                                     >
-                                                        Hủy
+                                                        Cancel
                                                     </button>
                                                     <button
                                                         className={styles.confirmDeleteBtn}
@@ -360,7 +366,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                                         disabled={deletingId === conv._id}
                                                         type="button"
                                                     >
-                                                        {deletingId === conv._id ? 'Đang xóa...' : 'Xóa'}
+                                                        {deletingId === conv._id ? 'Deleting...' : 'Delete'}
                                                     </button>
                                                 </div>
                                             </>
@@ -370,7 +376,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                                                 onClick={() => setDeleteConfirmId(conv._id)}
                                                 type="button"
                                             >
-                                                Xóa hội thoại
+                                                Delete conversation
                                             </button>
                                         )}
                                     </div>
