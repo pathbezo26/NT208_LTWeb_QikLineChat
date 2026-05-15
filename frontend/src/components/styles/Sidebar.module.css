@@ -88,10 +88,10 @@
 .item {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-height: 62px;
+  gap: 10px;
+  min-height: 66px;
   margin: 2px 0;
-  padding: 9px 10px;
+  padding: 10px;
   border: 1px solid transparent;
   border-radius: 12px;
   cursor: pointer;
@@ -165,6 +165,11 @@
   font-weight: 800;
 }
 
+.item.unread .lastMessage {
+  color: #172033;
+  font-weight: 750;
+}
+
 .convAvatar {
   width: 42px;
   height: 42px;
@@ -183,13 +188,23 @@
   flex: 1;
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
-.convTime {
+.convTime,
+.lastMessage {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.convHeader,
+.convPreview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .convName {
@@ -218,43 +233,73 @@
 .convTime {
   color: #8391a5;
   font-size: 12px;
+  line-height: 1;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.lastMessage {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.25;
 }
 
 .optionsWrapper {
-  margin-left: auto;
-  position: relative;
+  position: absolute;
+  top: 7px;
+  right: 7px;
   display: flex;
   align-items: center;
 }
 
-.unreadDot {
-  width: 9px;
-  height: 9px;
+.unreadBadge {
   flex-shrink: 0;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 0 2px #ffffff;
+  line-height: 1;
+}
+
+.unreadBadge :global(.ant-badge-count) {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #64748b;
+  box-shadow: none;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
 }
 
 .threeDotsBtn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 50%;
-  background: transparent;
+  background: #ffffff;
   color: #64748b;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 0;
   opacity: 0;
   transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
+.threeDotsBtn::before {
+  content: "\22EE";
+  font-size: 18px;
+  line-height: 1;
+}
+
 .item:hover .threeDotsBtn,
-.optionsWrapper:focus-within .threeDotsBtn {
+.optionsWrapper:focus-within .threeDotsBtn,
+.item.menuOpen .threeDotsBtn {
   opacity: 1;
+}
+
+.item:hover .convTime,
+.item.menuOpen .convTime {
+  opacity: 0;
 }
 
 .threeDotsBtn:hover {
@@ -341,4 +386,106 @@
 .confirmDeleteBtn:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+:global([data-theme='dark']) .sidebar {
+  border-right-color: #263244;
+  background: #0f1724;
+}
+
+:global([data-theme='dark']) .header,
+:global([data-theme='dark']) .actions {
+  background: #101826;
+}
+
+:global([data-theme='dark']) .actions {
+  border-bottom-color: #263244;
+}
+
+:global([data-theme='dark']) .title,
+:global([data-theme='dark']) .convName,
+:global([data-theme='dark']) .searchName {
+  color: #e5edf6;
+}
+
+:global([data-theme='dark']) .empty,
+:global([data-theme='dark']) .lastMessage,
+:global([data-theme='dark']) .convTime {
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .item:hover,
+:global([data-theme='dark']) .searchItem:hover:not(:disabled) {
+  border-color: #263244;
+  background: #162234;
+}
+
+:global([data-theme='dark']) .item.active {
+  border-color: #2a78d6;
+  background: #172b44;
+}
+
+:global([data-theme='dark']) .item.unread .convName,
+:global([data-theme='dark']) .item.unread .lastMessage {
+  color: #f8fafc;
+}
+
+:global([data-theme='dark']) .item.unread .convTime,
+:global([data-theme='dark']) .groupNameIcon,
+:global([data-theme='dark']) .searchAction {
+  color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .createGroupBtn {
+  border-color: #263244;
+  background: #111c2b;
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .createGroupBtn:hover,
+:global([data-theme='dark']) .createGroupActive {
+  border-color: #2a78d6;
+  background: #172b44;
+  color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .groupAvatar {
+  border-color: #2a78d6;
+  background: #172b44;
+  color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .unreadBadge :global(.ant-badge-count) {
+  background: #475569;
+  color: #f8fafc;
+}
+
+:global([data-theme='dark']) .threeDotsBtn {
+  background: #162234;
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .threeDotsBtn:hover {
+  background: #263244;
+  color: #e5edf6;
+}
+
+:global([data-theme='dark']) .dropdownMenu {
+  border-color: #263244;
+  background: #101826;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+}
+
+:global([data-theme='dark']) .confirmText {
+  color: #cbd5e1;
+}
+
+:global([data-theme='dark']) .cancelDeleteBtn {
+  border-color: #2d3a4d;
+  background: #111c2b;
+  color: #cbd5e1;
+}
+
+:global([data-theme='dark']) .cancelDeleteBtn:hover {
+  background: #162234;
 }

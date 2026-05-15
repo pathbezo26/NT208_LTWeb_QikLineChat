@@ -36,3 +36,23 @@
 .searchInput::placeholder {
   color: #8a97a8;
 }
+
+:global([data-theme='dark']) .searchBox {
+  border-color: #263244;
+  background: #111c2b;
+}
+
+:global([data-theme='dark']) .searchBox:focus-within {
+  border-color: #2a78d6;
+  background: #101826;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+:global([data-theme='dark']) .searchIcon,
+:global([data-theme='dark']) .searchInput::placeholder {
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .searchInput {
+  color: #e5edf6;
+}

@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Alert, Button, Popover, Upload } from 'antd';
+import { Alert, Button, Popover, Switch, Upload } from 'antd';
 import {
     ContactsOutlined,
     DeleteOutlined,
     EditOutlined,
     LogoutOutlined,
     MessageOutlined,
+    MoonOutlined,
     SettingOutlined,
+    SunOutlined,
     TeamOutlined,
     UploadOutlined,
 } from '@ant-design/icons';
@@ -33,7 +35,12 @@ const navItems = [
     },
 ];
 
-export default function AppNavRail({ activeSection, onSectionChange }) {
+export default function AppNavRail({
+    activeSection,
+    onSectionChange,
+    isDarkMode,
+    onToggleDarkMode,
+}) {
     const { user, logout, updateUser } = useAuth();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isSettingOpen, setIsSettingOpen] = useState(false);
@@ -245,6 +252,23 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
 
     const settingMenu = (
         <div className={styles.settingMenu}>
+            <div className={styles.settingRow}>
+                <div className={styles.settingText}>
+                    <span className={styles.settingTitle}>Dark mode</span>
+                    <span className={styles.settingDesc}>
+                        {isDarkMode ? 'Soft dark interface' : 'Light interface'}
+                    </span>
+                </div>
+
+                <Switch
+                    size="small"
+                    checked={isDarkMode}
+                    onChange={onToggleDarkMode}
+                    checkedChildren={<MoonOutlined />}
+                    unCheckedChildren={<SunOutlined />}
+                />
+            </div>
+
             <Button
                 className={styles.menuButton}
                 type="text"
@@ -264,6 +288,8 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                 content={profileMenu}
                 trigger="click"
                 placement="rightTop"
+                rootClassName={styles.navPopover}
+                overlayClassName={styles.navPopover}
                 open={isProfileOpen}
                 onOpenChange={(open) => {
                     setIsProfileOpen(open);
@@ -312,6 +338,8 @@ export default function AppNavRail({ activeSection, onSectionChange }) {
                     content={settingMenu}
                     trigger="click"
                     placement="rightBottom"
+                    rootClassName={styles.navPopover}
+                    overlayClassName={styles.navPopover}
                     open={isSettingOpen}
                     onOpenChange={setIsSettingOpen}
                 >

@@ -7,6 +7,7 @@ const {
     getConversations,
     createConversation,
     deleteConversation,
+    markConversationRead,
     uploadGroupAvatar,
     addMembers,
     removeMember,
@@ -47,6 +48,7 @@ router.post('/', protect, createConversation);
 
 // DELETE /api/conversations/:id - Xóa conversation theo id
 router.delete('/:id', protect, deleteConversation);
+router.patch('/:id/read', protect, markConversationRead);
 router.patch('/:id/avatar', protect, handleGroupAvatarUpload, uploadGroupAvatar);
 router.put('/:id/add', protect, addMembers);
 

@@ -4,3 +4,7 @@
     overflow: hidden;
     background: #fff;
 }
+
+.layout[data-theme='dark'] {
+    background: #0b1220;
+}

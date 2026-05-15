@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Drawer, Input, List, Spin } from 'antd';
-import { DeleteOutlined, MessageOutlined, UserAddOutlined } from '@ant-design/icons';
+import { DeleteOutlined, MessageOutlined, TeamOutlined, UserAddOutlined } from '@ant-design/icons';
 import axiosInstance from '../api/axiosInstance';
 import {
     addGroupMembersAPI,
@@ -231,8 +231,12 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                             onClick={() => setIsMemberDrawerOpen(true)}
                             type="button"
                         >
+                            <TeamOutlined />
                             {conversation.members.length} members
                         </button>
+                    )}
+                    {conversation.type === 'private' && (
+                        <span className={styles.chatStatus}>Direct message</span>
                     )}
                 </div>
             </div>

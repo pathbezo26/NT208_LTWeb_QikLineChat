@@ -1,11 +1,11 @@
 .list {
     flex: 1;
     overflow-y: auto;
-    padding: 18px 20px;
+    padding: 18px 22px;
     display: flex;
     flex-direction: column;
     gap: 0;
-    background: #f0f2f5;
+    background: #f6f8fb;
 }
 
 .empty {
@@ -13,8 +13,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f0f2f5;
-    color: #8a8d91;
+    background: #f6f8fb;
+    color: #64748b;
     font-size: 14px;
     padding: 24px;
 }
@@ -80,26 +80,27 @@
     flex-direction: column;
     gap: 3px;
     padding: 9px 13px;
-    border-radius: 8px;
+    border-radius: 12px;
     max-width: 100%;
     word-break: break-word;
 }
 
 .own .bubble {
-    background: #667eea;
-    color: #fff;
+    background: #1877f2;
+    color: #ffffff;
 }
 
 .other .bubble {
-    background: #fff;
-    color: #1c1e21;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    color: #172033;
+    border: 1px solid #e8eef5;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .senderName {
     font-size: 12px;
     font-weight: 600;
-    color: #667eea;
+    color: #1877f2;
     margin-bottom: 2px;
 }
 
@@ -114,4 +115,29 @@
     font-size: 11px;
     opacity: 0.65;
     align-self: flex-end;
+}
+
+:global([data-theme='dark']) .list,
+:global([data-theme='dark']) .empty {
+    background: #0b1220;
+}
+
+:global([data-theme='dark']) .empty {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .own .bubble {
+    background: #1d6fd8;
+    color: #ffffff;
+}
+
+:global([data-theme='dark']) .other .bubble {
+    border-color: #263244;
+    background: #101826;
+    color: #e5edf6;
+    box-shadow: none;
+}
+
+:global([data-theme='dark']) .senderName {
+    color: #8ec5ff;
 }

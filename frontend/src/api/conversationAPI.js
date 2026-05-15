@@ -42,6 +42,11 @@ export const removeGroupMemberAPI = async (conversationId, memberId) => {
     return response.data; // { message, conversation }
 };
 
+export const markConversationReadAPI = async (conversationId) => {
+    const response = await axiosInstance.patch(`/conversations/${conversationId}/read`);
+    return response.data; // { conversationId, unreadCount }
+};
+
 //Tìm kiếm users
 export const searchUsersAPI = async (keyword) => {
     // Sửa lại đường dẫn /users/search cho đúng với API bên Backend của bạn

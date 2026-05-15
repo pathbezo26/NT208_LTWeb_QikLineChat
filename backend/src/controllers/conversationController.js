@@ -8,6 +8,13 @@ const cloudinary = require('../config/cloudinary');
 // Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
 const USER_PUBLIC_FIELDS = 'username email avatar';
 const USER_COMPACT_FIELDS = 'username avatar';
+const LAST_MESSAGE_SENDER_FIELDS = 'username avatar';
+
+const addUnreadCountForUser = (conversation, userId) => {
+    const item = conversation.toObject();
+    item.unreadCount = conversation.unreadCounts?.get(userId.toString()) || 0;
+    return item;
+};
 
 const hasCloudinaryConfig = () => {
     return Boolean(
@@ -79,9 +86,12 @@ const getConversations = async (req, res) => {
         })
             .populate('members', USER_PUBLIC_FIELDS)
             .populate('createdBy', USER_COMPACT_FIELDS)
+            .populate('lastMessage.sender', LAST_MESSAGE_SENDER_FIELDS)
             .sort({ updatedAt: -1 });
 
-        res.status(200).json(conversations);
+        res.status(200).json(
+            conversations.map((conversation) => addUnreadCountForUser(conversation, userId))
+        );
     } catch (error) {
         console.error('getConversations error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -196,6 +206,37 @@ const deleteConversation = async (req, res) => {
     } catch (error) {
         console.error('deleteConversation error:', error);
         res.status(500).json({ message: 'Server error while deleting conversation' });
+    }
+};
+
+const markConversationRead = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        const isMember = conversation.members.some(
+            (memberId) => memberId.toString() === userId.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: 'You do not have permission to read this conversation' });
+        }
+
+        await Conversation.findByIdAndUpdate(conversationId, {
+            [`unreadCounts.${userId.toString()}`]: 0,
+        });
+
+        res.status(200).json({
+            conversationId,
+            unreadCount: 0,
+        });
+    } catch (error) {
+        console.error('markConversationRead error:', error);
+        res.status(500).json({ message: 'Server error while marking conversation as read' });
     }
 };
 
@@ -353,6 +394,7 @@ module.exports = {
     getConversations,
     createConversation,
     deleteConversation,
+    markConversationRead,
     uploadGroupAvatar,
     addMembers,
     removeMember,

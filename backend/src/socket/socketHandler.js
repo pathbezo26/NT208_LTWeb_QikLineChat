@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 const SOCKET_USER_FIELDS = '_id username email avatar'; // Field user gui qua socket, bao gom avatar cho realtime message.
 
 const onlineUsers = new Map(); //Mảng các user đang onl
@@ -60,12 +61,7 @@ const socketHandler = (io) => {
           content: content.trim(),
         });
 
-        // Update conversation's updatedAt for sidebar sorting
-        const conversation = await Conversation.findByIdAndUpdate(
-          conversationId,
-          { updatedAt: new Date() },
-          { returnDocument: 'after' }
-        ).select('members deletedFor');
+        const conversation = await Conversation.findById(conversationId).select('members deletedFor unreadCounts');
 
         // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
         const populated = await message.populate('sender', SOCKET_USER_FIELDS);
@@ -74,6 +70,8 @@ const socketHandler = (io) => {
         io.to(conversationId).emit('newMessage', populated);
 
         if (conversation) {
+          await updateConversationAfterMessage(conversation, message, userId);
+
           const deletedUserIds = new Set(
             (conversation.deletedFor || []).map((deletedUserId) => deletedUserId.toString())
           );

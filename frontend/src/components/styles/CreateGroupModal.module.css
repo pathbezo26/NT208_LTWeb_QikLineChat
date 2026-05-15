@@ -310,3 +310,67 @@
     padding: 18px;
   }
 }
+
+:global([data-theme='dark']) .overlay {
+  background: rgba(2, 6, 23, 0.64);
+}
+
+:global([data-theme='dark']) .modal {
+  border-color: #263244;
+  background: #101826;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+:global([data-theme='dark']) .modalHeader h3,
+:global([data-theme='dark']) .searchItem {
+  color: #e5edf6;
+}
+
+:global([data-theme='dark']) .closeBtn,
+:global([data-theme='dark']) .field input,
+:global([data-theme='dark']) .cancelBtn {
+  border-color: #263244;
+  background: #111c2b;
+  color: #cbd5e1;
+}
+
+:global([data-theme='dark']) .closeBtn:hover,
+:global([data-theme='dark']) .cancelBtn:hover,
+:global([data-theme='dark']) .searchItem:hover {
+  border-color: #2a78d6;
+  background: #172b44;
+  color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .field label,
+:global([data-theme='dark']) .selectedLabel {
+  color: #cbd5e1;
+}
+
+:global([data-theme='dark']) .field input:focus {
+  border-color: #2a78d6;
+  background: #101826;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+:global([data-theme='dark']) .hint {
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .searchList {
+  border-color: #263244;
+}
+
+:global([data-theme='dark']) .groupAvatarButton,
+:global([data-theme='dark']) .avatar,
+:global([data-theme='dark']) .chip {
+  border-color: #2a78d6;
+  background: #172b44;
+  color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .chip button,
+:global([data-theme='dark']) .addIcon,
+:global([data-theme='dark']) .avatarTextButton {
+  color: #8ec5ff;
+}

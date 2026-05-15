@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
+const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
 // Cac field sender duoc tra ve kem tin nhan; avatar giup frontend hien anh nguoi gui.
 const SENDER_PUBLIC_FIELDS = 'username avatar';
@@ -77,7 +78,7 @@ const sendMessage = async (req, res) => {
 
         // 4. Cập nhật updatedAt của conversation
         //    Dùng để Sidebar sort conversation theo tin nhắn mới nhất
-        await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() });
+        await updateConversationAfterMessage(conversation, message, userId);
 
         // 5. Populate sender rồi trả về — frontend dùng ngay để hiển thị tên/avatar
         const populated = await message.populate('sender', SENDER_PUBLIC_FIELDS);

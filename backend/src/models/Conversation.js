@@ -36,6 +36,31 @@ const ConversationSchema = new mongoose.Schema(
                 default: null,
             },
         },
+        lastMessage: {
+            messageId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Message',
+                default: null,
+            },
+            sender: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null,
+            },
+            content: {
+                type: String,
+                default: '',
+            },
+            createdAt: {
+                type: Date,
+                default: null,
+            },
+        },
+        unreadCounts: {
+            type: Map,
+            of: Number,
+            default: {},
+        },
         deletedFor: [
             {
                 type: mongoose.Schema.Types.ObjectId,
