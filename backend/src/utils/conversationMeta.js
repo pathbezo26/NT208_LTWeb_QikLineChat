@@ -30,6 +30,10 @@ const buildMessageMetaUpdate = (conversation, message, senderId) => {
         update.$inc = incUpdates;
     }
 
+    update.$pull = {
+        deletedFor: { $in: conversation.members },
+    };
+
     return update;
 };
 

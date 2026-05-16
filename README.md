@@ -21,18 +21,34 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 
 ---
 
-## Tính năng nổi bật
+## Tính năng 
 
-- **Đăng ký / Đăng nhập** bảo mật với xác thực JWT
-- **Chat 1-1 (Private Chat)** — nhắn tin riêng tư giữa hai người dùng
-- **Chat nhóm (Group Chat)** — tạo nhóm, thêm nhiều thành viên và chat cùng nhau
-- **Gửi & nhận tin nhắn thời gian thực** qua Socket.IO (không cần F5 trang)
-- **Lưu lịch sử tin nhắn** vào MongoDB, tự động tải lại khi mở cuộc trò chuyện
-- **Danh sách cuộc trò chuyện** hiển thị trên Sidebar (cả private lẫn group)
-- **Tìm kiếm người dùng** (sidebar) để bắt đầu cuộc trò chuyện mới
-- **Tạo nhóm chat** với tên nhóm và danh sách thành viên tùy chọn
-- **Avatar người dùng** — upload qua **Multer** (bộ nhớ), lưu ảnh trên **Cloudinary**; đổi / xóa avatar qua REST API
-- **Xác thực Socket** — token JWT được kiểm tra khi kết nối socket
+- **Đăng ký / đăng nhập bằng JWT** — backend tạo token sau khi đăng nhập, frontend lưu phiên đăng nhập trong `AuthContext`, `axiosInstance` tự gắn `Authorization: Bearer <token>` khi gọi API.
+- **Khôi phục phiên đăng nhập** — khi reload trang, app kiểm tra token hiện có để giữ user đang đăng nhập và hiển thị `SplashScreen` trong lúc khôi phục.
+- **Chat 1-1 realtime** — user tìm người khác, tạo private conversation và gửi tin nhắn qua Socket.IO; `ChatWindow` join room theo `conversationId`, backend broadcast `newMessage` tới room.
+- **Tạo private chat nhưng không làm phiền người được chọn khi chưa nhắn** — khi bấm `Chat` sau search, conversation mới chỉ hiện ở sidebar người tạo; người được chọn được đưa tạm vào `deletedFor`, nên bên kia chưa render conversation cho tới khi có tin nhắn đầu tiên.
+- **Tự hiện conversation cho người nhận khi có tin nhắn thật** — sau khi gửi message, backend cập nhật conversation và `$pull deletedFor` để conversation xuất hiện ở sidebar các thành viên liên quan.
+- **Chat nhóm** — tạo group với tên nhóm, chọn nhiều thành viên, phân biệt group bằng icon trong tên nhóm và avatar chữ cái/ảnh nhóm.
+- **Quản lý thành viên nhóm** — nhấn dòng số thành viên trong header group để mở drawer, tìm user để thêm vào nhóm hoặc xóa thành viên nếu có quyền.
+- **Upload ảnh nhóm** — tạo nhóm có thể chọn ảnh trước, hoặc cập nhật ảnh nhóm sau; ảnh được upload bằng Multer memory và lưu Cloudinary, frontend cập nhật ảnh ở sidebar và header chat.
+- **Avatar người dùng** — user có thể upload, đổi hoặc xóa avatar cá nhân; avatar được lưu metadata `{ url, publicId, updatedAt }` và hiển thị trong sidebar, message list, search result.
+- **Tìm kiếm user thông minh hơn** — search không phân biệt dấu tiếng Việt và chỉ match đầu mỗi từ: `ngoc` tìm được `Ngọc Lan`, `Yến Ngọc`, `Ngoc Le`; `los` không match `carlos`.
+- **Sidebar conversation list có last message** — mỗi conversation lưu `lastMessage` trực tiếp trong `Conversation`, giúp sidebar hiển thị preview nhanh mà không cần query thêm collection `messages`.
+- **Sắp xếp conversation mới nhất lên đầu** — khi có tin nhắn mới, backend cập nhật `Conversation.updatedAt`, frontend nhận `conversationUpdated` rồi đưa conversation đó lên đầu sidebar.
+- **Unread message count bền vững** — `Conversation.unreadCounts` lưu số tin chưa đọc theo từng user; khi có tin mới backend dùng `$inc` atomic để tránh sai count khi spam nhiều tin liên tục.
+- **Reset unread khi mở conversation** — khi user chọn một conversation, frontend gọi `PATCH /api/conversations/:id/read`, backend đưa unread count của user đó về `0`.
+- **Tin nhắn tới khi đang ở room khác** — sidebar vẫn nghe `conversationUpdated`, cập nhật last message, unread count và đưa conversation mới nhắn lên đầu danh sách.
+- **Tin nhắn realtime trong phòng đang mở** — nếu user đang ở đúng conversation, tin mới render trực tiếp trong `MessageList` và conversation được mark read để không tăng badge không cần thiết.
+- **Lịch sử tin nhắn có pagination / infinite scroll** — `GET /api/messages/:conversationId` hỗ trợ `limit` và `before`, frontend tải trang mới hơn/ cũ hơn theo cursor để không load toàn bộ lịch sử một lần.
+- **Nút nhảy tới tin chưa đọc** — khi conversation có unread count, `MessageList` có thể đưa user tới khu vực tin mới/chưa đọc để đọc nhanh hơn.
+- **Typing indicator** — khi user gõ, `ChatInput` emit `typing`; khi dừng gõ hoặc gửi tin thì emit `stopTyping`, bên còn lại thấy trạng thái đang nhập.
+- **Xóa conversation theo từng user** — dùng `deletedFor` để ẩn conversation khỏi sidebar của user hiện tại thay vì xóa cứng dữ liệu conversation/message.
+- **Delete conversation UI an toàn hơn** — menu ba chấm chỉ hiện khi hover trong sidebar, có bước xác nhận trước khi xóa conversation khỏi danh sách của user.
+- **Dark mode** — bật/tắt trong Settings, lưu lựa chọn vào `localStorage`, dùng `ConfigProvider` của Ant Design để các thành phần như Popover/Drawer/Button/Input đổi theme đồng bộ.
+- **UI sidebar chuyên nghiệp hơn** — hiển thị avatar, tên, icon group, last message, thời gian sát phải, unread badge nhỏ màu xám, nút ba chấm chỉ xuất hiện khi hover.
+- **UI message bubble dễ đọc** — tin nhắn được nhóm theo người gửi, bubble liên tiếp có khoảng cách nhỏ hơn, avatar chỉ hiện ở tin đầu của cụm, giúp đoạn chat nhìn gọn hơn.
+- **Bảo vệ Socket.IO bằng JWT** — socket kiểm tra token ngay khi kết nối; user không hợp lệ không được tham gia room hoặc gửi tin.
+- **Validate dữ liệu đầu vào** — giới hạn độ dài message, giới hạn avatar/group image 2MB, chỉ nhận JPG/PNG/WEBP, kiểm tra quyền member trước khi đọc/gửi tin hoặc quản lý nhóm.
 
 ---
 

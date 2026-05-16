@@ -104,14 +104,8 @@ const socketHandler = (io) => {
 
         await updateConversationAfterMessage(conversation, message, userId);
 
-        const deletedUserIds = new Set(
-          (conversation.deletedFor || []).map((deletedUserId) => deletedUserId.toString())
-        );
-
         conversation.members.forEach((memberId) => {
           const memberIdString = memberId.toString();
-
-          if (deletedUserIds.has(memberIdString)) return;
 
           io.to(`user:${memberIdString}`).emit('conversationUpdated', {
             conversationId,

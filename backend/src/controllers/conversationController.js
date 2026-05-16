@@ -163,6 +163,9 @@ const createConversation = async (req, res) => {
             name: type === 'group' ? name : null,
             members: finalMembers,
             createdBy: userId,
+            deletedFor: type === 'private'
+                ? finalMembers.filter((memberId) => memberId !== userId.toString())
+                : [],
         });
 
         // Populate data trước khi trả về, bao gồm avatar để UI dùng ngay
