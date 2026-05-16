@@ -61,6 +61,11 @@ const ConversationSchema = new mongoose.Schema(
             of: Number,
             default: {},
         },
+        deletedAtBy: {
+            type: Map,
+            of: Date,
+            default: {},
+        },
         deletedFor: [
             {
                 type: mongoose.Schema.Types.ObjectId,

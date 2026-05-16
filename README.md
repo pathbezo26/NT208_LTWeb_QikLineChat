@@ -40,15 +40,27 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 - **Tin nhắn tới khi đang ở room khác** — sidebar vẫn nghe `conversationUpdated`, cập nhật last message, unread count và đưa conversation mới nhắn lên đầu danh sách.
 - **Tin nhắn realtime trong phòng đang mở** — nếu user đang ở đúng conversation, tin mới render trực tiếp trong `MessageList` và conversation được mark read để không tăng badge không cần thiết.
 - **Lịch sử tin nhắn có pagination / infinite scroll** — `GET /api/messages/:conversationId` hỗ trợ `limit` và `before`, frontend tải trang mới hơn/ cũ hơn theo cursor để không load toàn bộ lịch sử một lần.
-- **Nút nhảy tới tin chưa đọc** — khi conversation có unread count, `MessageList` có thể đưa user tới khu vực tin mới/chưa đọc để đọc nhanh hơn.
+- 🎨 **UI: Nút nhảy tới tin chưa đọc** — hỗ trợ đọc nhanh khu vực tin mới trong `MessageList`.
 - **Typing indicator** — khi user gõ, `ChatInput` emit `typing`; khi dừng gõ hoặc gửi tin thì emit `stopTyping`, bên còn lại thấy trạng thái đang nhập.
 - **Xóa conversation theo từng user** — dùng `deletedFor` để ẩn conversation khỏi sidebar của user hiện tại thay vì xóa cứng dữ liệu conversation/message.
-- **Delete conversation UI an toàn hơn** — menu ba chấm chỉ hiện khi hover trong sidebar, có bước xác nhận trước khi xóa conversation khỏi danh sách của user.
-- **Dark mode** — bật/tắt trong Settings, lưu lựa chọn vào `localStorage`, dùng `ConfigProvider` của Ant Design để các thành phần như Popover/Drawer/Button/Input đổi theme đồng bộ.
-- **UI sidebar chuyên nghiệp hơn** — hiển thị avatar, tên, icon group, last message, thời gian sát phải, unread badge nhỏ màu xám, nút ba chấm chỉ xuất hiện khi hover.
-- **UI message bubble dễ đọc** — tin nhắn được nhóm theo người gửi, bubble liên tiếp có khoảng cách nhỏ hơn, avatar chỉ hiện ở tin đầu của cụm, giúp đoạn chat nhìn gọn hơn.
+- 🎨 **UI: Delete conversation an toàn hơn** — menu ba chấm chỉ hiện khi hover và có bước xác nhận trước khi xóa.
+- 🎨 **UI: Dark mode** — bật/tắt trong Settings, đồng bộ màu với Ant Design qua `ConfigProvider`.
+- 🎨 **UI: Sidebar chuyên nghiệp hơn** — avatar, tên, icon group, last message, thời gian sát phải và unread badge gọn hơn.
+- 🎨 **UI: Message bubble dễ đọc** — nhóm tin theo người gửi, giảm khoảng cách bubble liên tiếp và chỉ hiện avatar ở đầu cụm.
 - **Bảo vệ Socket.IO bằng JWT** — socket kiểm tra token ngay khi kết nối; user không hợp lệ không được tham gia room hoặc gửi tin.
 - **Validate dữ liệu đầu vào** — giới hạn độ dài message, giới hạn avatar/group image 2MB, chỉ nhận JPG/PNG/WEBP, kiểm tra quyền member trước khi đọc/gửi tin hoặc quản lý nhóm.
+- **Cache tin nhắn theo room để chuyển chat nhanh hơn** — `ChatWindow` lưu message state theo `conversationId`, nên khi user chọn room khác rồi quay lại room cũ, UI có thể hiển thị lại dữ liệu từ cache trước khi gọi API mới.
+- **Ẩn lịch sử cũ sau khi delete conversation** — khi user xóa conversation, backend lưu mốc `deletedAtBy[userId]` và trả thêm `deletedAt` cho user hiện tại; nếu người kia nhắn lại thì conversation hiện lại, nhưng `getMessages` và cache frontend chỉ hiển thị tin nhắn sau mốc xóa đó.
+- **Optimistic UI khi gửi tin nhắn** — tin nhắn của mình được render ngay với trạng thái `sending` trước khi server xác nhận, sau đó được thay bằng message thật từ backend thông qua `clientMessageId`.
+- **Retry khi gửi tin nhắn thất bại** — nếu socket ack lỗi hoặc timeout, message chuyển sang trạng thái `failed` và hiển thị nút `Retry` để gửi lại nội dung cũ.
+- 🎨 **UI: Bộ đếm ký tự khi nhập tin** — hiển thị `current/5000` và disable gửi nội dung rỗng.
+- 🎨 **UI: Giữ vị trí scroll khi tải tin cũ** — load thêm message cũ mà không làm màn hình bị nhảy.
+- 🎨 **UI: Tự cuộn xuống tin mới hợp lý** — chỉ auto-scroll khi user đang ở gần cuối cuộc trò chuyện.
+- 🎨 **UI: Skeleton loading** — sidebar và message list có skeleton khi đang tải dữ liệu.
+- **Debounce khi search user** — thanh search chờ một khoảng ngắn trước khi gọi API, tránh gọi backend liên tục theo từng phím bấm.
+- **Đổi username trong menu tài khoản** — user có thể đổi tên hiển thị trong popover avatar, frontend validate độ dài và backend kiểm tra trùng username trước khi lưu.
+- **Đăng xuất từ avatar/settings menu** — user có thể logout từ menu tài khoản hoặc Settings, frontend xóa token và quay về luồng đăng nhập.
+- 🎨 **UI: Avatar fallback an toàn** — ảnh lỗi hoặc chưa có ảnh thì hiển thị chữ cái đầu của username.
 
 ---
 

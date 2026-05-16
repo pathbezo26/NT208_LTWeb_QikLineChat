@@ -11,8 +11,12 @@ const USER_COMPACT_FIELDS = 'username avatar';
 const LAST_MESSAGE_SENDER_FIELDS = 'username avatar';
 
 const addUnreadCountForUser = (conversation, userId) => {
+    const userIdString = userId.toString();
     const item = conversation.toObject();
-    item.unreadCount = conversation.unreadCounts?.get(userId.toString()) || 0;
+
+    item.unreadCount = conversation.unreadCounts?.get(userIdString) || 0;
+    item.deletedAt = conversation.deletedAtBy?.get(userIdString) || null;
+
     return item;
 };
 
@@ -166,6 +170,14 @@ const createConversation = async (req, res) => {
             deletedFor: type === 'private'
                 ? finalMembers.filter((memberId) => memberId !== userId.toString())
                 : [],
+            deletedAtBy: type === 'private'
+                ? finalMembers
+                    .filter((memberId) => memberId !== userId.toString())
+                    .reduce((result, memberId) => {
+                        result[memberId] = new Date();
+                        return result;
+                    }, {})
+                : {},
         });
 
         // Populate data trước khi trả về, bao gồm avatar để UI dùng ngay
@@ -203,8 +215,11 @@ const deleteConversation = async (req, res) => {
         );
         if (!alreadyDeleted) {
             conversation.deletedFor.push(userId);
-            await conversation.save();
         }
+
+        conversation.deletedAtBy.set(userId.toString(), new Date());
+        conversation.unreadCounts.set(userId.toString(), 0);
+        await conversation.save();
 
         res.status(200).json({
             message: 'Conversation removed from your list',

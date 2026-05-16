@@ -37,6 +37,30 @@ const mergeMessages = (currentMessages, incomingMessages) => {
     });
 };
 
+const getDeletedAtForUser = (conversation, userId) => {
+    if (conversation?.deletedAt) return conversation.deletedAt;
+
+    const deletedAtBy = conversation?.deletedAtBy;
+    if (!deletedAtBy || !userId) return null;
+
+    if (deletedAtBy instanceof Map) {
+        return deletedAtBy.get(userId) || null;
+    }
+
+    return deletedAtBy[userId] || null;
+};
+
+const filterMessagesAfterDeletedAt = (items, deletedAt) => {
+    if (!deletedAt) return items || [];
+
+    const deletedTime = new Date(deletedAt).getTime();
+    if (Number.isNaN(deletedTime)) return items || [];
+
+    return (items || []).filter((message) => {
+        return new Date(message.createdAt).getTime() > deletedTime;
+    });
+};
+
 export default function ChatWindow({ conversation, onConversationUpdated }) {
     const socket = useSocket();
     const { user } = useAuth();
@@ -79,7 +103,9 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
 
         let ignore = false;
         const requestConversationId = conversation._id;
+        const deletedAt = getDeletedAtForUser(conversation, user._id);
         const cachedState = messageCacheRef.current.get(requestConversationId);
+        const cachedMessages = filterMessagesAfterDeletedAt(cachedState?.messages, deletedAt);
         const initialUnreadCount = conversation.unreadCount || 0;
 
         const fetchMessages = async () => {
@@ -90,10 +116,13 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
 
                 if (!ignore && activeConversationIdRef.current === requestConversationId) {
                     if (cachedState) {
-                        setMessages((prevMessages) => mergeMessages(prevMessages, data.messages || []));
+                        setMessages((prevMessages) => {
+                            const visiblePreviousMessages = filterMessagesAfterDeletedAt(prevMessages, deletedAt);
+                            return mergeMessages(visiblePreviousMessages, data.messages || []);
+                        });
                         setMessagesConversationId(requestConversationId);
-                        setHasMoreMessages(Boolean(cachedState.hasMore || data.hasMore));
-                        setNextCursor(cachedState.nextCursor || data.nextCursor || null);
+                        setHasMoreMessages(Boolean(deletedAt ? data.hasMore : cachedState.hasMore || data.hasMore));
+                        setNextCursor(deletedAt ? data.nextCursor || null : cachedState.nextCursor || data.nextCursor || null);
                         return;
                     }
 
@@ -110,10 +139,10 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         };
 
         if (cachedState) {
-            setMessages(cachedState.messages || []);
+            setMessages(cachedMessages);
             setMessagesConversationId(requestConversationId);
-            setHasMoreMessages(Boolean(cachedState.hasMore));
-            setNextCursor(cachedState.nextCursor || null);
+            setHasMoreMessages(Boolean(deletedAt ? false : cachedState.hasMore));
+            setNextCursor(deletedAt ? null : cachedState.nextCursor || null);
         } else {
             setMessages([]);
             setMessagesConversationId(requestConversationId);
@@ -130,7 +159,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         return () => {
             ignore = true;
         };
-    }, [conversation]);
+    }, [conversation, user._id]);
 
     useEffect(() => {
         if (!socket || !conversation) return;
@@ -422,10 +451,11 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
     };
 
     const cachedDisplayState = messageCacheRef.current.get(conversation._id);
+    const deletedAt = getDeletedAtForUser(conversation, user._id);
     const isMessageStateReady = messagesConversationId === conversation._id;
     const displayedMessages = isMessageStateReady
-        ? messages
-        : cachedDisplayState?.messages || [];
+        ? filterMessagesAfterDeletedAt(messages, deletedAt)
+        : filterMessagesAfterDeletedAt(cachedDisplayState?.messages, deletedAt);
     const displayedHasMoreMessages = isMessageStateReady
         ? hasMoreMessages
         : Boolean(cachedDisplayState?.hasMore);

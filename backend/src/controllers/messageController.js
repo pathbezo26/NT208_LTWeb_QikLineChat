@@ -21,6 +21,34 @@ const isConversationMember = (conversation, userId) => {
         .includes(userId.toString());
 };
 
+const getVisibleMessagesQuery = (conversation, userId, before) => {
+    const query = { conversationId: conversation._id, deletedBy: { $ne: userId } };
+    const createdAtFilter = {};
+    const deletedAt = conversation.deletedAtBy?.get(userId.toString());
+
+    if (deletedAt) {
+        createdAtFilter.$gt = deletedAt;
+    }
+
+    if (before) {
+        const beforeDate = new Date(before);
+
+        if (Number.isNaN(beforeDate.getTime())) {
+            const error = new Error('Invalid before cursor');
+            error.status = 400;
+            throw error;
+        }
+
+        createdAtFilter.$lt = beforeDate;
+    }
+
+    if (Object.keys(createdAtFilter).length > 0) {
+        query.createdAt = createdAtFilter;
+    }
+
+    return query;
+};
+
 const getMessages = async (req, res) => {
     try {
         const { conversationId } = req.params;
@@ -36,17 +64,7 @@ const getMessages = async (req, res) => {
         }
 
         const limit = normalizeLimit(req.query.limit);
-        const query = { conversationId, deletedBy: { $ne: userId } };
-
-        if (req.query.before) {
-            const beforeDate = new Date(req.query.before);
-
-            if (Number.isNaN(beforeDate.getTime())) {
-                return res.status(400).json({ message: 'Invalid before cursor' });
-            }
-
-            query.createdAt = { $lt: beforeDate };
-        }
+        const query = getVisibleMessagesQuery(conversation, userId, req.query.before);
 
         const messagesDesc = await Message.find(query)
             .populate('sender', SENDER_PUBLIC_FIELDS)
@@ -64,6 +82,10 @@ const getMessages = async (req, res) => {
             nextCursor,
         });
     } catch (error) {
+        if (error.status === 400) {
+            return res.status(400).json({ message: error.message });
+        }
+
         console.error('getMessages error:', error);
         res.status(500).json({ message: 'Server error' });
     }
