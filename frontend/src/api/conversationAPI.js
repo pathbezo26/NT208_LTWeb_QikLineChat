@@ -6,6 +6,11 @@ export const getConversationsAPI = async () => {
     return response.data;
 };
 
+export const getConversationAPI = async (conversationId) => {
+    const response = await axiosInstance.get(`/conversations/${conversationId}`);
+    return response.data;
+};
+
 // Tạo conversation mới
 // params: { type: 'private'|'group', name?: string, members: [userId, ...] }
 export const createConversationAPI = async (data) => {

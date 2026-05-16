@@ -36,6 +36,25 @@ const handleAvatarUpload = (req, res, next) => {
 };
 
 // PATCH /api/users/me/avatar — upload hoặc thay avatar của user hiện tại
+const normalizeSearchText = (value) => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+};
+
+const isWordStartMatch = (username, keyword) => {
+  const normalizedUsername = normalizeSearchText(username);
+  const normalizedKeyword = normalizeSearchText(keyword);
+
+  return (
+    normalizedUsername.startsWith(normalizedKeyword) ||
+    normalizedUsername.includes(` ${normalizedKeyword}`)
+  );
+};
+
 router.patch('/me/avatar', protect, handleAvatarUpload, uploadAvatar);
 
 // DELETE /api/users/me/avatar — xóa avatar của user hiện tại
@@ -46,18 +65,22 @@ router.patch('/me/username', protect, updateUsername);
 // GET /api/users/search?q=keyword — search users by username (exclude self)
 router.get('/search', protect, async (req, res) => {
   const { q } = req.query;
-  if (!q || !q.trim()) return res.json([]);
+  const keyword = q?.trim();
+
+  if (!keyword) return res.json([]);
 
   try {
-    const users = await User.find({
-      username: { $regex: q.trim(), $options: 'i' },
-      _id: { $ne: req.user.id },
-    })
+    const users = await User.find({ _id: { $ne: req.user.id } })
       // Tra them avatar de frontend hien anh trong ket qua tim kiem user.
       .select('_id username email avatar')
-      .limit(20);
+      .sort({ username: 1 })
+      .lean();
 
-    res.json(users);
+    const matchedUsers = users
+      .filter((user) => isWordStartMatch(user.username, keyword))
+      .slice(0, 20);
+
+    res.json(matchedUsers);
   } catch (err) {
     res.status(500).json({ message: 'Server error.', error: err.message });
   }

@@ -5,6 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 const {
     getConversations,
+    getConversationById,
     createConversation,
     deleteConversation,
     markConversationRead,
@@ -42,6 +43,7 @@ const handleGroupAvatarUpload = (req, res, next) => {
 };
 
 router.get('/', protect, getConversations);
+router.get('/:id', protect, getConversationById);
 
 // POST /api/conversations — Tạo conversation mới (private hoặc group)
 router.post('/', protect, createConversation);

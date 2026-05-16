@@ -47,6 +47,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(false);
     const [nextCursor, setNextCursor] = useState(null);
+    const [entryUnreadCount, setEntryUnreadCount] = useState(0);
     const [typingUsers, setTypingUsers] = useState([]);
     const activeConversationIdRef = useRef(null);
     const isLoadingOlderRef = useRef(false);
@@ -79,6 +80,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         let ignore = false;
         const requestConversationId = conversation._id;
         const cachedState = messageCacheRef.current.get(requestConversationId);
+        const initialUnreadCount = conversation.unreadCount || 0;
 
         const fetchMessages = async () => {
             setIsLoading(!cachedState);
@@ -121,6 +123,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
 
         isLoadingOlderRef.current = false;
         setIsLoadingOlder(false);
+        setEntryUnreadCount(initialUnreadCount);
         setTypingUsers([]);
         fetchMessages();
 
@@ -463,6 +466,8 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                 messages={displayedMessages}
                 currentUserId={user._id}
                 hasMore={displayedHasMoreMessages}
+                conversationId={conversation._id}
+                initialUnreadCount={entryUnreadCount}
                 isInitialLoading={shouldShowInitialSkeleton}
                 isLoadingOlder={isLoadingOlder}
                 onLoadOlder={loadOlderMessages}

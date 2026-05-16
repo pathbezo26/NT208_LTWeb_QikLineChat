@@ -1,4 +1,6 @@
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { Badge } from 'antd';
+import { UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
@@ -7,6 +9,8 @@ const getSenderId = (message) => {
     return typeof message.sender === 'object' ? message.sender._id : message.sender;
 };
 
+const getMessageKey = (message) => message._id || message.clientMessageId;
+
 const SCROLL_TOP_THRESHOLD = 80;
 const SCROLL_BOTTOM_THRESHOLD = 120;
 
@@ -14,6 +18,8 @@ export default function MessageList({
     messages,
     currentUserId,
     hasMore,
+    conversationId,
+    initialUnreadCount,
     isInitialLoading,
     isLoadingOlder,
     onLoadOlder,
@@ -25,6 +31,10 @@ export default function MessageList({
     const previousLastMessageIdRef = useRef(null);
     const shouldStickToBottomRef = useRef(true);
     const preserveScrollRef = useRef(null);
+    const unreadMessageRefs = useRef(new Map());
+    const seenUnreadMessageIdsRef = useRef(new Set());
+    const unreadCount = initialUnreadCount || 0;
+    const [remainingUnreadCount, setRemainingUnreadCount] = useState(unreadCount);
 
     const isNearBottom = useCallback(() => {
         const list = listRef.current;
@@ -33,11 +43,53 @@ export default function MessageList({
         return list.scrollHeight - list.scrollTop - list.clientHeight < SCROLL_BOTTOM_THRESHOLD;
     }, []);
 
+    const getUnreadMessageIds = useCallback(() => {
+        if (unreadCount <= 0 || !messages.length) return [];
+
+        const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
+
+        return messages
+            .slice(firstUnreadIndex)
+            .map(getMessageKey)
+            .filter(Boolean);
+    }, [messages, unreadCount]);
+
+    const updateSeenUnreadMessages = useCallback(() => {
+        const list = listRef.current;
+        if (!list || unreadCount <= 0) return;
+
+        const listRect = list.getBoundingClientRect();
+        const unreadMessageIds = getUnreadMessageIds();
+        let hasNewSeenMessage = false;
+
+        unreadMessageIds.forEach((messageId) => {
+            if (seenUnreadMessageIdsRef.current.has(messageId)) return;
+
+            const messageNode = unreadMessageRefs.current.get(messageId);
+            if (!messageNode) return;
+
+            const messageRect = messageNode.getBoundingClientRect();
+            const visibleHeight = Math.min(messageRect.bottom, listRect.bottom)
+                - Math.max(messageRect.top, listRect.top);
+            const minimumReadableHeight = Math.min(messageRect.height * 0.5, 48);
+
+            if (visibleHeight >= minimumReadableHeight) {
+                seenUnreadMessageIdsRef.current.add(messageId);
+                hasNewSeenMessage = true;
+            }
+        });
+
+        if (!hasNewSeenMessage) return;
+
+        setRemainingUnreadCount(Math.max(unreadCount - seenUnreadMessageIdsRef.current.size, 0));
+    }, [getUnreadMessageIds, unreadCount]);
+
     const handleScroll = useCallback(() => {
         const list = listRef.current;
         if (!list) return;
 
         shouldStickToBottomRef.current = isNearBottom();
+        updateSeenUnreadMessages();
 
         if (list.scrollTop > SCROLL_TOP_THRESHOLD || !hasMore || isLoadingOlder || !onLoadOlder) return;
 
@@ -46,7 +98,17 @@ export default function MessageList({
             top: list.scrollTop,
         };
         onLoadOlder();
-    }, [hasMore, isLoadingOlder, isNearBottom, onLoadOlder]);
+    }, [hasMore, isLoadingOlder, isNearBottom, onLoadOlder, updateSeenUnreadMessages]);
+
+    useLayoutEffect(() => {
+        previousMessageCountRef.current = 0;
+        previousLastMessageIdRef.current = null;
+        preserveScrollRef.current = null;
+        shouldStickToBottomRef.current = true;
+        unreadMessageRefs.current.clear();
+        seenUnreadMessageIdsRef.current.clear();
+        requestAnimationFrame(() => setRemainingUnreadCount(unreadCount));
+    }, [conversationId, unreadCount]);
 
     useLayoutEffect(() => {
         const list = listRef.current;
@@ -72,9 +134,32 @@ export default function MessageList({
             });
         }
 
+        requestAnimationFrame(updateSeenUnreadMessages);
+
         previousMessageCountRef.current = messages.length;
         previousLastMessageIdRef.current = lastMessageId;
-    }, [messages]);
+    }, [messages, updateSeenUnreadMessages]);
+
+    const setUnreadMessageRef = useCallback((messageId, node) => {
+        if (!messageId) return;
+
+        if (node) {
+            unreadMessageRefs.current.set(messageId, node);
+            return;
+        }
+
+        unreadMessageRefs.current.delete(messageId);
+    }, []);
+
+    const handleJumpToUnread = () => {
+        const list = listRef.current;
+        if (!list) return;
+
+        list.scrollTo({
+            top: Math.max(list.scrollTop - list.clientHeight * 0.9, 0),
+            behavior: 'smooth',
+        });
+    };
 
     if (isInitialLoading) {
         return (
@@ -120,10 +205,14 @@ export default function MessageList({
                 const senderName = message.sender?.username || 'User';
                 const isSending = isMyMessage && message.status === 'sending';
                 const isFailed = isMyMessage && message.status === 'failed';
+                const messageKey = getMessageKey(message);
+                const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
+                const isInitialUnreadMessage = unreadCount > 0 && index >= firstUnreadIndex;
 
                 return (
                     <div
-                        key={message._id || index}
+                        key={messageKey || index}
+                        ref={isInitialUnreadMessage ? (node) => setUnreadMessageRef(messageKey, node) : undefined}
                         className={`${styles.row} ${isMyMessage ? styles.own : styles.other} ${isFirstInGroup ? styles.groupStart : styles.groupContinue} ${isSending ? styles.sending : ''}`}
                     >
                         {!isMyMessage && (
@@ -176,6 +265,21 @@ export default function MessageList({
             })}
 
             <div ref={messagesEndRef} />
+
+            {remainingUnreadCount > 0 && (
+                <button
+                    className={styles.unreadJump}
+                    onClick={handleJumpToUnread}
+                    type="button"
+                    aria-label={`${remainingUnreadCount} unread messages above`}
+                >
+                    <Badge count={remainingUnreadCount} overflowCount={99} size="small">
+                        <span className={styles.unreadJumpIcon}>
+                            <UpOutlined />
+                        </span>
+                    </Badge>
+                </button>
+            )}
         </div>
     );
 }

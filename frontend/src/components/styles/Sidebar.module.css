@@ -85,6 +85,93 @@
   text-align: center;
 }
 
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 34px 24px;
+  color: #64748b;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  background: #edf6ff;
+  color: #156bd8;
+  font-size: 24px;
+}
+
+.emptyState p {
+  margin: 0;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.emptyState span {
+  max-width: 220px;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.skeletonList {
+  display: grid;
+  gap: 4px;
+}
+
+.skeletonItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 66px;
+  padding: 10px;
+}
+
+.skeletonAvatar,
+.skeletonLine,
+.skeletonLineShort {
+  background: linear-gradient(90deg, #e9eef6 0%, #f5f8fc 45%, #e9eef6 100%);
+  background-size: 180% 100%;
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeletonContent {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.skeletonLine,
+.skeletonLineShort {
+  height: 12px;
+  border-radius: 999px;
+}
+
+.skeletonLine {
+  width: 72%;
+}
+
+.skeletonLineShort {
+  width: 46%;
+}
+
 .item {
   display: flex;
   align-items: center;
@@ -388,6 +475,16 @@
   opacity: 0.65;
 }
 
+@keyframes skeletonPulse {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 :global([data-theme='dark']) .sidebar {
   border-right-color: #263244;
   background: #0f1724;
@@ -412,6 +509,26 @@
 :global([data-theme='dark']) .lastMessage,
 :global([data-theme='dark']) .convTime {
   color: #94a3b8;
+}
+
+:global([data-theme='dark']) .emptyState p {
+  color: #e5edf6;
+}
+
+:global([data-theme='dark']) .emptyState span {
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .emptyIcon {
+  background: #172b44;
+  color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .skeletonAvatar,
+:global([data-theme='dark']) .skeletonLine,
+:global([data-theme='dark']) .skeletonLineShort {
+  background: linear-gradient(90deg, #172234 0%, #202d42 45%, #172234 100%);
+  background-size: 180% 100%;
 }
 
 :global([data-theme='dark']) .item:hover,

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TeamOutlined, UsergroupAddOutlined } from '@ant-design/icons';
-import { Badge } from 'antd';
+import { Badge, message as antdMessage } from 'antd';
 import axiosInstance from '../api/axiosInstance';
 import {
     createConversationAPI,
     deleteConversationAPI,
+    getConversationAPI,
     getConversationsAPI,
     markConversationReadAPI,
 } from '../api/conversationAPI';
@@ -23,6 +24,14 @@ const sectionTitles = {
     settings: 'Settings',
 };
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+const sortConversationsByUpdatedAt = (items) => {
+    return [...items].sort((first, second) => {
+        return new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime();
+    });
+};
+
 export default function Sidebar({ activeSection, activeConversation, onSelectConversation }) {
     const { user } = useAuth();
     const socket = useSocket();
@@ -37,6 +46,10 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     const [openMenuId, setOpenMenuId] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
+    const [messageApi, contextHolder] = antdMessage.useMessage();
+    const conversationUpdateRequestRef = useRef({});
+
+    const activeConversationId = activeConversation?._id;
 
     const loadConversations = async () => {
         setIsLoadingConversations(true);
@@ -55,6 +68,42 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     }, []);
 
     useEffect(() => {
+        const keyword = searchQuery.trim();
+
+        if (!keyword) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return undefined;
+        }
+
+        let ignore = false;
+        const debounceTimer = setTimeout(async () => {
+            setSearchLoading(true);
+
+            try {
+                const res = await axiosInstance.get(`/users/search?q=${encodeURIComponent(keyword)}`);
+
+                if (!ignore) {
+                    setSearchResults(res.data.filter((searchUser) => searchUser._id !== user._id));
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                if (!ignore) {
+                    setSearchResults([]);
+                    messageApi.error('Could not search users.');
+                }
+            } finally {
+                if (!ignore) setSearchLoading(false);
+            }
+        }, SEARCH_DEBOUNCE_MS);
+
+        return () => {
+            ignore = true;
+            clearTimeout(debounceTimer);
+        };
+    }, [messageApi, searchQuery, user._id]);
+
+    useEffect(() => {
         const handleClickOutside = () => {
             setOpenMenuId(null);
             setDeleteConfirmId(null);
@@ -71,41 +120,44 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
         if (!socket || !user) return;
 
         const handleConversationUpdated = async ({ conversationId }) => {
+            const requestNumber = (conversationUpdateRequestRef.current[conversationId] || 0) + 1;
+            conversationUpdateRequestRef.current[conversationId] = requestNumber;
 
             try {
-                const freshConversations = await getConversationsAPI();
-                const isActiveConversation = activeConversation?._id === conversationId;
+                const isActiveConversation = activeConversationId === conversationId;
 
                 if (isActiveConversation) {
                     await markConversationReadAPI(conversationId);
                 }
 
-                setConversations(() => {
-                    const updatedConversation = freshConversations.find(
-                        (conversation) => conversation._id === conversationId
-                    );
+                const updatedConversation = await getConversationAPI(conversationId);
+                if (conversationUpdateRequestRef.current[conversationId] !== requestNumber) return;
 
-                    if (!updatedConversation) return freshConversations;
+                const normalizedConversation = isActiveConversation
+                    ? { ...updatedConversation, unreadCount: 0 }
+                    : updatedConversation;
 
-                    if (isActiveConversation) {
-                        updatedConversation.unreadCount = 0;
-                    }
-
-                    const otherConversations = freshConversations.filter(
-                        (conversation) => conversation._id !== conversationId
-                    );
-
-                    return [updatedConversation, ...otherConversations];
+                setConversations((prev) => {
+                    const otherConversations = prev.filter((conversation) => conversation._id !== conversationId);
+                    return sortConversationsByUpdatedAt([normalizedConversation, ...otherConversations]);
                 });
+
+                if (isActiveConversation) {
+                    onSelectConversation(normalizedConversation);
+                }
             } catch (error) {
                 console.error('Sidebar update error:', error);
+
+                if (error.response?.status === 404) {
+                    setConversations((prev) => prev.filter((conversation) => conversation._id !== conversationId));
+                }
             }
         };
 
         socket.on('conversationUpdated', handleConversationUpdated);
 
         return () => socket.off('conversationUpdated', handleConversationUpdated);
-    }, [socket, user, activeConversation]);
+    }, [socket, user, activeConversationId, onSelectConversation]);
 
     const getConversationName = (conversation) => {
         if (conversation.type === 'group') {
@@ -165,27 +217,8 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
         }
     };
 
-    const handleSearchUsers = async (e) => {
-        const value = e.target.value;
-        setSearchQuery(value);
-
-        if (!value.trim()) {
-            setSearchResults([]);
-            setSearchLoading(false);
-            return;
-        }
-
-        setSearchLoading(true);
-
-        try {
-            const res = await axiosInstance.get(`/users/search?q=${encodeURIComponent(value)}`);
-            setSearchResults(res.data.filter((searchUser) => searchUser._id !== user._id));
-        } catch (error) {
-            console.error('Search error:', error);
-            setSearchResults([]);
-        } finally {
-            setSearchLoading(false);
-        }
+    const handleSearchUsers = (e) => {
+        setSearchQuery(e.target.value);
     };
 
     const handleStartChat = async (targetUser) => {
@@ -201,7 +234,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
             setSearchQuery('');
             setSearchResults([]);
         } catch (error) {
-            alert(error.response?.data?.message || 'Could not create conversation');
+            messageApi.error(error.response?.data?.message || 'Could not create conversation');
         } finally {
             setCreatingUserId(null);
         }
@@ -224,7 +257,7 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
             setDeleteConfirmId(null);
         } catch (error) {
             console.error('Lỗi khi xóa cuộc trò chuyện:', error);
-            alert(error.response?.data?.message || 'Could not delete chat. Please try again!');
+            messageApi.error(error.response?.data?.message || 'Could not delete chat. Please try again!');
         } finally {
             setDeletingId(null);
         }
@@ -237,6 +270,8 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     };
 
     return (
+        <>
+        {contextHolder}
         <aside className={styles.sidebar}>
             <div className={styles.header}>
                 <h2 className={styles.title}>
@@ -300,9 +335,25 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                         ))}
                     </>
                 ) : isLoadingConversations ? (
-                    <p className={styles.empty}>Loading conversations...</p>
+                    <div className={styles.skeletonList} aria-label="Loading conversations">
+                        {[0, 1, 2, 3, 4].map((item) => (
+                            <div className={styles.skeletonItem} key={item}>
+                                <span className={styles.skeletonAvatar} />
+                                <span className={styles.skeletonContent}>
+                                    <span className={styles.skeletonLine} />
+                                    <span className={styles.skeletonLineShort} />
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 ) : conversations.length === 0 ? (
-                    <p className={styles.empty}>No conversations yet.</p>
+                    <div className={styles.emptyState}>
+                        <div className={styles.emptyIcon}>
+                            <TeamOutlined />
+                        </div>
+                        <p>No conversations yet</p>
+                        <span>Search for someone or create a group to start chatting.</span>
+                    </div>
                 ) : conversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
                     const unreadCount = conv.unreadCount || 0;
@@ -410,5 +461,6 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
                 })}
             </div>
         </aside>
+        </>
     );
 }

@@ -2,21 +2,7 @@ const Conversation = require('../models/Conversation');
 
 const buildMessageMetaUpdate = (conversation, message, senderId) => {
     const senderIdString = senderId.toString();
-    const unreadUpdates = {};
-
-    conversation.members.forEach((memberId) => {
-        const memberIdString = memberId.toString();
-
-        if (memberIdString === senderIdString) {
-            unreadUpdates[`unreadCounts.${memberIdString}`] = 0;
-            return;
-        }
-
-        const currentUnread = conversation.unreadCounts?.get(memberIdString) || 0;
-        unreadUpdates[`unreadCounts.${memberIdString}`] = currentUnread + 1;
-    });
-
-    return {
+    const setUpdates = {
         updatedAt: new Date(),
         lastMessage: {
             messageId: message._id,
@@ -24,8 +10,27 @@ const buildMessageMetaUpdate = (conversation, message, senderId) => {
             content: message.content,
             createdAt: message.createdAt,
         },
-        ...unreadUpdates,
+        [`unreadCounts.${senderIdString}`]: 0,
     };
+    const incUpdates = {};
+
+    conversation.members.forEach((memberId) => {
+        const memberIdString = memberId.toString();
+
+        if (memberIdString === senderIdString) {
+            return;
+        }
+
+        incUpdates[`unreadCounts.${memberIdString}`] = 1;
+    });
+
+    const update = { $set: setUpdates };
+
+    if (Object.keys(incUpdates).length > 0) {
+        update.$inc = incUpdates;
+    }
+
+    return update;
 };
 
 const updateConversationAfterMessage = async (conversation, message, senderId) => {

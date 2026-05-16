@@ -16,6 +16,13 @@ const addUnreadCountForUser = (conversation, userId) => {
     return item;
 };
 
+const populateConversationForSidebar = (query) => {
+    return query
+        .populate('members', USER_PUBLIC_FIELDS)
+        .populate('createdBy', USER_COMPACT_FIELDS)
+        .populate('lastMessage.sender', LAST_MESSAGE_SENDER_FIELDS);
+};
+
 const hasCloudinaryConfig = () => {
     return Boolean(
         process.env.CLOUDINARY_CLOUD_NAME &&
@@ -80,13 +87,10 @@ const getConversations = async (req, res) => {
 
         // Tìm tất cả conversation mà user là thành viên
         // populate members để frontend hiển thị info người dùng, bao gồm avatar
-        const conversations = await Conversation.find({
+        const conversations = await populateConversationForSidebar(Conversation.find({
             members: userId,
             deletedFor: { $ne: userId },
-        })
-            .populate('members', USER_PUBLIC_FIELDS)
-            .populate('createdBy', USER_COMPACT_FIELDS)
-            .populate('lastMessage.sender', LAST_MESSAGE_SENDER_FIELDS)
+        }))
             .sort({ updatedAt: -1 });
 
         res.status(200).json(
@@ -237,6 +241,28 @@ const markConversationRead = async (req, res) => {
     } catch (error) {
         console.error('markConversationRead error:', error);
         res.status(500).json({ message: 'Server error while marking conversation as read' });
+    }
+};
+
+const getConversationById = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const conversationId = req.params.id;
+
+        const conversation = await populateConversationForSidebar(Conversation.findOne({
+            _id: conversationId,
+            members: userId,
+            deletedFor: { $ne: userId },
+        }));
+
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        res.status(200).json(addUnreadCountForUser(conversation, userId));
+    } catch (error) {
+        console.error('getConversationById error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
@@ -392,6 +418,7 @@ const removeMember = async (req, res) => {
 
 module.exports = {
     getConversations,
+    getConversationById,
     createConversation,
     deleteConversation,
     markConversationRead,
