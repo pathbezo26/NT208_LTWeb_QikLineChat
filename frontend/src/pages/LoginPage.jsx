@@ -29,7 +29,7 @@ export default function LoginPage() {
             // Thành công thì chuyển trang
             navigate('/chat');
         } catch (err) {
-            setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+            setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -40,17 +40,17 @@ export default function LoginPage() {
             <div className={styles.container}>
                 {/* Cột trái: Text */}
                 <div className={styles.leftSide}>
-                    <div className={styles.brandBadge}>Trò chuyện nhanh hơn mỗi ngày</div>
+                    <div className={styles.brandBadge}>Chat faster every day</div>
                     <h1 className={styles.logo}>QikLine</h1>
                     <h2 className={styles.tagline}>
-                        Khám phá những điều bạn yêu thích và kết nối với mọi người.
+                        Discover what you love and connect with everyone.
                     </h2>
                     <p className={styles.sideText}>
-                        Một không gian trò chuyện đơn giản, nhanh và dễ bắt đầu.
+                        A simple, fast chat space that is easy to get started with.
                     </p>
                     <div className={styles.sideStatus}>
                         <span className={styles.statusDot}></span>
-                        <span>Sẵn sàng kết nối</span>
+                        <span>Ready to connect</span>
                     </div>
                 </div>
 
@@ -58,9 +58,9 @@ export default function LoginPage() {
                 <div className={styles.rightSide}>
                     <div className={styles.card}>
                         <div className={styles.cardHeader}>
-                            <div className={styles.cardEyebrow}>Xin chào</div>
-                            <div className={styles.cardTitle}>Đăng nhập vào QikLine</div>
-                            <p className={styles.cardSubtitle}>Nhập thông tin của bạn để tiếp tục trò chuyện.</p>
+                            <div className={styles.cardEyebrow}>Hello</div>
+                            <div className={styles.cardTitle}>Sign in to QikLine</div>
+                            <p className={styles.cardSubtitle}>Enter your details to continue chatting.</p>
                         </div>
 
                         {error && <div className={styles.error}>{error}</div>}
@@ -73,7 +73,7 @@ export default function LoginPage() {
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
-                                    placeholder="Email hoặc số điện thoại"
+                                    placeholder="Email or phone number"
                                     required
                                 />
                             </div>
@@ -85,13 +85,13 @@ export default function LoginPage() {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    placeholder="Mật khẩu"
+                                    placeholder="Password"
                                     required
                                 />
                             </div>
 
                             <button type="submit" className={styles.btnPrimary} disabled={isLoading}>
-                                {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
+                                {isLoading ? 'Processing...' : 'Sign in'}
                             </button>
                         </form>
 
@@ -99,7 +99,7 @@ export default function LoginPage() {
 
                         <div className={styles.switchContainer}>
                             <Link to="/register" className={styles.btnSecondary}>
-                                Tạo tài khoản mới
+                                Create a new account
                             </Link>
                         </div>
                     </div>

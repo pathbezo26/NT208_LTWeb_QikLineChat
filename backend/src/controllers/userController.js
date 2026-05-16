@@ -1,0 +1,170 @@
+const User = require('../models/User');
+const cloudinary = require('../config/cloudinary');
+
+const getPublicUser = (user) => ({
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    avatar: {
+        url: user.avatar?.url || null,
+        publicId: user.avatar?.publicId || null,
+        updatedAt: user.avatar?.updatedAt || null,
+    },
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+});
+
+const uploadBufferToCloudinary = (fileBuffer, userId) => {
+    return new Promise((resolve, reject) => {
+        // Upload stream cho phep day file tu memory cua multer len Cloudinary, khong can luu file tam tren server.
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'qikline/avatars',
+                public_id: `user_${userId}_${Date.now()}`,
+                resource_type: 'image',
+                overwrite: true,
+                transformation: [
+                    { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+                    { quality: 'auto', fetch_format: 'auto' },
+                ],
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
+
+        uploadStream.end(fileBuffer);
+    });
+};
+
+const hasCloudinaryConfig = () => {
+    return Boolean(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+    );
+};
+
+// PATCH /api/users/me/username
+// Doi username cua user hien tai, validate trung username truoc khi luu.
+const updateUsername = async (req, res) => {
+    try {
+        const username = req.body.username?.trim();
+
+        if (!username) {
+            return res.status(400).json({ message: 'Please enter a username' });
+        }
+
+        if (username.length < 3 || username.length > 30) {
+            return res.status(400).json({ message: 'Username must be 3 to 30 characters' });
+        }
+
+        const existingUser = await User.findOne({
+            username,
+            _id: { $ne: req.user._id },
+        });
+
+        if (existingUser) {
+            return res.status(409).json({ message: 'Username is already taken' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.username = username;
+        await user.save();
+
+        res.status(200).json({
+            message: 'Username updated successfully',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('Update username error:', error);
+        res.status(500).json({ message: 'Server error while updating username' });
+    }
+};
+
+// PATCH /api/users/me/avatar
+// Nhan file avatar tu frontend, upload len Cloudinary, roi chi luu URL/publicId vao MongoDB.
+const uploadAvatar = async (req, res) => {
+    try {
+        if (!hasCloudinaryConfig()) {
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please select an avatar image' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const oldAvatarPublicId = user.avatar?.publicId;
+        const uploadedAvatar = await uploadBufferToCloudinary(req.file.buffer, user._id);
+
+        user.avatar = {
+            url: uploadedAvatar.secure_url,
+            publicId: uploadedAvatar.public_id,
+            updatedAt: new Date(),
+        };
+
+        await user.save();
+
+        // Xoa anh cu sau khi DB da luu anh moi; neu cleanup loi thi khong lam hong ket qua upload.
+        if (oldAvatarPublicId) {
+            cloudinary.uploader.destroy(oldAvatarPublicId).catch((error) => {
+                console.error('Delete old avatar error:', error);
+            });
+        }
+
+        res.status(200).json({
+            message: 'Avatar updated successfully',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('Upload avatar error:', error);
+        res.status(500).json({ message: 'Server error while updating avatar' });
+    }
+};
+
+// DELETE /api/users/me/avatar
+// Xoa avatar tren Cloudinary va xoa metadata avatar trong MongoDB.
+const deleteAvatar = async (req, res) => {
+    try {
+        if (!hasCloudinaryConfig()) {
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.avatar?.publicId) {
+            await cloudinary.uploader.destroy(user.avatar.publicId);
+        }
+
+        user.avatar = {
+            url: null,
+            publicId: null,
+            updatedAt: null,
+        };
+
+        await user.save();
+
+        res.status(200).json({
+            message: 'Avatar deleted successfully',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('Delete avatar error:', error);
+        res.status(500).json({ message: 'Server error while deleting avatar' });
+    }
+};
+
+module.exports = { uploadAvatar, deleteAvatar, updateUsername };

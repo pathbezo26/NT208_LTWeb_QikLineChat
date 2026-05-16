@@ -4,32 +4,45 @@ const User = require('../models/User');
 
 // ─── Hàm tạo JWT token ────────────────────────────────────────────────────────
 const generateToken = (user) => {
-    return jwt.sign({ id: user._id, username: user.username },
+    return jwt.sign(
+        { id: user._id, username: user.username },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 };
 
-// ─── POST /api/auth/register ──────────────────────────────────────────────────
+const formatAuthUser = (user) => ({
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    avatar: {
+        url: user.avatar?.url || null,
+        publicId: user.avatar?.publicId || null,
+        updatedAt: user.avatar?.updatedAt || null,
+    },
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+});
+
 const register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
         // 1. Validate đầu vào
         if (!username || !email || !password) {
-            return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+            return res.status(400).json({ message: 'Please fill in all fields' });
         }
         if (password.length < 6) {
-            return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+            return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
 
         // 2. Kiểm tra email hoặc username đã tồn tại chưa
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
         if (existingUser) {
             if (existingUser.email === email.toLowerCase()) {
-                return res.status(409).json({ message: 'Email đã được sử dụng' });
+                return res.status(409).json({ message: 'Email is already in use' });
             }
-            return res.status(409).json({ message: 'Username đã được sử dụng' });
+            return res.status(409).json({ message: 'Username is already taken' });
         }
 
         // 3. Hash password (salt rounds = 12)
@@ -42,20 +55,14 @@ const register = async (req, res) => {
         // 5. Tạo JWT và trả về
         const token = generateToken(user);
 
-
         res.status(201).json({
-            message: 'Đăng ký thành công',
+            message: 'Registration successful',
             token,
-            user: {
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                createdAt: user.createdAt,
-            },
+            user: formatAuthUser(user),
         });
     } catch (error) {
         console.error('Register error:', error);
-        res.status(500).json({ message: 'Lỗi server, vui lòng thử lại' });
+        res.status(500).json({ message: 'Server error, please try again' });
     }
 };
 
@@ -66,37 +73,32 @@ const login = async (req, res) => {
 
         // 1. Validate đầu vào
         if (!email || !password) {
-            return res.status(400).json({ message: 'Vui lòng nhập email và mật khẩu' });
+            return res.status(400).json({ message: 'Please enter email and password' });
         }
 
         // 2. Tìm user theo email
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
-            return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
+            return res.status(401).json({ message: 'Invalid email or password' });
         }
 
         // 3. So sánh password
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
+            return res.status(401).json({ message: 'Invalid email or password' });
         }
 
         // 4. Tạo JWT và trả về
         const token = generateToken(user);
 
         res.status(200).json({
-            message: 'Đăng nhập thành công',
+            message: 'Login successful',
             token,
-            user: {
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                createdAt: user.createdAt,
-            },
+            user: formatAuthUser(user),
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ message: 'Lỗi server, vui lòng thử lại' });
+        res.status(500).json({ message: 'Server error, please try again' });
     }
 };
 
@@ -105,10 +107,10 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
     try {
         res.status(200).json({
-            user: req.user
+            user: formatAuthUser(req.user),
         });
     } catch (err) {
-        res.status(500).json({ message: 'Lỗi server.', error: err.message });
+        res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 

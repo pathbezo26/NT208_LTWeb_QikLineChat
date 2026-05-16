@@ -14,9 +14,12 @@ const MessageSchema = new mongoose.Schema(
         },
         content: {
             type: String,
-            required: [true, 'Nội dung tin nhắn không được rỗng'],
+            required: [true, 'Message content cannot be empty'],
             trim: true,
+            maxlength: [5000, 'Message content cannot exceed 5000 characters'],
         },
+        deliveredTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },
     { timestamps: true }

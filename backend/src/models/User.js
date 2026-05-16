@@ -5,23 +5,37 @@ const UserSchema = new mongoose.Schema(
     {
         username: {
             type: String,
-            required: [true, 'Username là bắt buộc'],
+            required: [true, 'Username is required'],
             unique: true,
             trim: true,
-            minlength: [3, 'Username phải có ít nhất 3 ký tự'],
-            maxlength: [30, 'Username tối đa 30 ký tự'],
+            minlength: [3, 'Username must be at least 3 characters'],
+            maxlength: [30, 'Username must be at most 30 characters'],
         },
         email: {
             type: String,
-            required: [true, 'Email là bắt buộc'],
+            required: [true, 'Email is required'],
             unique: true,
             trim: true,
             lowercase: true,
-            match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ'],
+            match: [/^\S+@\S+\.\S+$/, 'Invalid email'],
         },
         passwordHash: {
             type: String,
-            required: [true, 'Password là bắt buộc'],
+            required: [true, 'Password is required'],
+        },
+        avatar: {
+            url: {
+                type: String,
+                default: null,
+            },
+            publicId: {
+                type: String,
+                default: null,
+            },
+            updatedAt: {
+                type: Date,
+                default: null,
+            },
         },
     },
     { timestamps: true }

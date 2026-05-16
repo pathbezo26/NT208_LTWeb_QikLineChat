@@ -1,104 +1,354 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { Badge, Tooltip } from 'antd';
+import { UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
+import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
 
-export default function MessageList({ messages, currentUserId }) {
-    // Đổi tên ref cho rõ nghĩa: Đây là điểm cuối cùng của danh sách tin nhắn
+const getSenderId = (message) => {
+    if (!message?.sender) return null;
+    return typeof message.sender === 'object' ? (message.sender._id || message.sender.id || message.sender.toString?.()) : message.sender;
+};
+
+const getMessageKey = (message) => message._id || message.clientMessageId;
+
+const getUserId = (user) => {
+    if (!user) return null;
+    return typeof user === 'object' ? (user._id || user.id || user.toString?.()) : user;
+};
+
+const hasUserId = (items = [], userId) => {
+    if (!Array.isArray(items) || !userId) return false;
+    return items.some((item) => getUserId(item)?.toString() === userId?.toString());
+};
+
+const SCROLL_TOP_THRESHOLD = 80;
+const SCROLL_BOTTOM_THRESHOLD = 120;
+const MESSAGE_GROUP_TIME_GAP_MS = 5 * 60 * 1000;
+
+const getMessageTime = (message) => {
+    const time = new Date(message?.createdAt).getTime();
+    return Number.isNaN(time) ? 0 : time;
+};
+
+const isSameMessageGroup = (firstMessage, secondMessage) => {
+    if (!firstMessage || !secondMessage) return false;
+
+    const firstSenderId = getSenderId(firstMessage);
+    const secondSenderId = getSenderId(secondMessage);
+    if (!firstSenderId || firstSenderId !== secondSenderId) return false;
+
+    return Math.abs(getMessageTime(firstMessage) - getMessageTime(secondMessage)) <= MESSAGE_GROUP_TIME_GAP_MS;
+};
+
+export default function MessageList({
+    messages,
+    currentUserId,
+    hasMore,
+    conversationId,
+    initialUnreadCount,
+    isInitialLoading,
+    isLoadingOlder,
+    conversationMembers = [],
+    onLoadOlder,
+    onRetryMessage,
+}) {
+    const listRef = useRef(null);
     const messagesEndRef = useRef(null);
+    const previousMessageCountRef = useRef(0);
+    const previousLastMessageIdRef = useRef(null);
+    const shouldStickToBottomRef = useRef(true);
+    const preserveScrollRef = useRef(null);
+    const unreadMessageRefs = useRef(new Map());
+    const seenUnreadMessageIdsRef = useRef(new Set());
+    const unreadCount = initialUnreadCount || 0;
+    const [remainingUnreadCount, setRemainingUnreadCount] = useState(unreadCount);
 
-    // 1. Tự động cuộn xuống tin nhắn mới nhất mỗi khi mảng messages thay đổi
-    useEffect(() => {
-        // Dấu ?. giúp tránh lỗi nếu thẻ div chưa kịp render (còn đang là null)
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    const isNearBottom = useCallback(() => {
+        const list = listRef.current;
+        if (!list) return true;
 
-    // 2. Giao diện trạng thái trống (Chưa có tin nhắn)
-    if (!messages || messages.length === 0) {
+        return list.scrollHeight - list.scrollTop - list.clientHeight < SCROLL_BOTTOM_THRESHOLD;
+    }, []);
+
+    const getUnreadMessageIds = useCallback(() => {
+        if (unreadCount <= 0 || !messages.length) return [];
+
+        const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
+
+        return messages
+            .slice(firstUnreadIndex)
+            .map(getMessageKey)
+            .filter(Boolean);
+    }, [messages, unreadCount]);
+
+    const updateSeenUnreadMessages = useCallback(() => {
+        const list = listRef.current;
+        if (!list || unreadCount <= 0) return;
+
+        const listRect = list.getBoundingClientRect();
+        const unreadMessageIds = getUnreadMessageIds();
+        let hasNewSeenMessage = false;
+
+        unreadMessageIds.forEach((messageId) => {
+            if (seenUnreadMessageIdsRef.current.has(messageId)) return;
+
+            const messageNode = unreadMessageRefs.current.get(messageId);
+            if (!messageNode) return;
+
+            const messageRect = messageNode.getBoundingClientRect();
+            const visibleHeight = Math.min(messageRect.bottom, listRect.bottom)
+                - Math.max(messageRect.top, listRect.top);
+            const minimumReadableHeight = Math.min(messageRect.height * 0.5, 48);
+
+            if (visibleHeight >= minimumReadableHeight) {
+                seenUnreadMessageIdsRef.current.add(messageId);
+                hasNewSeenMessage = true;
+            }
+        });
+
+        if (!hasNewSeenMessage) return;
+
+        setRemainingUnreadCount(Math.max(unreadCount - seenUnreadMessageIdsRef.current.size, 0));
+    }, [getUnreadMessageIds, unreadCount]);
+
+    const handleScroll = useCallback(() => {
+        const list = listRef.current;
+        if (!list) return;
+
+        shouldStickToBottomRef.current = isNearBottom();
+        updateSeenUnreadMessages();
+
+        if (list.scrollTop > SCROLL_TOP_THRESHOLD || !hasMore || isLoadingOlder || !onLoadOlder) return;
+
+        preserveScrollRef.current = {
+            height: list.scrollHeight,
+            top: list.scrollTop,
+        };
+        onLoadOlder();
+    }, [hasMore, isLoadingOlder, isNearBottom, onLoadOlder, updateSeenUnreadMessages]);
+
+    useLayoutEffect(() => {
+        previousMessageCountRef.current = 0;
+        previousLastMessageIdRef.current = null;
+        preserveScrollRef.current = null;
+        shouldStickToBottomRef.current = true;
+        unreadMessageRefs.current.clear();
+        seenUnreadMessageIdsRef.current.clear();
+        requestAnimationFrame(() => setRemainingUnreadCount(unreadCount));
+    }, [conversationId, unreadCount]);
+
+    useLayoutEffect(() => {
+        const list = listRef.current;
+        if (!list) return;
+
+        if (preserveScrollRef.current) {
+            const previousScroll = preserveScrollRef.current;
+            list.scrollTop = list.scrollHeight - previousScroll.height + previousScroll.top;
+            preserveScrollRef.current = null;
+            previousMessageCountRef.current = messages.length;
+            previousLastMessageIdRef.current = messages.at(-1)?._id || null;
+            return;
+        }
+
+        const previousMessageCount = previousMessageCountRef.current;
+        const previousLastMessageId = previousLastMessageIdRef.current;
+        const lastMessageId = messages.at(-1)?._id || null;
+        const didAppendMessage = messages.length >= previousMessageCount && lastMessageId !== previousLastMessageId;
+
+        if (previousMessageCount === 0 || (didAppendMessage && shouldStickToBottomRef.current)) {
+            messagesEndRef.current?.scrollIntoView({
+                behavior: previousMessageCount === 0 ? 'auto' : 'smooth',
+            });
+        }
+
+        requestAnimationFrame(updateSeenUnreadMessages);
+
+        previousMessageCountRef.current = messages.length;
+        previousLastMessageIdRef.current = lastMessageId;
+    }, [messages, updateSeenUnreadMessages]);
+
+    const setUnreadMessageRef = useCallback((messageId, node) => {
+        if (!messageId) return;
+
+        if (node) {
+            unreadMessageRefs.current.set(messageId, node);
+            return;
+        }
+
+        unreadMessageRefs.current.delete(messageId);
+    }, []);
+
+    const handleJumpToUnread = () => {
+        const list = listRef.current;
+        if (!list) return;
+
+        list.scrollTo({
+            top: Math.max(list.scrollTop - list.clientHeight * 0.9, 0),
+            behavior: 'smooth',
+        });
+    };
+
+    const getMyMessageStatus = (message) => {
+        if (message.status === 'sending' || message.status === 'failed') return '';
+
+        const recipientIds = (Array.isArray(conversationMembers) ? conversationMembers : [])
+            .map(getUserId)
+            .filter((memberId) => memberId && memberId !== currentUserId);
+
+        if (recipientIds.length === 0) return 'Sent';
+
+        const readCount = recipientIds.filter((memberId) => hasUserId(message.readBy, memberId)).length;
+        if (readCount > 0) {
+            return recipientIds.length === 1 ? 'Read' : `Read ${readCount}/${recipientIds.length}`;
+        }
+
+        const deliveredCount = recipientIds.filter((memberId) => hasUserId(message.deliveredTo, memberId)).length;
+        if (deliveredCount > 0) {
+            return recipientIds.length === 1 ? 'Delivered' : `Delivered ${deliveredCount}/${recipientIds.length}`;
+        }
+
+        return 'Sent';
+    };
+
+    if (isInitialLoading) {
         return (
-            <div className={styles.empty}>
-                <p>Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện! 👋</p>
+            <div className={styles.list} ref={listRef}>
+                <div className={`${styles.skeletonRow} ${styles.skeletonOther}`}>
+                    <span className={styles.skeletonAvatar} />
+                    <span className={styles.skeletonBubble} />
+                </div>
+                <div className={`${styles.skeletonRow} ${styles.skeletonOwn}`}>
+                    <span className={styles.skeletonBubbleShort} />
+                </div>
+                <div className={`${styles.skeletonRow} ${styles.skeletonOther}`}>
+                    <span className={styles.skeletonAvatar} />
+                    <span className={styles.skeletonBubbleWide} />
+                </div>
             </div>
         );
     }
 
-    // 3. Render danh sách tin nhắn
+    if (!messages || messages.length === 0) {
+        return (
+            <div className={styles.empty} ref={listRef}>
+                <p>No messages yet. Start the conversation!</p>
+            </div>
+        );
+    }
+
     return (
-        <div className={styles.list}>
+        <div className={styles.list} ref={listRef} onScroll={handleScroll}>
+            {hasMore && (
+                <div className={styles.historyLoader}>
+                    {isLoadingOlder ? 'Loading older messages...' : 'Scroll up for older messages'}
+                </div>
+            )}
+
             {messages.map((message, index) => {
-                // --- XỬ LÝ DỮ LIỆU ĐẦU VÀO ---
-                // Tùy cách backend viết (có dùng .populate() hay không), sender có thể là 1 Object hoặc 1 chuỗi ID.
-                // Ta thống nhất lấy ra chuỗi ID để dễ so sánh.
-                const senderId = typeof message.sender === 'object' ? message.sender._id : message.sender;
-
-                // Tin nhắn này có phải do chính mình gửi không?
+                const senderId = getSenderId(message);
                 const isMyMessage = senderId === currentUserId;
-
-                // --- LOGIC HIỂN THỊ AVATAR ---
-                // Quy tắc: Chỉ hiện Avatar cho tin nhắn của NGƯỜI KHÁC.
-                // Nếu một người nhắn liên tiếp 3 tin, ta chỉ hiện Avatar ở tin nhắn ĐẦU TIÊN của người đó.
-                let shouldShowAvatar = false;
-
-                if (!isMyMessage) {
-                    if (index === 0) {
-                        // Nếu đây là tin nhắn đầu tiên của cả đoạn chat -> Chắc chắn phải hiện
-                        shouldShowAvatar = true;
-                    } else {
-                        // Lấy tin nhắn liền kề trước đó ra để kiểm tra
-                        const previousMessage = messages[index - 1];
-                        const previousSenderId = typeof previousMessage.sender === 'object'
-                            ? previousMessage.sender._id
-                            : previousMessage.sender;
-
-                        // Nếu người nhắn tin trước KHÁC với người nhắn tin này -> Hiện Avatar
-                        if (previousSenderId !== senderId) {
-                            shouldShowAvatar = true;
-                        }
-                    }
-                }
-
-                // Lấy tên người gửi và cắt chữ cái đầu tiên (VD: "Nam" -> "N")
-                const senderName = message.sender?.username || 'Người dùng';
-                const firstLetter = senderName.charAt(0).toUpperCase();
+                const previousMessage = messages[index - 1];
+                const nextMessage = messages[index + 1];
+                const isFirstInGroup = !isSameMessageGroup(previousMessage, message);
+                const isLastInGroup = !isSameMessageGroup(message, nextMessage);
+                const shouldShowAvatar = !isMyMessage && isFirstInGroup;
+                const senderName = message.sender?.username || 'User';
+                const isSending = isMyMessage && message.status === 'sending';
+                const isFailed = isMyMessage && message.status === 'failed';
+                const myMessageStatus = isMyMessage ? getMyMessageStatus(message) : '';
+                const shouldShowMeta = isLastInGroup || isSending || isFailed;
+                const messageKey = getMessageKey(message);
+                const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
+                const isInitialUnreadMessage = unreadCount > 0 && index >= firstUnreadIndex;
 
                 return (
                     <div
-                        key={message._id || index} // Dùng _id làm key là chuẩn nhất
-                        className={`${styles.row} ${isMyMessage ? styles.own : styles.other}`}
+                        key={messageKey || index}
+                        ref={isInitialUnreadMessage ? (node) => setUnreadMessageRef(messageKey, node) : undefined}
+                        className={`${styles.row} ${isMyMessage ? styles.own : styles.other} ${isFirstInGroup ? styles.groupStart : styles.groupContinue} ${isSending ? styles.sending : ''}`}
                     >
-                        {/* Cột hiển thị Avatar bên trái (Chỉ dành cho tin nhắn của người khác) */}
                         {!isMyMessage && (
                             <div className={styles.avatarSlot}>
                                 {shouldShowAvatar ? (
-                                    <div className={styles.avatar} title={senderName}>
-                                        {firstLetter}
-                                    </div>
+                                    <UserAvatar
+                                        user={message.sender}
+                                        name={senderName}
+                                        className={styles.avatar}
+                                    />
                                 ) : (
-                                    // Thẻ div trống (tàng hình) để giữ chỗ, giúp các bong bóng chat thẳng hàng nhau
                                     <div className={styles.avatarBlank} />
                                 )}
                             </div>
                         )}
 
-                        {/* Khung chứa nội dung tin nhắn (Bong bóng chat) */}
-                        <div className={styles.bubble} title={formatFullTime(message.createdAt)}>
+                        <div className={styles.messageStack}>
+                            <Tooltip
+                                title={formatFullTime(message.createdAt)}
+                                placement={isMyMessage ? 'left' : 'right'}
+                                mouseEnterDelay={0.35}
+                            >
+                                <div
+                                    className={styles.bubble}
+                                    tabIndex={0}
+                                    aria-label={`${message.content}. Sent ${formatFullTime(message.createdAt)}`}
+                                >
+                                    {!isMyMessage && shouldShowAvatar && message.sender?.username && (
+                                        <span className={styles.senderName}>{message.sender.username}</span>
+                                    )}
 
-                            {/* Hiện tên người gửi ở ngay trên tin nhắn đầu tiên của họ */}
-                            {!isMyMessage && shouldShowAvatar && message.sender?.username && (
-                                <span className={styles.senderName}>{message.sender.username}</span>
+                                    <p className={styles.content}>{message.content}</p>
+                                </div>
+                            </Tooltip>
+
+                            {shouldShowMeta && (
+                                <span className={styles.meta}>
+                                    <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
+                                    {myMessageStatus && <span className={styles.status}>{myMessageStatus}</span>}
+
+                                    {isSending && (
+                                        <span
+                                            className={styles.sendingDot}
+                                            title="Sending"
+                                            aria-label="Sending"
+                                        />
+                                    )}
+
+                                    {isFailed && (
+                                        <span className={styles.failed}>
+                                            Failed
+                                            <button
+                                                className={styles.retryBtn}
+                                                onClick={() => onRetryMessage?.(message)}
+                                                type="button"
+                                            >
+                                                Retry
+                                            </button>
+                                        </span>
+                                    )}
+                                </span>
                             )}
-
-                            {/* Nội dung chính */}
-                            <p className={styles.content}>{message.content}</p>
-
-                            {/* Thời gian gửi (VD: 10:30) */}
-                            <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
                         </div>
                     </div>
                 );
             })}
 
-            {/* Một thẻ div tàng hình nằm ở cuối danh sách để làm "mục tiêu" cho hàm scrollIntoView cuộn tới */}
             <div ref={messagesEndRef} />
+
+            {remainingUnreadCount > 0 && (
+                <button
+                    className={styles.unreadJump}
+                    onClick={handleJumpToUnread}
+                    type="button"
+                    aria-label={`${remainingUnreadCount} unread messages above`}
+                >
+                    <Badge count={remainingUnreadCount} overflowCount={99} size="small">
+                        <span className={styles.unreadJumpIcon}>
+                            <UpOutlined />
+                        </span>
+                    </Badge>
+                </button>
+            )}
         </div>
     );
 }

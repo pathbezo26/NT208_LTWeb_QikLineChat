@@ -22,6 +22,50 @@ const ConversationSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
+        avatar: {
+            url: {
+                type: String,
+                default: null,
+            },
+            publicId: {
+                type: String,
+                default: null,
+            },
+            updatedAt: {
+                type: Date,
+                default: null,
+            },
+        },
+        lastMessage: {
+            messageId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Message',
+                default: null,
+            },
+            sender: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null,
+            },
+            content: {
+                type: String,
+                default: '',
+            },
+            createdAt: {
+                type: Date,
+                default: null,
+            },
+        },
+        unreadCounts: {
+            type: Map,
+            of: Number,
+            default: {},
+        },
+        deletedAtBy: {
+            type: Map,
+            of: Date,
+            default: {},
+        },
         deletedFor: [
             {
                 type: mongoose.Schema.Types.ObjectId,

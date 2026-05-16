@@ -1,88 +1,135 @@
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
+const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
-// ─── GET /api/messages/:conversationId ───────────────────────────────────────
-// Lấy toàn bộ lịch sử tin nhắn của 1 conversation
-// Frontend gọi khi người dùng mở 1 đoạn chat
+const SENDER_PUBLIC_FIELDS = 'username avatar';
+const DEFAULT_MESSAGE_LIMIT = 30;
+const MAX_MESSAGE_LIMIT = 50;
+const MAX_MESSAGE_LENGTH = 5000;
+
+const normalizeLimit = (value) => {
+    const parsed = Number.parseInt(value, 10);
+
+    if (Number.isNaN(parsed) || parsed <= 0) return DEFAULT_MESSAGE_LIMIT;
+
+    return Math.min(parsed, MAX_MESSAGE_LIMIT);
+};
+
+const isConversationMember = (conversation, userId) => {
+    return conversation.members
+        .map((id) => id.toString())
+        .includes(userId.toString());
+};
+
+const getVisibleMessagesQuery = (conversation, userId, before) => {
+    const query = { conversationId: conversation._id, deletedBy: { $ne: userId } };
+    const createdAtFilter = {};
+    const deletedAt = conversation.deletedAtBy?.get(userId.toString());
+
+    if (deletedAt) {
+        createdAtFilter.$gt = deletedAt;
+    }
+
+    if (before) {
+        const beforeDate = new Date(before);
+
+        if (Number.isNaN(beforeDate.getTime())) {
+            const error = new Error('Invalid before cursor');
+            error.status = 400;
+            throw error;
+        }
+
+        createdAtFilter.$lt = beforeDate;
+    }
+
+    if (Object.keys(createdAtFilter).length > 0) {
+        query.createdAt = createdAtFilter;
+    }
+
+    return query;
+};
+
 const getMessages = async (req, res) => {
     try {
         const { conversationId } = req.params;
         const userId = req.user._id;
 
-        // 1. Kiểm tra conversation có tồn tại không
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
-        // 2. Kiểm tra user có phải thành viên của conversation không
-        //    Dùng .toString() vì MongoDB trả về ObjectId, cần so sánh với string
-        const isMember = conversation.members
-            .map((id) => id.toString())
-            .includes(userId.toString());
-
-        if (!isMember) {
-            return res.status(403).json({ message: 'Bạn không có quyền xem cuộc trò chuyện này' });
+        if (!isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to view this conversation' });
         }
 
-        // 3. Lấy tin nhắn, sắp xếp từ cũ đến mới (createdAt tăng dần)
-        //    populate sender để frontend hiển thị tên người gửi
-        const messages = await Message.find({ conversationId, deletedBy: { $ne: userId } })
-            .populate('sender', 'username')
-            .sort({ createdAt: 1 });
+        const limit = normalizeLimit(req.query.limit);
+        const query = getVisibleMessagesQuery(conversation, userId, req.query.before);
 
-        res.status(200).json(messages);
+        const messagesDesc = await Message.find(query)
+            .populate('sender', SENDER_PUBLIC_FIELDS)
+            .sort({ createdAt: -1 })
+            .limit(limit + 1);
+
+        const hasMore = messagesDesc.length > limit;
+        const page = hasMore ? messagesDesc.slice(0, limit) : messagesDesc;
+        const messages = page.reverse();
+        const nextCursor = messages.length > 0 ? messages[0].createdAt : null;
+
+        res.status(200).json({
+            messages,
+            hasMore,
+            nextCursor,
+        });
     } catch (error) {
+        if (error.status === 400) {
+            return res.status(400).json({ message: error.message });
+        }
+
         console.error('getMessages error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-// ─── POST /api/messages ───────────────────────────────────────────────────────
-// Lưu tin nhắn mới vào database
-// Được gọi song song với socket.emit để đảm bảo tin nhắn không bị mất
 const sendMessage = async (req, res) => {
     try {
         const { conversationId, content } = req.body;
         const userId = req.user._id;
+        const trimmedContent = content?.trim();
 
-        // 1. Validate đầu vào
-        if (!conversationId || !content?.trim()) {
-            return res.status(400).json({ message: 'Thiếu conversationId hoặc nội dung tin nhắn' });
+        if (!conversationId || !trimmedContent) {
+            return res.status(400).json({ message: 'Missing conversationId or message content' });
         }
 
-        // 2. Kiểm tra conversation tồn tại và user là thành viên
+        if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+            return res.status(400).json({ message: `Message cannot exceed ${MAX_MESSAGE_LENGTH} characters` });
+        }
+
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
-        const isMember = conversation.members
-            .map((id) => id.toString())
-            .includes(userId.toString());
-
-        if (!isMember) {
-            return res.status(403).json({ message: 'Bạn không có quyền gửi tin nhắn vào đây' });
+        if (!isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to send messages here' });
         }
 
-        // 3. Lưu tin nhắn vào DB
         const message = await Message.create({
             conversationId,
             sender: userId,
-            content: content.trim(),
+            content: trimmedContent,
+            deliveredTo: [userId],
+            readBy: [userId],
         });
 
-        // 4. Cập nhật updatedAt của conversation
-        //    Dùng để Sidebar sort conversation theo tin nhắn mới nhất
-        await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() });
+        await updateConversationAfterMessage(conversation, message, userId);
 
-        // 5. Populate sender rồi trả về — frontend dùng ngay để hiển thị
-        const populated = await message.populate('sender', 'username');
+        const populated = await message.populate('sender', SENDER_PUBLIC_FIELDS);
 
         res.status(201).json(populated);
     } catch (error) {
         console.error('sendMessage error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 

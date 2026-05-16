@@ -2,6 +2,61 @@ const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
+const cloudinary = require('../config/cloudinary');
+
+// Cac field user duoc phep tra ve khi populate trong conversation.
+// Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
+const USER_PUBLIC_FIELDS = 'username email avatar';
+const USER_COMPACT_FIELDS = 'username avatar';
+const LAST_MESSAGE_SENDER_FIELDS = 'username avatar';
+
+const addUnreadCountForUser = (conversation, userId) => {
+    const userIdString = userId.toString();
+    const item = conversation.toObject();
+
+    item.unreadCount = conversation.unreadCounts?.get(userIdString) || 0;
+    item.deletedAt = conversation.deletedAtBy?.get(userIdString) || null;
+
+    return item;
+};
+
+const populateConversationForSidebar = (query) => {
+    return query
+        .populate('members', USER_PUBLIC_FIELDS)
+        .populate('createdBy', USER_COMPACT_FIELDS)
+        .populate('lastMessage.sender', LAST_MESSAGE_SENDER_FIELDS);
+};
+
+const hasCloudinaryConfig = () => {
+    return Boolean(
+        process.env.CLOUDINARY_CLOUD_NAME &&
+        process.env.CLOUDINARY_API_KEY &&
+        process.env.CLOUDINARY_API_SECRET
+    );
+};
+
+const uploadGroupAvatarToCloudinary = (fileBuffer, conversationId) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'qikline/group-avatars',
+                public_id: `group_${conversationId}_${Date.now()}`,
+                resource_type: 'image',
+                overwrite: true,
+                transformation: [
+                    { width: 400, height: 400, crop: 'fill', gravity: 'auto' },
+                    { quality: 'auto', fetch_format: 'auto' },
+                ],
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
+
+        uploadStream.end(fileBuffer);
+    });
+};
 
 // Chuyển danh sách identifier (Username/Email/ID) thành danh sách ObjectIDs
 const getValidUserIds = async (identifiers) => {
@@ -20,7 +75,7 @@ const getValidUserIds = async (identifiers) => {
             if (foundUser) {
                 userIds.push(foundUser._id.toString());
             } else {
-                throw new Error(`Người dùng "${item}" không tồn tại.`);
+                throw new Error(`User "${item}" does not exist.`);
             }
         }
     }
@@ -35,19 +90,19 @@ const getConversations = async (req, res) => {
         const userId = req.user._id;
 
         // Tìm tất cả conversation mà user là thành viên
-        // populate members để frontend hiển thị info người dùng
-        const conversations = await Conversation.find({
+        // populate members để frontend hiển thị info người dùng, bao gồm avatar
+        const conversations = await populateConversationForSidebar(Conversation.find({
             members: userId,
             deletedFor: { $ne: userId },
-        })
-            .populate('members', 'username email')
-            .populate('createdBy', 'username')
+        }))
             .sort({ updatedAt: -1 });
 
-        res.status(200).json(conversations);
+        res.status(200).json(
+            conversations.map((conversation) => addUnreadCountForUser(conversation, userId))
+        );
     } catch (error) {
         console.error('getConversations error:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
@@ -61,15 +116,15 @@ const createConversation = async (req, res) => {
 
         // Validate input
         if (!type || !['private', 'group'].includes(type)) {
-            return res.status(400).json({ message: 'Type phải là "private" hoặc "group"' });
+            return res.status(400).json({ message: 'Type must be "private" or "group"' });
         }
 
         if (type === 'group' && !name) {
-            return res.status(400).json({ message: 'Group chat phải có tên' });
+            return res.status(400).json({ message: 'Group chat must have a name' });
         }
 
         if (!members || members.length < 1) {
-            return res.status(400).json({ message: 'Phải có ít nhất 1 thành viên' });
+            return res.status(400).json({ message: 'Must have at least 1 member' });
         }
 
         // Hàm lấy Id chuẩn
@@ -81,15 +136,15 @@ const createConversation = async (req, res) => {
         if (type === 'private') {
             // Kiểm tra private chat — chỉ 2 thành viên
             if (finalMembers.length !== 2) {
-                return res.status(400).json({ message: 'Private chat phải chỉ có 2 thành viên' });
+                return res.status(400).json({ message: 'Private chat must have exactly 2 members' });
             }
 
             const existing = await Conversation.findOne({
                 type: 'private',
                 members: { $all: finalMembers, $size: 2 },
             })
-                .populate('members', 'username email')
-                .populate('createdBy', 'username');
+                .populate('members', USER_PUBLIC_FIELDS)
+                .populate('createdBy', USER_COMPACT_FIELDS);
 
             if (existing) {
                 existing.deletedFor = (existing.deletedFor || []).filter(
@@ -103,7 +158,7 @@ const createConversation = async (req, res) => {
         // Kiểm tra members tồn tại
         const validUsers = await User.find({ _id: { $in: finalMembers } });
         if (validUsers.length !== finalMembers.length) {
-            return res.status(400).json({ message: 'Một số user không tồn tại' });
+            return res.status(400).json({ message: 'Some users do not exist' });
         }
 
         // Tạo conversation mới
@@ -112,17 +167,28 @@ const createConversation = async (req, res) => {
             name: type === 'group' ? name : null,
             members: finalMembers,
             createdBy: userId,
+            deletedFor: type === 'private'
+                ? finalMembers.filter((memberId) => memberId !== userId.toString())
+                : [],
+            deletedAtBy: type === 'private'
+                ? finalMembers
+                    .filter((memberId) => memberId !== userId.toString())
+                    .reduce((result, memberId) => {
+                        result[memberId] = new Date();
+                        return result;
+                    }, {})
+                : {},
         });
 
-        // Populate data trước khi trả về
-        await conversation.populate('members', 'username email');
-        await conversation.populate('createdBy', 'username');
+        // Populate data trước khi trả về, bao gồm avatar để UI dùng ngay
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
         res.status(201).json(conversation);
     } catch (error) {
         console.error('createConversation error:', error);
         const statusCode = error.status || 500;
-        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
+        res.status(statusCode).json({ message: error.message || 'Server error!' });
     }
 };
 
@@ -134,14 +200,14 @@ const deleteConversation = async (req, res) => {
 
         const conversation = await Conversation.findById(conversationId);
         if (!conversation) {
-            return res.status(404).json({ message: 'Không tìm thấy cuộc trò chuyện' });
+            return res.status(404).json({ message: 'Conversation not found' });
         }
 
         const isMember = conversation.members.some(
             (memberId) => memberId.toString() === userId.toString()
         );
         if (!isMember) {
-            return res.status(403).json({ message: 'Bạn không có quyền xóa cuộc trò chuyện này' });
+            return res.status(403).json({ message: 'You do not have permission to delete this conversation' });
         }
 
         const alreadyDeleted = (conversation.deletedFor || []).some(
@@ -149,30 +215,161 @@ const deleteConversation = async (req, res) => {
         );
         if (!alreadyDeleted) {
             conversation.deletedFor.push(userId);
-            await conversation.save();
         }
 
+        conversation.deletedAtBy.set(userId.toString(), new Date());
+        conversation.unreadCounts.set(userId.toString(), 0);
+        await conversation.save();
+
         res.status(200).json({
-            message: 'Đã xóa cuộc trò chuyện khỏi danh sách của bạn',
+            message: 'Conversation removed from your list',
             conversationId,
         });
     } catch (error) {
         console.error('deleteConversation error:', error);
-        res.status(500).json({ message: 'Lỗi server khi xóa cuộc trò chuyện' });
+        res.status(500).json({ message: 'Server error while deleting conversation' });
+    }
+};
+
+const markConversationRead = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        const isMember = conversation.members.some(
+            (memberId) => memberId.toString() === userId.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: 'You do not have permission to read this conversation' });
+        }
+
+        await Conversation.findByIdAndUpdate(conversationId, {
+            [`unreadCounts.${userId.toString()}`]: 0,
+        });
+
+        await Message.updateMany(
+            {
+                conversationId,
+                sender: { $ne: userId },
+                deletedBy: { $ne: userId },
+            },
+            {
+                $addToSet: {
+                    deliveredTo: userId,
+                    readBy: userId,
+                },
+            }
+        );
+
+        res.status(200).json({
+            conversationId,
+            unreadCount: 0,
+        });
+    } catch (error) {
+        console.error('markConversationRead error:', error);
+        res.status(500).json({ message: 'Server error while marking conversation as read' });
+    }
+};
+
+const getConversationById = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const conversationId = req.params.id;
+
+        const conversation = await populateConversationForSidebar(Conversation.findOne({
+            _id: conversationId,
+            members: userId,
+            deletedFor: { $ne: userId },
+        }));
+
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        res.status(200).json(addUnreadCountForUser(conversation, userId));
+    } catch (error) {
+        console.error('getConversationById error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Upload avatar rieng cho group conversation.
+const uploadGroupAvatar = async (req, res) => {
+    try {
+        if (!hasCloudinaryConfig()) {
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please select a group image' });
+        }
+
+        const conversation = await Conversation.findById(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Only group chats can have a group image' });
+        }
+
+        const isMember = conversation.members.some(
+            (memberId) => memberId.toString() === req.user._id.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: 'You do not have permission to update this group' });
+        }
+
+        const oldAvatarPublicId = conversation.avatar?.publicId;
+        const uploadedAvatar = await uploadGroupAvatarToCloudinary(req.file.buffer, conversation._id);
+
+        conversation.avatar = {
+            url: uploadedAvatar.secure_url,
+            publicId: uploadedAvatar.public_id,
+            updatedAt: new Date(),
+        };
+        await conversation.save();
+
+        if (oldAvatarPublicId) {
+            cloudinary.uploader.destroy(oldAvatarPublicId).catch((error) => {
+                console.error('Delete old group avatar error:', error);
+            });
+        }
+
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+
+        res.status(200).json({
+            message: 'Group image updated successfully',
+            conversation,
+        });
+    } catch (error) {
+        console.error('Upload group avatar error:', error);
+        res.status(500).json({ message: 'Server error while updating group image' });
     }
 };
 
 // Thêm các thành viên vào group
 const addMembers = async (req, res) => {
     try {
-        const { conversationId, newMemberIds } = req.body; // newMemberIds là mảng [id1, id2...]
+        const conversationId = req.params.id;
+        const { newMemberIds } = req.body; // newMemberIds là mảng [id1, id2...]
         const userId = req.user._id;
+
+        if (!Array.isArray(newMemberIds) || newMemberIds.length === 0) {
+            return res.status(400).json({ message: 'Missing list of members to add' });
+        }
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
-        if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
         if (conversation.type !== 'group') {
-            return res.status(400).json({ message: 'Chỉ có thể thêm thành viên vào nhóm' });
+            return res.status(400).json({ message: 'Members can only be added to a group' });
         }
 
         // Bỏ người bị trùng
@@ -180,7 +377,7 @@ const addMembers = async (req, res) => {
         const toAdd = newMemberIds.filter(id => !currentMembers.includes(id));
 
         if (toAdd.length === 0) {
-            return res.status(400).json({ message: 'Các thành viên này đã ở trong nhóm' });
+            return res.status(400).json({ message: 'These members are already in the group' });
         }
 
         // Cập nhật DB
@@ -188,32 +385,39 @@ const addMembers = async (req, res) => {
         conversation.updatedAt = new Date();
         await conversation.save();
 
-        await conversation.populate('members', 'username email');
+        // Populate members sau khi thêm thành viên, bao gồm avatar của từng người.
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
 
-        res.status(200).json({ message: 'Thêm thành viên thành công', conversation });
+        res.status(200).json({ message: 'Members added successfully', conversation });
     } catch (error) {
         console.error('createConversation error:', error);
         const statusCode = error.status || 500;
-        res.status(statusCode).json({ message: error.message || 'Lỗi server!' });
+        res.status(statusCode).json({ message: error.message || 'Server error!' });
     }
 };
 
 // Xóa thành viên khỏi group
 const removeMember = async (req, res) => {
     try {
-        const { conversationId, memberId } = req.body; // MemberId là người bị xóa
+        const conversationId = req.params.id;
+        const { memberId } = req.body; // MemberId là người bị xóa
         const userId = req.user._id;
+
+        if (!memberId) {
+            return res.status(400).json({ message: 'Missing memberId' });
+        }
 
         // Kiểm tra hội thoại có tồn tại và có phải là group ko
         const conversation = await Conversation.findById(conversationId);
-        if (!conversation) return res.status(404).json({ message: 'Hội thoại không tồn tại' });
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
         if (conversation.type !== 'group') {
-            return res.status(400).json({ message: 'Chỉ có thể xóa thành viên khỏi nhóm' });
+            return res.status(400).json({ message: 'Members can only be removed from a group' });
         }
 
         // Check admin
         if (conversation.createdBy.toString() !== userId.toString()) {
-            return res.status(403).json({ message: 'Bạn không có quyền xóa thành viên' });
+            return res.status(403).json({ message: 'You do not have permission to remove members' });
         }
 
         // if (!memberId) return res.status(400).json({ message: 'Thiếu memberId' });
@@ -223,7 +427,7 @@ const removeMember = async (req, res) => {
             id => id.toString() === memberId
         );
         if (!exists) {
-            return res.status(400).json({ message: 'Người dùng này không có trong nhóm' });
+            return res.status(400).json({ message: 'This user is not in the group' });
         }
 
         // Xóa khỏi nhóm
@@ -235,10 +439,22 @@ const removeMember = async (req, res) => {
         conversation.updatedAt = new Date();
         await conversation.save();
 
-        res.status(200).json({ message: 'Xóa thành viên thành công', conversation });
+        await conversation.populate('members', USER_PUBLIC_FIELDS);
+        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+
+        res.status(200).json({ message: 'Member removed successfully', conversation });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-module.exports = { getConversations, createConversation, deleteConversation, addMembers, removeMember };
+module.exports = {
+    getConversations,
+    getConversationById,
+    createConversation,
+    deleteConversation,
+    markConversationRead,
+    uploadGroupAvatar,
+    addMembers,
+    removeMember,
+};

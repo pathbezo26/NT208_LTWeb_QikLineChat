@@ -1,8 +1,8 @@
 import axiosInstance from './axiosInstance';
 
 // Lấy lịch sử tin nhắn của một conversation
-export const getMessagesAPI = async (conversationId) => {
-    const response = await axiosInstance.get(`/messages/${conversationId}`);
+export const getMessagesAPI = async (conversationId, params = {}) => {
+    const response = await axiosInstance.get(`/messages/${conversationId}`, { params });
     return response.data;
 };
 

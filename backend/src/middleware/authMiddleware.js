@@ -18,16 +18,16 @@ const protect = async (req, res, next) => {
             req.user = await User.findById(decoded.id).select('-passwordHash');
 
             if (!req.user) {
-                return res.status(401).json({ message: 'User không tồn tại' });
+                return res.status(401).json({ message: 'User not found' });
             }
 
             next();
         } catch (error) {
-            return res.status(401).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+            return res.status(401).json({ message: 'Invalid or expired token' });
         }
     }
     else {
-        return res.status(401).json({ message: 'Không có token, truy cập bị từ chối' });
+        return res.status(401).json({ message: 'No token, access denied' });
     }
 };
 
