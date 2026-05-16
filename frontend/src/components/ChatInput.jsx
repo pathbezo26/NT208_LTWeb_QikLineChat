@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { SendOutlined } from '@ant-design/icons';
+import { CloseOutlined, SendOutlined } from '@ant-design/icons';
 import useSocket from '../hooks/useSocket';
 import styles from './styles/ChatInput.module.css';
 
 const MAX_MESSAGE_LENGTH = 5000;
 
-export default function ChatInput({ conversationId, onSendMessage }) {
+export default function ChatInput({ conversationId, onSendMessage, replyToMessage, onCancelReply }) {
     const socket = useSocket();
 
     const [message, setMessage] = useState('');
@@ -43,7 +43,7 @@ export default function ChatInput({ conversationId, onSendMessage }) {
         const content = message.trim();
         if (!content || !socket || !onSendMessage) return;
 
-        onSendMessage(content);
+        onSendMessage(content, null, replyToMessage ? { replyToMessage } : {});
         setMessage('');
         stopTyping();
     };
@@ -56,7 +56,27 @@ export default function ChatInput({ conversationId, onSendMessage }) {
     };
 
     return (
-        <div className={styles.inputBar}>
+        <div className={styles.inputWrap}>
+            {replyToMessage && (
+                <div className={styles.replyPreview}>
+                    <div className={styles.replyText}>
+                        <span className={styles.replyLabel}>
+                            Replying to {replyToMessage.sender?.username || 'User'}
+                        </span>
+                        <span className={styles.replyContent}>{replyToMessage.content}</span>
+                    </div>
+                    <button
+                        className={styles.cancelReplyBtn}
+                        onClick={onCancelReply}
+                        type="button"
+                        title="Cancel reply"
+                        aria-label="Cancel reply"
+                    >
+                        <CloseOutlined />
+                    </button>
+                </div>
+            )}
+            <div className={styles.inputBar}>
             <textarea
                 className={styles.textarea}
                 maxLength={MAX_MESSAGE_LENGTH}
@@ -80,6 +100,7 @@ export default function ChatInput({ conversationId, onSendMessage }) {
             <span className={styles.counter}>
                 {message.length}/{MAX_MESSAGE_LENGTH}
             </span>
+            </div>
         </div>
     );
 }

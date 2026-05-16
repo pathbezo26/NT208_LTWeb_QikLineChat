@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Badge, Tooltip } from 'antd';
-import { UpOutlined } from '@ant-design/icons';
+import { Badge, Popover } from 'antd';
+import { ShareAltOutlined, UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
@@ -41,6 +41,10 @@ const isSameMessageGroup = (firstMessage, secondMessage) => {
     return Math.abs(getMessageTime(firstMessage) - getMessageTime(secondMessage)) <= MESSAGE_GROUP_TIME_GAP_MS;
 };
 
+const hasMessageReference = (reference) => {
+    return Boolean(reference?.messageId || reference?.content);
+};
+
 export default function MessageList({
     messages,
     currentUserId,
@@ -52,6 +56,8 @@ export default function MessageList({
     conversationMembers = [],
     onLoadOlder,
     onRetryMessage,
+    onReplyMessage,
+    onForwardMessage,
 }) {
     const listRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -63,6 +69,7 @@ export default function MessageList({
     const seenUnreadMessageIdsRef = useRef(new Set());
     const unreadCount = initialUnreadCount || 0;
     const [remainingUnreadCount, setRemainingUnreadCount] = useState(unreadCount);
+    const [openTimePopoverId, setOpenTimePopoverId] = useState(null);
 
     const isNearBottom = useCallback(() => {
         const list = listRef.current;
@@ -211,6 +218,10 @@ export default function MessageList({
         return 'Sent';
     };
 
+    const getReferenceSenderName = (reference) => {
+        return reference?.sender?.username || 'User';
+    };
+
     if (isInitialLoading) {
         return (
             <div className={styles.list} ref={listRef}>
@@ -283,23 +294,73 @@ export default function MessageList({
                         )}
 
                         <div className={styles.messageStack}>
-                            <Tooltip
-                                title={formatFullTime(message.createdAt)}
-                                placement={isMyMessage ? 'left' : 'right'}
-                                mouseEnterDelay={0.35}
+                            <div
+                                className={styles.bubble}
+                                tabIndex={0}
+                                aria-label={`${message.content}. Sent ${formatFullTime(message.createdAt)}`}
                             >
-                                <div
-                                    className={styles.bubble}
-                                    tabIndex={0}
-                                    aria-label={`${message.content}. Sent ${formatFullTime(message.createdAt)}`}
-                                >
-                                    {!isMyMessage && shouldShowAvatar && message.sender?.username && (
-                                        <span className={styles.senderName}>{message.sender.username}</span>
-                                    )}
+                                {!isMyMessage && shouldShowAvatar && message.sender?.username && (
+                                    <span className={styles.senderName}>{message.sender.username}</span>
+                                )}
 
-                                    <p className={styles.content}>{message.content}</p>
+                                {hasMessageReference(message.forwardedFrom) && (
+                                    <span className={styles.forwardLabel}>
+                                        Forwarded from {getReferenceSenderName(message.forwardedFrom)}
+                                    </span>
+                                )}
+
+                                {hasMessageReference(message.replyTo) && (
+                                    <div className={styles.replyBubble}>
+                                        <span className={styles.replyAuthor}>
+                                            {getReferenceSenderName(message.replyTo)}
+                                        </span>
+                                        <span className={styles.replyContent}>
+                                            {message.replyTo.content}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <p className={styles.content}>{message.content}</p>
+                            </div>
+
+                            {!isSending && !isFailed && message._id && !String(message._id).startsWith('client-') && (
+                                <div className={styles.messageActions}>
+                                    <button
+                                        className={styles.actionBtn}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => onReplyMessage?.(message)}
+                                        type="button"
+                                        aria-label="Reply to message"
+                                    >
+                                        <span className={styles.quoteIcon}>❞</span>
+                                    </button>
+                                    <button
+                                        className={styles.actionBtn}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => onForwardMessage?.(message)}
+                                        type="button"
+                                        aria-label="Forward message"
+                                    >
+                                        <ShareAltOutlined />
+                                    </button>
+                                    <Popover
+                                        content={formatFullTime(message.createdAt)}
+                                        trigger="click"
+                                        placement={isMyMessage ? 'left' : 'right'}
+                                        open={openTimePopoverId === messageKey}
+                                        onOpenChange={(open) => setOpenTimePopoverId(open ? messageKey : null)}
+                                    >
+                                        <button
+                                            className={styles.actionBtn}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            type="button"
+                                            aria-label="Show message time"
+                                        >
+                                            <span className={styles.infoIcon}>!</span>
+                                        </button>
+                                    </Popover>
                                 </div>
-                            </Tooltip>
+                            )}
 
                             {shouldShowMeta && (
                                 <span className={styles.meta}>

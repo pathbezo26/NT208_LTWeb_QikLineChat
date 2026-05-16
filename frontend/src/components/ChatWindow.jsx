@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Drawer, Input, List, Spin } from 'antd';
+import { Alert, Button, Drawer, Input, List, Modal, Select, Spin, message as antdMessage } from 'antd';
 import { DeleteOutlined, MessageOutlined, TeamOutlined, UserAddOutlined } from '@ant-design/icons';
 import axiosInstance from '../api/axiosInstance';
 import {
     addGroupMembersAPI,
+    getConversationsAPI,
     removeGroupMemberAPI,
 } from '../api/conversationAPI';
 import { getMessagesAPI } from '../api/messageAPI';
@@ -32,6 +33,29 @@ const addUniqueUserId = (items = [], userId) => {
     const ids = safeItems.map(getUserId).filter(Boolean);
     if (ids.includes(userId)) return items;
     return [...safeItems, userId];
+};
+
+const buildMessageReference = (message) => {
+    if (!message) return null;
+
+    return {
+        messageId: message._id || message.messageId,
+        sender: message.sender,
+        content: message.content,
+        createdAt: message.createdAt,
+    };
+};
+
+const mergeServerMessage = (serverMessage, fallbackMessage = {}) => {
+    return {
+        ...serverMessage,
+        replyTo: serverMessage.replyTo?.messageId || serverMessage.replyTo?.content
+            ? serverMessage.replyTo
+            : fallbackMessage.replyTo,
+        forwardedFrom: serverMessage.forwardedFrom?.messageId || serverMessage.forwardedFrom?.content
+            ? serverMessage.forwardedFrom
+            : fallbackMessage.forwardedFrom,
+    };
 };
 
 const mergeMessages = (currentMessages, incomingMessages) => {
@@ -99,6 +123,13 @@ export default function ChatWindow({
     const [isSearchingMembers, setIsSearchingMembers] = useState(false);
     const [memberActionId, setMemberActionId] = useState(null);
     const [memberError, setMemberError] = useState('');
+    const [replyToMessage, setReplyToMessage] = useState(null);
+    const [forwardMessage, setForwardMessage] = useState(null);
+    const [forwardTargetId, setForwardTargetId] = useState(null);
+    const [forwardConversations, setForwardConversations] = useState([]);
+    const [isForwardLoading, setIsForwardLoading] = useState(false);
+    const [isForwarding, setIsForwarding] = useState(false);
+    const [messageApi, contextHolder] = antdMessage.useMessage();
 
     const markActiveConversationRead = useCallback((conversationId) => {
         if (!socket || !conversationId) return;
@@ -209,7 +240,7 @@ export default function ChatWindow({
                     return prevMessages.map((msg) => {
                         if (msg.clientMessageId !== newMessage.clientMessageId) return msg;
 
-                        return newMessage;
+                        return mergeServerMessage(newMessage, msg);
                     });
                 }
 
@@ -294,7 +325,37 @@ export default function ChatWindow({
         setMemberSearchQuery('');
         setMemberSearchResults([]);
         setMemberError('');
+        setReplyToMessage(null);
     }, [conversation?._id]);
+
+    useEffect(() => {
+        if (!forwardMessage) return;
+
+        let ignore = false;
+
+        const loadForwardConversations = async () => {
+            setIsForwardLoading(true);
+
+            try {
+                const data = await getConversationsAPI();
+                if (!ignore) {
+                    setForwardConversations(data);
+                    setForwardTargetId(data[0]?._id || null);
+                }
+            } catch (error) {
+                console.error('Load forward conversations error:', error);
+                if (!ignore) messageApi.error('Could not load conversations.');
+            } finally {
+                if (!ignore) setIsForwardLoading(false);
+            }
+        };
+
+        loadForwardConversations();
+
+        return () => {
+            ignore = true;
+        };
+    }, [forwardMessage, messageApi]);
 
     const loadOlderMessages = useCallback(async () => {
         if (!conversation || !nextCursor || !hasMoreMessages || isLoadingOlderRef.current) return;
@@ -347,10 +408,11 @@ export default function ChatWindow({
         });
     }, []);
 
-    const handleSendMessage = useCallback((content, retryClientMessageId = null) => {
+    const handleSendMessage = useCallback((content, retryClientMessageId = null, options = {}) => {
         if (!socket || !conversation || !user) return;
 
         const clientMessageId = retryClientMessageId || createClientMessageId();
+        const replyReference = options.replyToMessage ? buildMessageReference(options.replyToMessage) : null;
 
         if (!retryClientMessageId) {
             const optimisticMessage = {
@@ -365,6 +427,7 @@ export default function ChatWindow({
                 content,
                 createdAt: new Date().toISOString(),
                 status: 'sending',
+                replyTo: replyReference,
             };
 
             setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
@@ -391,7 +454,12 @@ export default function ChatWindow({
 
         socket.timeout(10000).emit(
             'sendMessage',
-            { conversationId: conversation._id, content, clientMessageId },
+            {
+                conversationId: conversation._id,
+                content,
+                clientMessageId,
+                replyToMessageId: options.replyToMessage?._id || options.replyToMessage?.messageId,
+            },
             (error, response) => {
                 if (activeConversationIdRef.current !== conversation._id) return;
 
@@ -405,16 +473,59 @@ export default function ChatWindow({
                     const withoutOptimistic = prevMessages.filter((message) => {
                         return message.clientMessageId !== clientMessageId && message._id !== serverMessage._id;
                     });
+                    const optimisticMessage = prevMessages.find((message) => message.clientMessageId === clientMessageId);
 
-                    return [...withoutOptimistic, serverMessage];
+                    return [...withoutOptimistic, mergeServerMessage(serverMessage, optimisticMessage)];
                 });
+
+                if (options.replyToMessage) {
+                    setReplyToMessage(null);
+                }
             }
         );
     }, [conversation, markMessageFailed, onConversationPreviewUpdate, socket, user]);
 
     const handleRetryMessage = useCallback((message) => {
-        handleSendMessage(message.content, message.clientMessageId);
+        handleSendMessage(message.content, message.clientMessageId, {
+            replyToMessage: message.replyTo?.messageId ? message.replyTo : null,
+        });
     }, [handleSendMessage]);
+
+    const getConversationName = useCallback((targetConversation) => {
+        if (!targetConversation) return 'Conversation';
+        if (targetConversation.type === 'group') return targetConversation.name || 'Group chat';
+
+        const otherMember = targetConversation.members?.find((member) => getUserId(member) !== user?._id);
+        return otherMember?.username || 'User';
+    }, [user?._id]);
+
+    const handleForwardMessage = useCallback(async () => {
+        if (!socket || !forwardMessage || !forwardTargetId) return;
+
+        setIsForwarding(true);
+
+        socket.timeout(10000).emit(
+            'sendMessage',
+            {
+                conversationId: forwardTargetId,
+                content: forwardMessage.content,
+                clientMessageId: createClientMessageId(),
+                forwardedFromMessageId: forwardMessage._id,
+            },
+            (error, response) => {
+                setIsForwarding(false);
+
+                if (error || !response?.ok) {
+                    messageApi.error(response?.message || 'Could not forward message.');
+                    return;
+                }
+
+                messageApi.success('Message forwarded.');
+                setForwardMessage(null);
+                setForwardTargetId(null);
+            }
+        );
+    }, [forwardMessage, forwardTargetId, messageApi, socket]);
 
     if (!conversation || !user?._id) {
         return (
@@ -520,6 +631,7 @@ export default function ChatWindow({
 
     return (
         <div className={styles.window}>
+            {contextHolder}
             <div className={styles.header}>
                 <UserAvatar
                     user={conversation.type === 'private' ? getOtherMember() : null}
@@ -558,6 +670,8 @@ export default function ChatWindow({
                 conversationMembers={conversation.members}
                 onLoadOlder={loadOlderMessages}
                 onRetryMessage={handleRetryMessage}
+                onReplyMessage={setReplyToMessage}
+                onForwardMessage={setForwardMessage}
             />
 
             {typingUsers.length > 0 && (
@@ -566,7 +680,44 @@ export default function ChatWindow({
                 </div>
             )}
 
-            <ChatInput conversationId={conversation._id} onSendMessage={handleSendMessage} />
+            <ChatInput
+                conversationId={conversation._id}
+                onSendMessage={handleSendMessage}
+                replyToMessage={replyToMessage}
+                onCancelReply={() => setReplyToMessage(null)}
+            />
+
+            <Modal
+                title="Forward message"
+                open={Boolean(forwardMessage)}
+                onCancel={() => {
+                    setForwardMessage(null);
+                    setForwardTargetId(null);
+                }}
+                onOk={handleForwardMessage}
+                confirmLoading={isForwarding}
+                okButtonProps={{ disabled: !forwardTargetId }}
+                okText="Forward"
+            >
+                <div className={styles.forwardPreview}>
+                    <span className={styles.forwardPreviewLabel}>Message</span>
+                    <p>{forwardMessage?.content}</p>
+                </div>
+
+                <Select
+                    className={styles.forwardSelect}
+                    loading={isForwardLoading}
+                    value={forwardTargetId}
+                    onChange={setForwardTargetId}
+                    placeholder="Choose a conversation"
+                    options={forwardConversations.map((item) => ({
+                        value: item._id,
+                        label: getConversationName(item),
+                    }))}
+                    showSearch
+                    optionFilterProp="label"
+                />
+            </Modal>
 
             <Drawer
                 title="Group members"

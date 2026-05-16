@@ -132,6 +132,37 @@
     font-style: italic;
 }
 
+.forwardPreview {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-left: 3px solid #1877f2;
+    border-radius: 10px;
+    background: #f3f8ff;
+}
+
+.forwardPreviewLabel {
+    display: block;
+    margin-bottom: 4px;
+    color: #1877f2;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.forwardPreview p {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.forwardSelect {
+    width: 100%;
+}
+
 :global([data-theme='dark']) .window {
     background: #0b1220;
 }
@@ -176,4 +207,17 @@
 :global([data-theme='dark']) .drawerAvatar {
     background: #172b44;
     color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .forwardPreview {
+    border-left-color: #8ec5ff;
+    background: #111c2b;
+}
+
+:global([data-theme='dark']) .forwardPreviewLabel {
+    color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .forwardPreview p {
+    color: #e5edf6;
 }

@@ -21,6 +21,25 @@ const isConversationMember = (conversation, userId) => {
         .includes(userId.toString());
 };
 
+const buildMessageReference = (sourceMessage) => {
+    if (!sourceMessage) return undefined;
+
+    return {
+        messageId: sourceMessage._id,
+        sender: sourceMessage.sender,
+        content: sourceMessage.content,
+        createdAt: sourceMessage.createdAt,
+    };
+};
+
+const populateMessage = (message) => {
+    return message.populate([
+        { path: 'sender', select: SENDER_PUBLIC_FIELDS },
+        { path: 'replyTo.sender', select: SENDER_PUBLIC_FIELDS },
+        { path: 'forwardedFrom.sender', select: SENDER_PUBLIC_FIELDS },
+    ]);
+};
+
 const getVisibleMessagesQuery = (conversation, userId, before) => {
     const query = { conversationId: conversation._id, deletedBy: { $ne: userId } };
     const createdAtFilter = {};
@@ -68,6 +87,8 @@ const getMessages = async (req, res) => {
 
         const messagesDesc = await Message.find(query)
             .populate('sender', SENDER_PUBLIC_FIELDS)
+            .populate('replyTo.sender', SENDER_PUBLIC_FIELDS)
+            .populate('forwardedFrom.sender', SENDER_PUBLIC_FIELDS)
             .sort({ createdAt: -1 })
             .limit(limit + 1);
 
@@ -93,7 +114,7 @@ const getMessages = async (req, res) => {
 
 const sendMessage = async (req, res) => {
     try {
-        const { conversationId, content } = req.body;
+        const { conversationId, content, replyToMessageId, forwardedFromMessageId } = req.body;
         const userId = req.user._id;
         const trimmedContent = content?.trim();
 
@@ -114,17 +135,51 @@ const sendMessage = async (req, res) => {
             return res.status(403).json({ message: 'You do not have permission to send messages here' });
         }
 
-        const message = await Message.create({
+        const [replyToMessage, forwardedFromMessage] = await Promise.all([
+            replyToMessageId
+                ? Message.findOne({ _id: replyToMessageId, conversationId })
+                : null,
+            forwardedFromMessageId
+                ? Message.findById(forwardedFromMessageId)
+                : null,
+        ]);
+
+        if (replyToMessageId && !replyToMessage) {
+            return res.status(404).json({ message: 'Reply source message not found' });
+        }
+
+        if (forwardedFromMessageId && !forwardedFromMessage) {
+            return res.status(404).json({ message: 'Forward source message not found' });
+        }
+
+        if (forwardedFromMessage) {
+            const sourceConversation = await Conversation.findById(forwardedFromMessage.conversationId);
+            if (!sourceConversation || !isConversationMember(sourceConversation, userId)) {
+                return res.status(403).json({ message: 'You do not have permission to forward this message' });
+            }
+        }
+
+        const messageData = {
             conversationId,
             sender: userId,
             content: trimmedContent,
             deliveredTo: [userId],
             readBy: [userId],
-        });
+        };
+
+        if (replyToMessage) {
+            messageData.replyTo = buildMessageReference(replyToMessage);
+        }
+
+        if (forwardedFromMessage) {
+            messageData.forwardedFrom = buildMessageReference(forwardedFromMessage);
+        }
+
+        const message = await Message.create(messageData);
 
         await updateConversationAfterMessage(conversation, message, userId);
 
-        const populated = await message.populate('sender', SENDER_PUBLIC_FIELDS);
+        const populated = await populateMessage(message);
 
         res.status(201).json(populated);
     } catch (error) {

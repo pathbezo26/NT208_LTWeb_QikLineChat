@@ -14,6 +14,25 @@ const isConversationMember = (conversation, userId) => {
     .includes(userId.toString());
 };
 
+const buildMessageReference = (sourceMessage) => {
+  if (!sourceMessage) return undefined;
+
+  return {
+    messageId: sourceMessage._id,
+    sender: sourceMessage.sender,
+    content: sourceMessage.content,
+    createdAt: sourceMessage.createdAt,
+  };
+};
+
+const populateSocketMessage = (message) => {
+  return message.populate([
+    { path: 'sender', select: SOCKET_USER_FIELDS },
+    { path: 'replyTo.sender', select: SOCKET_USER_FIELDS },
+    { path: 'forwardedFrom.sender', select: SOCKET_USER_FIELDS },
+  ]);
+};
+
 const socketHandler = (io) => {
   // Authenticate socket on connection
   io.use(async (socket, next) => {
@@ -57,7 +76,7 @@ const socketHandler = (io) => {
     });
 
     // Handle sending a message
-    socket.on('sendMessage', async ({ conversationId, content, clientMessageId }, ack) => {
+    socket.on('sendMessage', async ({ conversationId, content, clientMessageId, replyToMessageId, forwardedFromMessageId }, ack) => {
       const trimmedContent = content?.trim();
 
       const fail = (message) => {
@@ -90,8 +109,34 @@ const socketHandler = (io) => {
           return;
         }
 
-        // Save to DB
-        const message = await Message.create({
+        const [replyToMessage, forwardedFromMessage] = await Promise.all([
+          replyToMessageId
+            ? Message.findOne({ _id: replyToMessageId, conversationId })
+            : null,
+          forwardedFromMessageId
+            ? Message.findById(forwardedFromMessageId)
+            : null,
+        ]);
+
+        if (replyToMessageId && !replyToMessage) {
+          fail('Reply source message not found.');
+          return;
+        }
+
+        if (forwardedFromMessageId && !forwardedFromMessage) {
+          fail('Forward source message not found.');
+          return;
+        }
+
+        if (forwardedFromMessage) {
+          const sourceConversation = await Conversation.findById(forwardedFromMessage.conversationId).select('members');
+          if (!sourceConversation || !isConversationMember(sourceConversation, userId)) {
+            fail('You do not have permission to forward this message.');
+            return;
+          }
+        }
+
+        const messageData = {
           conversationId,
           sender: userId,
           content: trimmedContent,
@@ -102,10 +147,21 @@ const socketHandler = (io) => {
               .filter((memberId) => memberId !== userId && onlineUsers.has(memberId)),
           ],
           readBy: [userId],
-        });
+        };
+
+        if (replyToMessage) {
+          messageData.replyTo = buildMessageReference(replyToMessage);
+        }
+
+        if (forwardedFromMessage) {
+          messageData.forwardedFrom = buildMessageReference(forwardedFromMessage);
+        }
+
+        // Save to DB
+        const message = await Message.create(messageData);
 
         // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
-        const populated = await message.populate('sender', SOCKET_USER_FIELDS);
+        const populated = await populateSocketMessage(message);
         const payload = {
           ...populated.toObject(),
           clientMessageId,

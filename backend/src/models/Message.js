@@ -20,6 +20,46 @@ const MessageSchema = new mongoose.Schema(
         },
         deliveredTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        replyTo: {
+            messageId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Message',
+                default: null,
+            },
+            sender: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null,
+            },
+            content: {
+                type: String,
+                default: '',
+            },
+            createdAt: {
+                type: Date,
+                default: null,
+            },
+        },
+        forwardedFrom: {
+            messageId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Message',
+                default: null,
+            },
+            sender: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                default: null,
+            },
+            content: {
+                type: String,
+                default: '',
+            },
+            createdAt: {
+                type: Date,
+                default: null,
+            },
+        },
         deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },
     { timestamps: true }
