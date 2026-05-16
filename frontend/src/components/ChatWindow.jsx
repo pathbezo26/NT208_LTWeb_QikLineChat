@@ -73,7 +73,11 @@ const filterMessagesAfterDeletedAt = (items, deletedAt) => {
     });
 };
 
-export default function ChatWindow({ conversation, onConversationUpdated }) {
+export default function ChatWindow({
+    conversation,
+    onConversationUpdated,
+    onConversationPreviewUpdate,
+}) {
     const socket = useSocket();
     const { user } = useAuth();
 
@@ -364,6 +368,13 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
             };
 
             setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+            onConversationPreviewUpdate?.({
+                conversationId: conversation._id,
+                clientMessageId,
+                content,
+                createdAt: optimisticMessage.createdAt,
+                sender: optimisticMessage.sender,
+            });
         } else {
             setMessages((prevMessages) => {
                 return prevMessages.map((message) => {
@@ -399,7 +410,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                 });
             }
         );
-    }, [conversation, markMessageFailed, socket, user]);
+    }, [conversation, markMessageFailed, onConversationPreviewUpdate, socket, user]);
 
     const handleRetryMessage = useCallback((message) => {
         handleSendMessage(message.content, message.clientMessageId);

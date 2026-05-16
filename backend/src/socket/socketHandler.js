@@ -115,15 +115,24 @@ const socketHandler = (io) => {
         // Broadcast to everyone in the room (including sender)
         io.to(conversationId).emit('newMessage', payload);
 
-        await updateConversationAfterMessage(conversation, message, userId);
+        const updatedConversation = await updateConversationAfterMessage(conversation, message, userId);
 
         conversation.members.forEach((memberId) => {
           const memberIdString = memberId.toString();
+          const unreadCount = updatedConversation?.unreadCounts?.get(memberIdString) || 0;
 
           io.to(`user:${memberIdString}`).emit('conversationUpdated', {
             conversationId,
             senderId: userId,
             messageId: populated._id,
+            unreadCount,
+            updatedAt: updatedConversation?.updatedAt || message.createdAt,
+            lastMessage: {
+              messageId: populated._id,
+              sender: populated.sender,
+              content: populated.content,
+              createdAt: populated.createdAt,
+            },
           });
         });
 

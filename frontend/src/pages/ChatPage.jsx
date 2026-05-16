@@ -10,6 +10,7 @@ const THEME_STORAGE_KEY = 'qikline-theme';
 export default function ChatPage() {
     const [activeSection, setActiveSection] = useState('messages');
     const [activeConversation, setActiveConversation] = useState(null);
+    const [optimisticConversationUpdate, setOptimisticConversationUpdate] = useState(null);
     const [colorMode, setColorMode] = useState(() => {
         return localStorage.getItem(THEME_STORAGE_KEY) || 'light';
     });
@@ -23,6 +24,28 @@ export default function ChatPage() {
 
     const handleConversationUpdated = (updatedConversation) => {
         setActiveConversation(updatedConversation);
+    };
+
+    const handleConversationPreviewUpdate = (previewUpdate) => {
+        setOptimisticConversationUpdate({
+            ...previewUpdate,
+            eventId: Date.now(),
+        });
+
+        setActiveConversation((currentConversation) => {
+            if (currentConversation?._id !== previewUpdate.conversationId) return currentConversation;
+
+            return {
+                ...currentConversation,
+                updatedAt: previewUpdate.createdAt,
+                lastMessage: {
+                    messageId: previewUpdate.clientMessageId,
+                    sender: previewUpdate.sender,
+                    content: previewUpdate.content,
+                    createdAt: previewUpdate.createdAt,
+                },
+            };
+        });
     };
 
     return (
@@ -42,10 +65,12 @@ export default function ChatPage() {
                     activeSection={activeSection}
                     activeConversation={activeConversation}
                     onSelectConversation={setActiveConversation}
+                    optimisticConversationUpdate={optimisticConversationUpdate}
                 />
                 <ChatWindow
                     conversation={activeConversation}
                     onConversationUpdated={handleConversationUpdated}
+                    onConversationPreviewUpdate={handleConversationPreviewUpdate}
                 />
             </div>
         </ConfigProvider>

@@ -32,7 +32,12 @@ const sortConversationsByUpdatedAt = (items) => {
     });
 };
 
-export default function Sidebar({ activeSection, activeConversation, onSelectConversation }) {
+export default function Sidebar({
+    activeSection,
+    activeConversation,
+    onSelectConversation,
+    optimisticConversationUpdate,
+}) {
     const { user } = useAuth();
     const socket = useSocket();
 
@@ -119,15 +124,44 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
     useEffect(() => {
         if (!socket || !user) return;
 
-        const handleConversationUpdated = async ({ conversationId }) => {
+        const handleConversationUpdated = async ({
+            conversationId,
+            unreadCount,
+            updatedAt,
+            lastMessage,
+        }) => {
             const requestNumber = (conversationUpdateRequestRef.current[conversationId] || 0) + 1;
             conversationUpdateRequestRef.current[conversationId] = requestNumber;
 
             try {
                 const isActiveConversation = activeConversationId === conversationId;
 
+                let shouldFetchConversation = false;
+
+                setConversations((prev) => {
+                    const targetConversation = prev.find((conversation) => conversation._id === conversationId);
+                    if (!targetConversation) {
+                        shouldFetchConversation = true;
+                        return prev;
+                    }
+
+                    const patchedConversation = {
+                        ...targetConversation,
+                        updatedAt: updatedAt || targetConversation.updatedAt,
+                        unreadCount: isActiveConversation ? 0 : unreadCount ?? targetConversation.unreadCount ?? 0,
+                        lastMessage: lastMessage || targetConversation.lastMessage,
+                    };
+                    const otherConversations = prev.filter((conversation) => conversation._id !== conversationId);
+
+                    return sortConversationsByUpdatedAt([patchedConversation, ...otherConversations]);
+                });
+
                 if (isActiveConversation) {
                     await markConversationReadAPI(conversationId);
+                }
+
+                if (!shouldFetchConversation && lastMessage) {
+                    return;
                 }
 
                 const updatedConversation = await getConversationAPI(conversationId);
@@ -158,6 +192,38 @@ export default function Sidebar({ activeSection, activeConversation, onSelectCon
 
         return () => socket.off('conversationUpdated', handleConversationUpdated);
     }, [socket, user, activeConversationId, onSelectConversation]);
+
+    useEffect(() => {
+        if (!optimisticConversationUpdate?.conversationId) return;
+
+        const {
+            conversationId,
+            clientMessageId,
+            content,
+            createdAt,
+            sender,
+        } = optimisticConversationUpdate;
+
+        setConversations((prev) => {
+            const targetConversation = prev.find((conversation) => conversation._id === conversationId);
+            if (!targetConversation) return prev;
+
+            const updatedConversation = {
+                ...targetConversation,
+                updatedAt: createdAt,
+                unreadCount: 0,
+                lastMessage: {
+                    messageId: clientMessageId,
+                    sender,
+                    content,
+                    createdAt,
+                },
+            };
+            const otherConversations = prev.filter((conversation) => conversation._id !== conversationId);
+
+            return [updatedConversation, ...otherConversations];
+        });
+    }, [optimisticConversationUpdate]);
 
     const getConversationName = (conversation) => {
         if (conversation.type === 'group') {
