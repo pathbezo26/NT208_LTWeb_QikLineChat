@@ -252,6 +252,20 @@ const markConversationRead = async (req, res) => {
             [`unreadCounts.${userId.toString()}`]: 0,
         });
 
+        await Message.updateMany(
+            {
+                conversationId,
+                sender: { $ne: userId },
+                deletedBy: { $ne: userId },
+            },
+            {
+                $addToSet: {
+                    deliveredTo: userId,
+                    readBy: userId,
+                },
+            }
+        );
+
         res.status(200).json({
             conversationId,
             unreadCount: 0,

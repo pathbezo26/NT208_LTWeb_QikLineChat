@@ -1,18 +1,45 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Badge } from 'antd';
+import { Badge, Tooltip } from 'antd';
 import { UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
 
 const getSenderId = (message) => {
-    return typeof message.sender === 'object' ? message.sender._id : message.sender;
+    if (!message?.sender) return null;
+    return typeof message.sender === 'object' ? (message.sender._id || message.sender.id || message.sender.toString?.()) : message.sender;
 };
 
 const getMessageKey = (message) => message._id || message.clientMessageId;
 
+const getUserId = (user) => {
+    if (!user) return null;
+    return typeof user === 'object' ? (user._id || user.id || user.toString?.()) : user;
+};
+
+const hasUserId = (items = [], userId) => {
+    if (!Array.isArray(items) || !userId) return false;
+    return items.some((item) => getUserId(item)?.toString() === userId?.toString());
+};
+
 const SCROLL_TOP_THRESHOLD = 80;
 const SCROLL_BOTTOM_THRESHOLD = 120;
+const MESSAGE_GROUP_TIME_GAP_MS = 5 * 60 * 1000;
+
+const getMessageTime = (message) => {
+    const time = new Date(message?.createdAt).getTime();
+    return Number.isNaN(time) ? 0 : time;
+};
+
+const isSameMessageGroup = (firstMessage, secondMessage) => {
+    if (!firstMessage || !secondMessage) return false;
+
+    const firstSenderId = getSenderId(firstMessage);
+    const secondSenderId = getSenderId(secondMessage);
+    if (!firstSenderId || firstSenderId !== secondSenderId) return false;
+
+    return Math.abs(getMessageTime(firstMessage) - getMessageTime(secondMessage)) <= MESSAGE_GROUP_TIME_GAP_MS;
+};
 
 export default function MessageList({
     messages,
@@ -22,6 +49,7 @@ export default function MessageList({
     initialUnreadCount,
     isInitialLoading,
     isLoadingOlder,
+    conversationMembers = [],
     onLoadOlder,
     onRetryMessage,
 }) {
@@ -161,6 +189,28 @@ export default function MessageList({
         });
     };
 
+    const getMyMessageStatus = (message) => {
+        if (message.status === 'sending' || message.status === 'failed') return '';
+
+        const recipientIds = (Array.isArray(conversationMembers) ? conversationMembers : [])
+            .map(getUserId)
+            .filter((memberId) => memberId && memberId !== currentUserId);
+
+        if (recipientIds.length === 0) return 'Sent';
+
+        const readCount = recipientIds.filter((memberId) => hasUserId(message.readBy, memberId)).length;
+        if (readCount > 0) {
+            return recipientIds.length === 1 ? 'Read' : `Read ${readCount}/${recipientIds.length}`;
+        }
+
+        const deliveredCount = recipientIds.filter((memberId) => hasUserId(message.deliveredTo, memberId)).length;
+        if (deliveredCount > 0) {
+            return recipientIds.length === 1 ? 'Delivered' : `Delivered ${deliveredCount}/${recipientIds.length}`;
+        }
+
+        return 'Sent';
+    };
+
     if (isInitialLoading) {
         return (
             <div className={styles.list} ref={listRef}>
@@ -199,12 +249,15 @@ export default function MessageList({
                 const senderId = getSenderId(message);
                 const isMyMessage = senderId === currentUserId;
                 const previousMessage = messages[index - 1];
-                const previousSenderId = previousMessage ? getSenderId(previousMessage) : null;
-                const isFirstInGroup = previousSenderId !== senderId;
+                const nextMessage = messages[index + 1];
+                const isFirstInGroup = !isSameMessageGroup(previousMessage, message);
+                const isLastInGroup = !isSameMessageGroup(message, nextMessage);
                 const shouldShowAvatar = !isMyMessage && isFirstInGroup;
                 const senderName = message.sender?.username || 'User';
                 const isSending = isMyMessage && message.status === 'sending';
                 const isFailed = isMyMessage && message.status === 'failed';
+                const myMessageStatus = isMyMessage ? getMyMessageStatus(message) : '';
+                const shouldShowMeta = isLastInGroup || isSending || isFailed;
                 const messageKey = getMessageKey(message);
                 const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
                 const isInitialUnreadMessage = unreadCount > 0 && index >= firstUnreadIndex;
@@ -229,36 +282,52 @@ export default function MessageList({
                             </div>
                         )}
 
-                        <div className={styles.bubble} title={formatFullTime(message.createdAt)}>
-                            {!isMyMessage && shouldShowAvatar && message.sender?.username && (
-                                <span className={styles.senderName}>{message.sender.username}</span>
+                        <div className={styles.messageStack}>
+                            <Tooltip
+                                title={formatFullTime(message.createdAt)}
+                                placement={isMyMessage ? 'left' : 'right'}
+                                mouseEnterDelay={0.35}
+                            >
+                                <div
+                                    className={styles.bubble}
+                                    tabIndex={0}
+                                    aria-label={`${message.content}. Sent ${formatFullTime(message.createdAt)}`}
+                                >
+                                    {!isMyMessage && shouldShowAvatar && message.sender?.username && (
+                                        <span className={styles.senderName}>{message.sender.username}</span>
+                                    )}
+
+                                    <p className={styles.content}>{message.content}</p>
+                                </div>
+                            </Tooltip>
+
+                            {shouldShowMeta && (
+                                <span className={styles.meta}>
+                                    <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
+                                    {myMessageStatus && <span className={styles.status}>{myMessageStatus}</span>}
+
+                                    {isSending && (
+                                        <span
+                                            className={styles.sendingDot}
+                                            title="Sending"
+                                            aria-label="Sending"
+                                        />
+                                    )}
+
+                                    {isFailed && (
+                                        <span className={styles.failed}>
+                                            Failed
+                                            <button
+                                                className={styles.retryBtn}
+                                                onClick={() => onRetryMessage?.(message)}
+                                                type="button"
+                                            >
+                                                Retry
+                                            </button>
+                                        </span>
+                                    )}
+                                </span>
                             )}
-
-                            <p className={styles.content}>{message.content}</p>
-                            <span className={styles.meta}>
-                                <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
-
-                                {isSending && (
-                                    <span
-                                        className={styles.sendingDot}
-                                        title="Sending"
-                                        aria-label="Sending"
-                                    />
-                                )}
-
-                                {isFailed && (
-                                    <span className={styles.failed}>
-                                        Failed
-                                        <button
-                                            className={styles.retryBtn}
-                                            onClick={() => onRetryMessage?.(message)}
-                                            type="button"
-                                        >
-                                            Retry
-                                        </button>
-                                    </span>
-                                )}
-                            </span>
                         </div>
                     </div>
                 );

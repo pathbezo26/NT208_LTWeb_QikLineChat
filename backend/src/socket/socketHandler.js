@@ -8,6 +8,12 @@ const MAX_MESSAGE_LENGTH = 5000;
 
 const onlineUsers = new Map(); //Mảng các user đang onl
 
+const isConversationMember = (conversation, userId) => {
+  return conversation.members
+    .map((memberId) => memberId.toString())
+    .includes(userId.toString());
+};
+
 const socketHandler = (io) => {
   // Authenticate socket on connection
   io.use(async (socket, next) => {
@@ -89,6 +95,13 @@ const socketHandler = (io) => {
           conversationId,
           sender: userId,
           content: trimmedContent,
+          deliveredTo: [
+            userId,
+            ...conversation.members
+              .map((memberId) => memberId.toString())
+              .filter((memberId) => memberId !== userId && onlineUsers.has(memberId)),
+          ],
+          readBy: [userId],
         });
 
         // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
@@ -119,6 +132,52 @@ const socketHandler = (io) => {
         console.error('Error saving message:', err.message);
         socket.emit('messageError', { message: 'Could not send message.' });
         fail('Could not send message.');
+      }
+    });
+
+    socket.on('markMessagesRead', async ({ conversationId }, ack) => {
+      if (!conversationId) {
+        if (typeof ack === 'function') ack({ ok: false, message: 'Missing conversationId.' });
+        return;
+      }
+
+      try {
+        const conversation = await Conversation.findById(conversationId).select('members');
+        if (!conversation || !isConversationMember(conversation, userId)) {
+          if (typeof ack === 'function') ack({ ok: false, message: 'Conversation not found.' });
+          return;
+        }
+
+        await Conversation.findByIdAndUpdate(conversationId, {
+          [`unreadCounts.${userId}`]: 0,
+        });
+
+        const updateResult = await Message.updateMany(
+          {
+            conversationId,
+            sender: { $ne: userId },
+            deletedBy: { $ne: userId },
+          },
+          {
+            $addToSet: {
+              deliveredTo: userId,
+              readBy: userId,
+            },
+          }
+        );
+
+        io.to(conversationId).emit('messageStatusUpdated', {
+          conversationId,
+          userId,
+          status: 'read',
+        });
+
+        if (typeof ack === 'function') {
+          ack({ ok: true, modifiedCount: updateResult.modifiedCount || 0 });
+        }
+      } catch (err) {
+        console.error('Error marking messages read:', err.message);
+        if (typeof ack === 'function') ack({ ok: false, message: 'Could not mark messages read.' });
       }
     });
 

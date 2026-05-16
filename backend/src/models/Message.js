@@ -18,6 +18,8 @@ const MessageSchema = new mongoose.Schema(
             trim: true,
             maxlength: [5000, 'Message content cannot exceed 5000 characters'],
         },
+        deliveredTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
         deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },
     { timestamps: true }

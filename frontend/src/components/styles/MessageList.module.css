@@ -1,7 +1,7 @@
 .list {
     flex: 1;
     overflow-y: auto;
-    padding: 18px 22px;
+    padding: 20px 24px;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -83,7 +83,7 @@
     display: flex;
     align-items: flex-end;
     gap: 8px;
-    max-width: min(70%, 680px);
+    max-width: min(78%, 720px);
 }
 
 .groupStart {
@@ -135,19 +135,35 @@
     height: 32px;
 }
 
+.messageStack {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+}
+
+.own .messageStack {
+    align-items: flex-end;
+}
+
+.other .messageStack {
+    align-items: flex-start;
+}
+
 .bubble {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 9px 13px;
-    border-radius: 12px;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 18px;
     max-width: 100%;
     word-break: break-word;
 }
 
 .own .bubble {
-    background: #1877f2;
+    background: linear-gradient(180deg, #2383f6 0%, #1469d8 100%);
     color: #ffffff;
+    border-bottom-right-radius: 5px;
+    box-shadow: 0 2px 8px rgba(24, 119, 242, 0.18);
 }
 
 .own.sending .bubble {
@@ -157,6 +173,7 @@
 .other .bubble {
     background: #ffffff;
     color: #172033;
+    border-bottom-left-radius: 5px;
     border: 1px solid #e8eef5;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
@@ -170,24 +187,47 @@
 
 .content {
     margin: 0;
-    font-size: 15px;
-    line-height: 1.4;
+    font-size: 14.5px;
+    line-height: 1.42;
     white-space: pre-wrap;
 }
 
 .meta {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    min-height: 14px;
-    align-self: flex-end;
+    gap: 5px;
+    min-height: 16px;
+    margin-top: 4px;
+    padding: 0 6px;
+    color: #64748b;
     white-space: nowrap;
+}
+
+.own .meta {
+    justify-content: flex-end;
+}
+
+.other .meta {
+    justify-content: flex-start;
 }
 
 .time {
     font-size: 11px;
-    opacity: 0.65;
+    line-height: 1;
+}
+
+.status {
+    font-size: 11px;
+    color: #1877f2;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.status::before {
+    content: "·";
+    margin-right: 5px;
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 .sendingDot {
@@ -203,8 +243,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #ffe1e1;
+    color: #dc2626;
     font-size: 11px;
+    font-weight: 600;
 }
 
 .retryBtn {
@@ -308,8 +349,9 @@
 }
 
 :global([data-theme='dark']) .own .bubble {
-    background: #1d6fd8;
+    background: linear-gradient(180deg, #1f7be8 0%, #185fc2 100%);
     color: #ffffff;
+    box-shadow: 0 2px 8px rgba(29, 111, 216, 0.22);
 }
 
 :global([data-theme='dark']) .other .bubble {
@@ -321,6 +363,36 @@
 
 :global([data-theme='dark']) .senderName {
     color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .meta {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .status {
+    color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .status::before {
+    color: #64748b;
+}
+
+:global([data-theme='dark']) .failed {
+    color: #fca5a5;
+}
+
+@media (max-width: 640px) {
+    .list {
+        padding: 16px 14px;
+    }
+
+    .row {
+        max-width: 88%;
+    }
+
+    .content {
+        font-size: 14px;
+    }
 }
 
 :global([data-theme='dark']) .unreadJump {

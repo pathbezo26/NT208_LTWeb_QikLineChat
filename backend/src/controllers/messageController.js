@@ -118,6 +118,8 @@ const sendMessage = async (req, res) => {
             conversationId,
             sender: userId,
             content: trimmedContent,
+            deliveredTo: [userId],
+            readBy: [userId],
         });
 
         await updateConversationAfterMessage(conversation, message, userId);

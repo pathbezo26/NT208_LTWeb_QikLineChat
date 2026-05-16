@@ -37,6 +37,7 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 - **Sắp xếp conversation mới nhất lên đầu** — khi có tin nhắn mới, backend cập nhật `Conversation.updatedAt`, frontend nhận `conversationUpdated` rồi đưa conversation đó lên đầu sidebar.
 - **Unread message count bền vững** — `Conversation.unreadCounts` lưu số tin chưa đọc theo từng user; khi có tin mới backend dùng `$inc` atomic để tránh sai count khi spam nhiều tin liên tục.
 - **Reset unread khi mở conversation** — khi user chọn một conversation, frontend gọi `PATCH /api/conversations/:id/read`, backend đưa unread count của user đó về `0`.
+- **Trạng thái Delivered / Read theo từng tin nhắn** — `Message` lưu `deliveredTo` và `readBy`; frontend nhận `messageStatusUpdated` realtime để hiển thị `Sent`, `Delivered`, `Read` hoặc tiến độ đọc trong group.
 - **Tin nhắn tới khi đang ở room khác** — sidebar vẫn nghe `conversationUpdated`, cập nhật last message, unread count và đưa conversation mới nhắn lên đầu danh sách.
 - **Tin nhắn realtime trong phòng đang mở** — nếu user đang ở đúng conversation, tin mới render trực tiếp trong `MessageList` và conversation được mark read để không tăng badge không cần thiết.
 - **Lịch sử tin nhắn có pagination / infinite scroll** — `GET /api/messages/:conversationId` hỗ trợ `limit` và `before`, frontend tải trang mới hơn/ cũ hơn theo cursor để không load toàn bộ lịch sử một lần.
@@ -46,7 +47,8 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 - 🎨 **UI: Delete conversation an toàn hơn** — menu ba chấm chỉ hiện khi hover và có bước xác nhận trước khi xóa.
 - 🎨 **UI: Dark mode** — bật/tắt trong Settings, đồng bộ màu với Ant Design qua `ConfigProvider`.
 - 🎨 **UI: Sidebar chuyên nghiệp hơn** — avatar, tên, icon group, last message, thời gian sát phải và unread badge gọn hơn.
-- 🎨 **UI: Message bubble dễ đọc** — nhóm tin theo người gửi, giảm khoảng cách bubble liên tiếp và chỉ hiện avatar ở đầu cụm.
+- 🎨 **UI: Message bubble dễ đọc** — nhóm tin theo người gửi và ngưỡng thời gian 5 phút, giảm khoảng cách bubble liên tiếp, chỉ hiện avatar ở đầu cụm và chỉ hiện timestamp/status ở cuối cụm.
+- 🎨 **UI: Tooltip thời gian tin nhắn** — mỗi bubble có tooltip Ant Design khi hover/focus để xem thời gian đầy đủ của riêng tin nhắn mà không làm giao diện bị lặp timestamp.
 - **Bảo vệ Socket.IO bằng JWT** — socket kiểm tra token ngay khi kết nối; user không hợp lệ không được tham gia room hoặc gửi tin.
 - **Validate dữ liệu đầu vào** — giới hạn độ dài message, giới hạn avatar/group image 2MB, chỉ nhận JPG/PNG/WEBP, kiểm tra quyền member trước khi đọc/gửi tin hoặc quản lý nhóm.
 - **Cache tin nhắn theo room để chuyển chat nhanh hơn** — `ChatWindow` lưu message state theo `conversationId`, nên khi user chọn room khác rồi quay lại room cũ, UI có thể hiển thị lại dữ liệu từ cache trước khi gọi API mới.
@@ -419,6 +421,8 @@ npm run dev
 | `leaveRoom` | Client → Server | Rời khỏi phòng chat |
 | `sendMessage` | Client → Server | Gửi tin nhắn mới (`{ conversationId, content }`) |
 | `newMessage` | Server → Client | Broadcast tin nhắn mới đến toàn bộ room |
+| `markMessagesRead` | Client → Server | Đánh dấu các tin nhắn trong conversation hiện tại là đã đọc |
+| `messageStatusUpdated` | Server → Client | Broadcast trạng thái đọc/nhận mới để cập nhật `deliveredTo` / `readBy` realtime |
 | `typing` | Client → Server | Thông báo đang nhập tin nhắn |
 | `stopTyping` | Client → Server | Dừng nhập tin nhắn |
 | `userOnline` | Server → Client | Thông báo user vừa online |
@@ -527,7 +531,9 @@ Lưu trữ toàn bộ tin nhắn của tất cả các cuộc trò chuyện.
   conversationId: ObjectId,       // Thuộc cuộc trò chuyện nào → ref: "Conversation"
   sender:         ObjectId,       // Ai gửi → ref: "User"
   content:        String,         // Nội dung tin nhắn văn bản
-  deletedBy:      [ObjectId],    // Người đã “ẩn” tin (soft delete phía client)
+  deliveredTo:    [ObjectId],     // Các user đã nhận tin
+  readBy:         [ObjectId],     // Các user đã đọc tin
+  deletedBy:      [ObjectId],     // Người đã “ẩn” tin (soft delete phía client)
   createdAt:      Date,
   updatedAt:      Date
 }
@@ -539,6 +545,8 @@ Lưu trữ toàn bộ tin nhắn của tất cả các cuộc trò chuyện.
 | `conversationId` | ObjectId | Có | Thuộc conversation nào (ref → `conversations`) |
 | `sender` | ObjectId | Có | Người gửi (ref → `users`) |
 | `content` | String | Có | Nội dung tin nhắn văn bản |
+| `deliveredTo` | [ObjectId] | Không | Danh sách user đã nhận tin nhắn |
+| `readBy` | [ObjectId] | Không | Danh sách user đã đọc tin nhắn |
 | `deletedBy` | [ObjectId] | Không | User đã ẩn tin (không xóa bản ghi) |
 | `createdAt` | Date | Có | Thời điểm gửi, dùng để sắp xếp |
 
@@ -699,7 +707,6 @@ Các tính năng có thể bổ sung trong các phiên bản tiếp theo:
 - **Emoji & reaction** — emoji picker và react vào tin nhắn
 - **Gửi hình ảnh / file trong cuộc trò chuyện** — ngoài avatar đã có trên hồ sơ
 - **Thông báo đẩy (push)** — nhận thông báo kể cả khi không mở tab
-- **Trạng thái tin nhắn** — đã gửi / đã nhận / đã đọc
 - **Dark mode** — giao diện tối
 - **Tìm kiếm tin nhắn** — trong lịch sử trò chuyện
 - **Hồ sơ người dùng** — bio, thông tin bổ sung (avatar / đổi tên đã có)

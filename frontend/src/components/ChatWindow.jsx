@@ -22,6 +22,18 @@ const createClientMessageId = () => {
 
 const getMessageKey = (message) => message._id || message.clientMessageId;
 
+const getUserId = (user) => {
+    if (!user) return null;
+    return typeof user === 'object' ? (user._id || user.id || user.toString?.()) : user;
+};
+
+const addUniqueUserId = (items = [], userId) => {
+    const safeItems = Array.isArray(items) ? items : [];
+    const ids = safeItems.map(getUserId).filter(Boolean);
+    if (ids.includes(userId)) return items;
+    return [...safeItems, userId];
+};
+
 const mergeMessages = (currentMessages, incomingMessages) => {
     const messagesById = new Map();
 
@@ -84,6 +96,12 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
     const [memberActionId, setMemberActionId] = useState(null);
     const [memberError, setMemberError] = useState('');
 
+    const markActiveConversationRead = useCallback((conversationId) => {
+        if (!socket || !conversationId) return;
+
+        socket.emit('markMessagesRead', { conversationId });
+    }, [socket]);
+
     useEffect(() => {
         activeConversationIdRef.current = conversation?._id || null;
     }, [conversation?._id]);
@@ -99,7 +117,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
     }, [hasMoreMessages, messages, messagesConversationId, nextCursor]);
 
     useEffect(() => {
-        if (!conversation) return;
+        if (!conversation || !user?._id) return;
 
         let ignore = false;
         const requestConversationId = conversation._id;
@@ -155,11 +173,12 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         setEntryUnreadCount(initialUnreadCount);
         setTypingUsers([]);
         fetchMessages();
+        markActiveConversationRead(requestConversationId);
 
         return () => {
             ignore = true;
         };
-    }, [conversation, user._id]);
+    }, [conversation, markActiveConversationRead, user?._id]);
 
     useEffect(() => {
         if (!socket || !conversation) return;
@@ -201,15 +220,44 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
 
                 return [...prevMessages, newMessage];
             });
+
+            if (getUserId(newMessage.sender) !== user?._id) {
+                markActiveConversationRead(newMessage.conversationId);
+            }
+        };
+
+        const handleMessageStatusUpdated = ({ conversationId, userId: readerId, status }) => {
+            if (conversationId?.toString() !== activeConversationIdRef.current || !readerId) return;
+
+            setMessages((prevMessages) => {
+                return prevMessages.map((message) => {
+                    if (getUserId(message.sender) === readerId) return message;
+
+                    const nextMessage = {
+                        ...message,
+                        deliveredTo: addUniqueUserId(message.deliveredTo, readerId),
+                    };
+
+                    if (status === 'read') {
+                        nextMessage.readBy = addUniqueUserId(message.readBy, readerId);
+                    }
+
+                    return nextMessage;
+                });
+            });
         };
 
         socket.on('newMessage', handleNewMessage);
+        socket.on('messageStatusUpdated', handleMessageStatusUpdated);
 
-        return () => socket.off('newMessage', handleNewMessage);
-    }, [socket]);
+        return () => {
+            socket.off('newMessage', handleNewMessage);
+            socket.off('messageStatusUpdated', handleMessageStatusUpdated);
+        };
+    }, [markActiveConversationRead, socket, user?._id]);
 
     useEffect(() => {
-        if (!socket || !user) return;
+        if (!socket || !user?._id) return;
 
         const handleUserTyping = ({ userId, username }) => {
             if (userId === user._id) return;
@@ -357,7 +405,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         handleSendMessage(message.content, message.clientMessageId);
     }, [handleSendMessage]);
 
-    if (!conversation) {
+    if (!conversation || !user?._id) {
         return (
             <div className={styles.empty}>
                 <div className={styles.emptyIcon}>
@@ -370,7 +418,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
     }
 
     const getOtherMember = () => {
-        return conversation.members.find((member) => member._id !== user._id);
+        return conversation.members.find((member) => getUserId(member) !== user._id);
     };
 
     const getChatName = () => {
@@ -379,10 +427,6 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
         }
 
         return getOtherMember()?.username || 'User';
-    };
-
-    const getUserId = (targetUser) => {
-        return typeof targetUser === 'object' ? targetUser._id : targetUser;
     };
 
     const isGroupOwner = getUserId(conversation.createdBy) === user._id;
@@ -408,7 +452,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
 
         try {
             const response = await axiosInstance.get(`/users/search?q=${encodeURIComponent(keyword)}`);
-            const currentMemberIds = new Set(conversation.members.map((member) => member._id));
+            const currentMemberIds = new Set(conversation.members.map(getUserId));
             const availableUsers = response.data.filter((searchUser) => !currentMemberIds.has(searchUser._id));
 
             setMemberSearchResults(availableUsers);
@@ -500,6 +544,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                 initialUnreadCount={entryUnreadCount}
                 isInitialLoading={shouldShowInitialSkeleton}
                 isLoadingOlder={isLoadingOlder}
+                conversationMembers={conversation.members}
                 onLoadOlder={loadOlderMessages}
                 onRetryMessage={handleRetryMessage}
             />
@@ -571,7 +616,7 @@ export default function ChatWindow({ conversation, onConversationUpdated }) {
                     size="small"
                     dataSource={conversation.members}
                     renderItem={(member) => {
-                        const canRemoveMember = isGroupOwner && member._id !== user._id;
+                        const canRemoveMember = isGroupOwner && getUserId(member) !== user._id;
 
                         return (
                             <List.Item
