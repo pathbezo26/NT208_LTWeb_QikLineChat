@@ -7,7 +7,7 @@ import {
     getConversationsAPI,
     removeGroupMemberAPI,
 } from '../api/conversationAPI';
-import { getMessagesAPI } from '../api/messageAPI';
+import { getMessagesAPI, sendMessageAPI } from '../api/messageAPI';
 import useSocket from '../hooks/useSocket';
 import useAuth from '../hooks/useAuth';
 import MessageList from './MessageList';
@@ -41,14 +41,31 @@ const buildMessageReference = (message) => {
     return {
         messageId: message._id || message.messageId,
         sender: message.sender,
-        content: message.content,
+        content: message.content || getMessagePreviewContent(message),
         createdAt: message.createdAt,
     };
+};
+
+const getMessagePreviewContent = (message) => {
+    const content = message?.content?.trim();
+    if (content) return content;
+
+    const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
+    if (attachments.length === 0) return '';
+
+    const hasImage = attachments.some((attachment) => attachment.type === 'image');
+    if (hasImage && attachments.length === 1) return 'Photo';
+    if (hasImage) return `${attachments.length} attachments`;
+
+    return attachments.length === 1 ? 'File' : `${attachments.length} files`;
 };
 
 const mergeServerMessage = (serverMessage, fallbackMessage = {}) => {
     return {
         ...serverMessage,
+        attachments: serverMessage.attachments?.length
+            ? serverMessage.attachments
+            : fallbackMessage.attachments || [],
         replyTo: serverMessage.replyTo?.messageId || serverMessage.replyTo?.content
             ? serverMessage.replyTo
             : fallbackMessage.replyTo,
@@ -413,6 +430,7 @@ export default function ChatWindow({
 
         const clientMessageId = retryClientMessageId || createClientMessageId();
         const replyReference = options.replyToMessage ? buildMessageReference(options.replyToMessage) : null;
+        const attachments = Array.isArray(options.attachments) ? options.attachments : [];
 
         if (!retryClientMessageId) {
             const optimisticMessage = {
@@ -424,7 +442,8 @@ export default function ChatWindow({
                     username: user.username,
                     avatar: user.avatar,
                 },
-                content,
+                content: content || '',
+                attachments,
                 createdAt: new Date().toISOString(),
                 status: 'sending',
                 replyTo: replyReference,
@@ -434,7 +453,7 @@ export default function ChatWindow({
             onConversationPreviewUpdate?.({
                 conversationId: conversation._id,
                 clientMessageId,
-                content,
+                content: getMessagePreviewContent(optimisticMessage),
                 createdAt: optimisticMessage.createdAt,
                 sender: optimisticMessage.sender,
             });
@@ -452,11 +471,45 @@ export default function ChatWindow({
             });
         }
 
+        const replaceOptimisticMessage = (serverMessage) => {
+            setMessages((prevMessages) => {
+                const withoutOptimistic = prevMessages.filter((message) => {
+                    return message.clientMessageId !== clientMessageId && message._id !== serverMessage._id;
+                });
+                const optimisticMessage = prevMessages.find((message) => message.clientMessageId === clientMessageId);
+
+                return [...withoutOptimistic, mergeServerMessage(serverMessage, optimisticMessage)];
+            });
+
+            if (options.replyToMessage) {
+                setReplyToMessage(null);
+            }
+        };
+
+        const sendViaRestFallback = async (fallbackErrorMessage) => {
+            try {
+                const serverMessage = await sendMessageAPI({
+                    conversationId: conversation._id,
+                    content,
+                    attachments,
+                    replyToMessageId: options.replyToMessage?._id || options.replyToMessage?.messageId,
+                });
+
+                replaceOptimisticMessage(serverMessage);
+            } catch (restError) {
+                markMessageFailed(
+                    clientMessageId,
+                    restError.response?.data?.message || fallbackErrorMessage || restError.message
+                );
+            }
+        };
+
         socket.timeout(10000).emit(
             'sendMessage',
             {
                 conversationId: conversation._id,
                 content,
+                attachments,
                 clientMessageId,
                 replyToMessageId: options.replyToMessage?._id || options.replyToMessage?.messageId,
             },
@@ -464,23 +517,16 @@ export default function ChatWindow({
                 if (activeConversationIdRef.current !== conversation._id) return;
 
                 if (error || !response?.ok) {
-                    markMessageFailed(clientMessageId, response?.message);
+                    if (attachments.length > 0) {
+                        sendViaRestFallback(response?.message || error?.message);
+                        return;
+                    }
+
+                    markMessageFailed(clientMessageId, response?.message || error?.message);
                     return;
                 }
 
-                setMessages((prevMessages) => {
-                    const serverMessage = response.message;
-                    const withoutOptimistic = prevMessages.filter((message) => {
-                        return message.clientMessageId !== clientMessageId && message._id !== serverMessage._id;
-                    });
-                    const optimisticMessage = prevMessages.find((message) => message.clientMessageId === clientMessageId);
-
-                    return [...withoutOptimistic, mergeServerMessage(serverMessage, optimisticMessage)];
-                });
-
-                if (options.replyToMessage) {
-                    setReplyToMessage(null);
-                }
+                replaceOptimisticMessage(response.message);
             }
         );
     }, [conversation, markMessageFailed, onConversationPreviewUpdate, socket, user]);
@@ -488,6 +534,7 @@ export default function ChatWindow({
     const handleRetryMessage = useCallback((message) => {
         handleSendMessage(message.content, message.clientMessageId, {
             replyToMessage: message.replyTo?.messageId ? message.replyTo : null,
+            attachments: message.attachments || [],
         });
     }, [handleSendMessage]);
 
@@ -509,6 +556,7 @@ export default function ChatWindow({
             {
                 conversationId: forwardTargetId,
                 content: forwardMessage.content,
+                attachments: forwardMessage.attachments || [],
                 clientMessageId: createClientMessageId(),
                 forwardedFromMessageId: forwardMessage._id,
             },
@@ -701,7 +749,7 @@ export default function ChatWindow({
             >
                 <div className={styles.forwardPreview}>
                     <span className={styles.forwardPreviewLabel}>Message</span>
-                    <p>{forwardMessage?.content}</p>
+                    <p>{getMessagePreviewContent(forwardMessage)}</p>
                 </div>
 
                 <Select

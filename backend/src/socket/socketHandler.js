@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 const SOCKET_USER_FIELDS = '_id username email avatar'; // Field user gui qua socket, bao gom avatar cho realtime message.
 const MAX_MESSAGE_LENGTH = 5000;
+const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 
 const onlineUsers = new Map(); //Mảng các user đang onl
 
@@ -23,6 +24,38 @@ const buildMessageReference = (sourceMessage) => {
     content: sourceMessage.content,
     createdAt: sourceMessage.createdAt,
   };
+};
+
+const normalizeAttachments = (attachments = []) => {
+  if (!Array.isArray(attachments)) return [];
+
+  return attachments
+    .slice(0, MAX_ATTACHMENTS_PER_MESSAGE)
+    .filter((attachment) => attachment?.url && attachment?.name)
+    .map((attachment) => ({
+      type: attachment.type === 'image' ? 'image' : 'file',
+      url: attachment.url,
+      publicId: attachment.publicId || '',
+      name: attachment.name,
+      size: Number(attachment.size) || 0,
+      mimeType: attachment.mimeType || '',
+      width: Number(attachment.width) || null,
+      height: Number(attachment.height) || null,
+    }));
+};
+
+const getMessagePreviewContent = (message) => {
+  const content = message.content?.trim();
+  if (content) return content;
+
+  const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+  if (attachments.length === 0) return '';
+
+  const hasImage = attachments.some((attachment) => attachment.type === 'image');
+  if (hasImage && attachments.length === 1) return 'Photo';
+  if (hasImage) return `${attachments.length} attachments`;
+
+  return attachments.length === 1 ? 'File' : `${attachments.length} files`;
 };
 
 const populateSocketMessage = (message) => {
@@ -76,19 +109,20 @@ const socketHandler = (io) => {
     });
 
     // Handle sending a message
-    socket.on('sendMessage', async ({ conversationId, content, clientMessageId, replyToMessageId, forwardedFromMessageId }, ack) => {
+    socket.on('sendMessage', async ({ conversationId, content, attachments: rawAttachments, clientMessageId, replyToMessageId, forwardedFromMessageId }, ack) => {
       const trimmedContent = content?.trim();
+      const attachments = normalizeAttachments(rawAttachments);
 
       const fail = (message) => {
         if (typeof ack === 'function') ack({ ok: false, message });
       };
 
-      if (!conversationId || !trimmedContent) {
-        fail('Missing conversationId or message content.');
+      if (!conversationId || (!trimmedContent && attachments.length === 0 && !forwardedFromMessageId)) {
+        fail('Missing conversationId, message content, or attachment.');
         return;
       }
 
-      if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+      if ((trimmedContent || '').length > MAX_MESSAGE_LENGTH) {
         fail(`Message cannot exceed ${MAX_MESSAGE_LENGTH} characters.`);
         return;
       }
@@ -139,7 +173,8 @@ const socketHandler = (io) => {
         const messageData = {
           conversationId,
           sender: userId,
-          content: trimmedContent,
+          content: trimmedContent || '',
+          attachments,
           deliveredTo: [
             userId,
             ...conversation.members
@@ -155,6 +190,7 @@ const socketHandler = (io) => {
 
         if (forwardedFromMessage) {
           messageData.forwardedFrom = buildMessageReference(forwardedFromMessage);
+          messageData.attachments = normalizeAttachments(forwardedFromMessage.attachments);
         }
 
         // Save to DB
@@ -186,7 +222,7 @@ const socketHandler = (io) => {
             lastMessage: {
               messageId: populated._id,
               sender: populated.sender,
-              content: populated.content,
+              content: getMessagePreviewContent(populated),
               createdAt: populated.createdAt,
             },
           });
@@ -194,9 +230,10 @@ const socketHandler = (io) => {
 
         if (typeof ack === 'function') ack({ ok: true, message: payload });
       } catch (err) {
-        console.error('Error saving message:', err.message);
-        socket.emit('messageError', { message: 'Could not send message.' });
-        fail('Could not send message.');
+        console.error('Error saving message:', err);
+        const errorMessage = err.message || 'Could not send message.';
+        socket.emit('messageError', { message: errorMessage });
+        fail(errorMessage);
       }
     });
 

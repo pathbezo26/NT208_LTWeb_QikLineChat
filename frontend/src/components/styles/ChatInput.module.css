@@ -11,6 +11,125 @@
     position: relative;
 }
 
+.attachmentTray {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 20px 0;
+}
+
+.attachmentChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    max-width: min(280px, 100%);
+    min-height: 46px;
+    padding: 6px 8px 6px 6px;
+    border: 1px solid #dbe5ef;
+    border-radius: 12px;
+    background: #f8fbff;
+    color: #172033;
+}
+
+.attachmentThumb,
+.fileThumb {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 9px;
+}
+
+.attachmentThumb {
+    object-fit: cover;
+}
+
+.fileThumb {
+    display: grid;
+    place-items: center;
+    background: #eaf4ff;
+    color: #156bd8;
+    font-size: 17px;
+}
+
+.attachmentInfo {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.attachmentName,
+.attachmentSize {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachmentName {
+    color: currentColor;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.attachmentSize {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.removeAttachmentBtn,
+.attachBtn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border: none;
+    cursor: pointer;
+}
+
+.removeAttachmentBtn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: transparent;
+    color: #64748b;
+}
+
+.removeAttachmentBtn:hover {
+    background: rgba(15, 23, 42, 0.08);
+    color: #172033;
+}
+
+.attachmentError {
+    margin: 8px 20px 0;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.fileInput {
+    display: none;
+}
+
+.attachBtn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 17px;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.attachBtn:hover:not(:disabled) {
+    background: #eaf4ff;
+    color: #156bd8;
+    transform: translateY(-1px);
+}
+
+.attachBtn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 .replyPreview {
     display: flex;
     align-items: center;
@@ -154,6 +273,41 @@
     border-left-color: #8ec5ff;
     background: #111c2b;
     color: #e5edf6;
+}
+
+:global([data-theme='dark']) .attachmentChip {
+    border-color: #263244;
+    background: #111c2b;
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .fileThumb {
+    background: #172b44;
+    color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .attachmentSize,
+:global([data-theme='dark']) .removeAttachmentBtn {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .removeAttachmentBtn:hover {
+    background: rgba(148, 163, 184, 0.12);
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .attachmentError {
+    color: #fca5a5;
+}
+
+:global([data-theme='dark']) .attachBtn {
+    background: #111c2b;
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .attachBtn:hover:not(:disabled) {
+    background: #172b44;
+    color: #8ec5ff;
 }
 
 :global([data-theme='dark']) .replyLabel {

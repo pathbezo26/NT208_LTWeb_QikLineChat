@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Popover } from 'antd';
-import { ShareAltOutlined, UpOutlined } from '@ant-design/icons';
+import { FileOutlined, ShareAltOutlined, UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
@@ -43,6 +43,26 @@ const isSameMessageGroup = (firstMessage, secondMessage) => {
 
 const hasMessageReference = (reference) => {
     return Boolean(reference?.messageId || reference?.content);
+};
+
+const formatFileSize = (size) => {
+    if (!size) return '';
+    if (size < 1024 * 1024) return `${Math.ceil(size / 1024)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const getMessagePreviewContent = (message) => {
+    const content = message?.content?.trim();
+    if (content) return content;
+
+    const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
+    if (attachments.length === 0) return 'Message';
+
+    const hasImage = attachments.some((attachment) => attachment.type === 'image');
+    if (hasImage && attachments.length === 1) return 'Photo';
+    if (hasImage) return `${attachments.length} attachments`;
+
+    return attachments.length === 1 ? 'File' : `${attachments.length} files`;
 };
 
 export default function MessageList({
@@ -272,6 +292,7 @@ export default function MessageList({
                 const messageKey = getMessageKey(message);
                 const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
                 const isInitialUnreadMessage = unreadCount > 0 && index >= firstUnreadIndex;
+                const attachments = Array.isArray(message.attachments) ? message.attachments : [];
 
                 return (
                     <div
@@ -297,16 +318,10 @@ export default function MessageList({
                             <div
                                 className={styles.bubble}
                                 tabIndex={0}
-                                aria-label={`${message.content}. Sent ${formatFullTime(message.createdAt)}`}
+                                aria-label={`${getMessagePreviewContent(message)}. Sent ${formatFullTime(message.createdAt)}`}
                             >
                                 {!isMyMessage && shouldShowAvatar && message.sender?.username && (
                                     <span className={styles.senderName}>{message.sender.username}</span>
-                                )}
-
-                                {hasMessageReference(message.forwardedFrom) && (
-                                    <span className={styles.forwardLabel}>
-                                        Forwarded from {getReferenceSenderName(message.forwardedFrom)}
-                                    </span>
                                 )}
 
                                 {hasMessageReference(message.replyTo) && (
@@ -315,12 +330,48 @@ export default function MessageList({
                                             {getReferenceSenderName(message.replyTo)}
                                         </span>
                                         <span className={styles.replyContent}>
-                                            {message.replyTo.content}
+                                            {message.replyTo.content || 'Attachment'}
                                         </span>
                                     </div>
                                 )}
 
-                                <p className={styles.content}>{message.content}</p>
+                                {attachments.length > 0 && (
+                                    <div className={styles.attachments}>
+                                        {attachments.map((attachment, attachmentIndex) => (
+                                            attachment.type === 'image' ? (
+                                                <a
+                                                    className={styles.imageAttachment}
+                                                    href={attachment.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    key={`${attachment.url}-${attachmentIndex}`}
+                                                >
+                                                    <img src={attachment.url} alt={attachment.name || 'Image attachment'} />
+                                                </a>
+                                            ) : (
+                                                <a
+                                                    className={styles.fileAttachment}
+                                                    href={attachment.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    key={`${attachment.url}-${attachmentIndex}`}
+                                                >
+                                                    <span className={styles.fileIcon}>
+                                                        <FileOutlined />
+                                                    </span>
+                                                    <span className={styles.fileInfo}>
+                                                        <span className={styles.fileName}>{attachment.name || 'Attachment'}</span>
+                                                        <span className={styles.fileMeta}>
+                                                            {attachment.mimeType || 'File'}{attachment.size ? ` - ${formatFileSize(attachment.size)}` : ''}
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                            )
+                                        ))}
+                                    </div>
+                                )}
+
+                                {message.content && <p className={styles.content}>{message.content}</p>}
                             </div>
 
                             {!isSending && !isFailed && message._id && !String(message._id).startsWith('client-') && (
@@ -377,7 +428,7 @@ export default function MessageList({
 
                                     {isFailed && (
                                         <span className={styles.failed}>
-                                            Failed
+                                            {message.errorMessage || 'Failed'}
                                             <button
                                                 className={styles.retryBtn}
                                                 onClick={() => onRetryMessage?.(message)}

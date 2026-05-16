@@ -166,10 +166,10 @@
 }
 
 .own .bubble {
-    background: linear-gradient(180deg, #2f7edc 0%, #256fc8 100%);
+    background: linear-gradient(180deg, #2d78d3 0%, #236bc2 100%);
     color: #ffffff;
     border-bottom-right-radius: 5px;
-    box-shadow: 0 3px 10px rgba(37, 111, 200, 0.2);
+    box-shadow: 0 3px 10px rgba(35, 107, 194, 0.18);
 }
 
 .own.sending .bubble {
@@ -191,18 +191,6 @@
     margin-bottom: 2px;
 }
 
-.forwardLabel {
-    display: inline-flex;
-    align-items: center;
-    color: rgba(255, 255, 255, 0.82);
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.other .forwardLabel {
-    color: #64748b;
-}
-
 .replyBubble {
     display: flex;
     flex-direction: column;
@@ -217,7 +205,7 @@
 }
 
 .other .replyBubble {
-    border-left-color: #2f7edc;
+    border-left-color: #2d78d3;
     background: #e2edf9;
 }
 
@@ -236,6 +224,86 @@
     opacity: 0.78;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.attachments {
+    display: grid;
+    gap: 7px;
+    max-width: min(320px, 62vw);
+}
+
+.imageAttachment {
+    display: block;
+    overflow: hidden;
+    max-width: min(320px, 62vw);
+    border-radius: 13px;
+    background: rgba(15, 23, 42, 0.08);
+}
+
+.imageAttachment img {
+    display: block;
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+}
+
+.fileAttachment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: min(260px, 56vw);
+    max-width: min(320px, 62vw);
+    padding: 9px 10px;
+    border-radius: 13px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.own .fileAttachment {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.other .fileAttachment {
+    background: #e2edf9;
+}
+
+.fileIcon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 17px;
+}
+
+.other .fileIcon {
+    background: #d3e3f4;
+    color: #256fc8;
+}
+
+.fileInfo {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.fileName,
+.fileMeta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fileName {
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.fileMeta {
+    font-size: 11px;
+    opacity: 0.78;
 }
 
 .content {
@@ -477,7 +545,7 @@
 
 :global([data-theme='dark']) .list,
 :global([data-theme='dark']) .empty {
-    background: #0b1220;
+    background: #0d1522;
 }
 
 :global([data-theme='dark']) .empty {
@@ -497,29 +565,43 @@
 }
 
 :global([data-theme='dark']) .own .bubble {
-    background: linear-gradient(180deg, #1f7be8 0%, #185fc2 100%);
+    background: linear-gradient(180deg, #256fc8 0%, #1f62b4 100%);
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(29, 111, 216, 0.22);
+    box-shadow: 0 3px 10px rgba(20, 88, 169, 0.24);
 }
 
 :global([data-theme='dark']) .other .bubble {
-    border-color: #263244;
-    background: #101826;
+    border-color: #2b3b50;
+    background: #151f2d;
     color: #e5edf6;
-    box-shadow: none;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
 }
 
 :global([data-theme='dark']) .senderName {
     color: #8ec5ff;
 }
 
-:global([data-theme='dark']) .other .forwardLabel {
-    color: #94a3b8;
+:global([data-theme='dark']) .other .replyBubble {
+    border-left-color: #6ca8e8;
+    background: #1c2a3c;
 }
 
-:global([data-theme='dark']) .other .replyBubble {
-    border-left-color: #8ec5ff;
-    background: #172234;
+:global([data-theme='dark']) .own .replyBubble {
+    border-left-color: rgba(255, 255, 255, 0.54);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+:global([data-theme='dark']) .imageAttachment {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+:global([data-theme='dark']) .other .fileAttachment {
+    background: #1c2a3c;
+}
+
+:global([data-theme='dark']) .other .fileIcon {
+    background: #24364d;
+    color: #8ec5ff;
 }
 
 :global([data-theme='dark']) .actionBtn {

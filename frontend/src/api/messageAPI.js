@@ -11,3 +11,27 @@ export const sendMessageAPI = async (data) => {
     const response = await axiosInstance.post('/messages', data);
     return response.data;
 };
+
+export const uploadMessageAttachmentsAPI = async (conversationId, files) => {
+    const formData = new FormData();
+
+    files.forEach((file) => {
+        formData.append('attachments', file);
+    });
+
+    const baseURL = import.meta.env.VITE_API_URL || '';
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${baseURL}/messages/${conversationId}/attachments`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.message || 'Could not upload attachment.');
+    }
+
+    return data;
+};

@@ -2,9 +2,6 @@ import axios from 'axios';
 
 const axiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // ─── Request interceptor: Tự động gắn JWT vào header trước mỗi request ────────
@@ -14,6 +11,16 @@ axiosInstance.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        if (config.data instanceof FormData && config.headers) {
+            if (typeof config.headers.delete === 'function') {
+                config.headers.delete('Content-Type');
+            } else {
+                delete config.headers['Content-Type'];
+                delete config.headers['content-type'];
+            }
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

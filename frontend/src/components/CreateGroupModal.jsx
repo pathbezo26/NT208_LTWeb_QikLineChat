@@ -182,6 +182,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                     <input
                         id="groupName"
                         type="text"
+                        autoComplete="off"
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
                         placeholder="Enter group name"
@@ -194,6 +195,7 @@ export default function CreateGroupModal({ onClose, onCreated }) {
                     <input
                         id="searchUser"
                         type="text"
+                        autoComplete="off"
                         value={searchKeyword}
                         onChange={handleSearchUser}
                         placeholder="Search by username..."

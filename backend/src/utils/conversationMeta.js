@@ -1,5 +1,19 @@
 const Conversation = require('../models/Conversation');
 
+const getMessagePreviewContent = (message) => {
+    const content = message.content?.trim();
+    if (content) return content;
+
+    const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+    if (attachments.length === 0) return '';
+
+    const hasImage = attachments.some((attachment) => attachment.type === 'image');
+    if (hasImage && attachments.length === 1) return 'Photo';
+    if (hasImage) return `${attachments.length} attachments`;
+
+    return attachments.length === 1 ? 'File' : `${attachments.length} files`;
+};
+
 const buildMessageMetaUpdate = (conversation, message, senderId) => {
     const senderIdString = senderId.toString();
     const setUpdates = {
@@ -7,7 +21,7 @@ const buildMessageMetaUpdate = (conversation, message, senderId) => {
         lastMessage: {
             messageId: message._id,
             sender: senderId,
-            content: message.content,
+            content: getMessagePreviewContent(message),
             createdAt: message.createdAt,
         },
         [`unreadCounts.${senderIdString}`]: 0,

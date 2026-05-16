@@ -1,11 +1,14 @@
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
+const cloudinary = require('../config/cloudinary');
+const supabase = require('../config/supabase');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
 const SENDER_PUBLIC_FIELDS = 'username avatar';
 const DEFAULT_MESSAGE_LIMIT = 30;
 const MAX_MESSAGE_LIMIT = 50;
 const MAX_MESSAGE_LENGTH = 5000;
+const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 
 const normalizeLimit = (value) => {
     const parsed = Number.parseInt(value, 10);
@@ -30,6 +33,88 @@ const buildMessageReference = (sourceMessage) => {
         content: sourceMessage.content,
         createdAt: sourceMessage.createdAt,
     };
+};
+
+const uploadMessageAttachmentToCloudinary = (fileBuffer, conversationId, fileName) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: `qikline/messages/${conversationId}`,
+                resource_type: 'auto',
+                use_filename: true,
+                unique_filename: true,
+                filename_override: fileName,
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
+
+        uploadStream.end(fileBuffer);
+    });
+};
+
+const sanitizeFileName = (fileName = 'attachment') => {
+    return fileName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 120) || 'attachment';
+};
+
+const uploadMessageFileToSupabase = async (file, conversationId) => {
+    if (!process.env.SUPABASE_FILE_BUCKET) {
+        throw new Error('Missing SUPABASE_FILE_BUCKET');
+    }
+
+    const safeName = sanitizeFileName(file.originalname);
+    const filePath = `${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
+
+    const { data, error } = await supabase.storage
+        .from(process.env.SUPABASE_FILE_BUCKET)
+        .upload(filePath, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+        });
+
+    if (error) {
+        throw error;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+        .from(process.env.SUPABASE_FILE_BUCKET)
+        .getPublicUrl(data.path);
+
+    return {
+        type: 'file',
+        url: publicUrlData.publicUrl,
+        publicId: data.path,
+        name: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype,
+        width: null,
+        height: null,
+    };
+};
+
+const normalizeAttachments = (attachments = []) => {
+    if (!Array.isArray(attachments)) return [];
+
+    return attachments
+        .slice(0, MAX_ATTACHMENTS_PER_MESSAGE)
+        .filter((attachment) => attachment?.url && attachment?.name)
+        .map((attachment) => ({
+            type: attachment.type === 'image' ? 'image' : 'file',
+            url: attachment.url,
+            publicId: attachment.publicId || '',
+            name: attachment.name,
+            size: Number(attachment.size) || 0,
+            mimeType: attachment.mimeType || '',
+            width: Number(attachment.width) || null,
+            height: Number(attachment.height) || null,
+        }));
 };
 
 const populateMessage = (message) => {
@@ -117,12 +202,13 @@ const sendMessage = async (req, res) => {
         const { conversationId, content, replyToMessageId, forwardedFromMessageId } = req.body;
         const userId = req.user._id;
         const trimmedContent = content?.trim();
+        const attachments = normalizeAttachments(req.body.attachments);
 
-        if (!conversationId || !trimmedContent) {
-            return res.status(400).json({ message: 'Missing conversationId or message content' });
+        if (!conversationId || (!trimmedContent && attachments.length === 0 && !forwardedFromMessageId)) {
+            return res.status(400).json({ message: 'Missing conversationId, message content, or attachment' });
         }
 
-        if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+        if ((trimmedContent || '').length > MAX_MESSAGE_LENGTH) {
             return res.status(400).json({ message: `Message cannot exceed ${MAX_MESSAGE_LENGTH} characters` });
         }
 
@@ -162,7 +248,8 @@ const sendMessage = async (req, res) => {
         const messageData = {
             conversationId,
             sender: userId,
-            content: trimmedContent,
+            content: trimmedContent || '',
+            attachments,
             deliveredTo: [userId],
             readBy: [userId],
         };
@@ -173,6 +260,7 @@ const sendMessage = async (req, res) => {
 
         if (forwardedFromMessage) {
             messageData.forwardedFrom = buildMessageReference(forwardedFromMessage);
+            messageData.attachments = normalizeAttachments(forwardedFromMessage.attachments);
         }
 
         const message = await Message.create(messageData);
@@ -184,8 +272,59 @@ const sendMessage = async (req, res) => {
         res.status(201).json(populated);
     } catch (error) {
         console.error('sendMessage error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: error.message || 'Server error' });
     }
 };
 
-module.exports = { getMessages, sendMessage };
+const uploadAttachments = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        if (!isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to upload files here' });
+        }
+
+        const files = req.files || [];
+        if (files.length === 0) {
+            return res.status(400).json({ message: 'Please choose at least one file' });
+        }
+
+        const attachments = await Promise.all(files.map(async (file) => {
+            const isImage = file.mimetype.startsWith('image/');
+
+            if (!isImage) {
+                return uploadMessageFileToSupabase(file, conversationId);
+            }
+
+            const uploaded = await uploadMessageAttachmentToCloudinary(
+                file.buffer,
+                conversationId,
+                file.originalname
+            );
+
+            return {
+                type: isImage ? 'image' : 'file',
+                url: uploaded.secure_url,
+                publicId: uploaded.public_id,
+                name: file.originalname,
+                size: file.size,
+                mimeType: file.mimetype,
+                width: uploaded.width || null,
+                height: uploaded.height || null,
+            };
+        }));
+
+        res.status(201).json({ attachments });
+    } catch (error) {
+        console.error('uploadAttachments error:', error);
+        res.status(500).json({ message: error.message || 'Could not upload attachment' });
+    }
+};
+
+module.exports = { getMessages, sendMessage, uploadAttachments, MAX_ATTACHMENTS_PER_MESSAGE };
