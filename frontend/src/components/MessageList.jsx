@@ -28,6 +28,14 @@ const MESSAGE_GROUP_TIME_GAP_MS = 5 * 60 * 1000;
 const MESSAGE_TIME_DIVIDER_GAP_MS = 30 * 60 * 1000;
 const LARGE_GROUP_MEMBER_COUNT = 20;
 
+const normalizeSearchText = (value = '') => {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .toLowerCase();
+};
+
 const getMessageTime = (message) => {
     const time = new Date(message?.createdAt).getTime();
     return Number.isNaN(time) ? 0 : time;
@@ -92,6 +100,63 @@ const formatDividerTime = (dateString) => {
     return `${date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })} ${time}`;
 };
 
+const renderHighlightedContent = (content = '', searchTerm = '') => {
+    const keyword = searchTerm.trim();
+    if (!keyword) return content;
+
+    const term = normalizeSearchText(keyword).trim();
+    if (!term) return content;
+
+    let normalizedContent = '';
+    const indexMap = [];
+    Array.from(content).forEach((char, originalIndex) => {
+        const normalizedChar = normalizeSearchText(char);
+        Array.from(normalizedChar).forEach((normalizedPart) => {
+            normalizedContent += normalizedPart;
+            indexMap.push(originalIndex);
+        });
+    });
+
+    const ranges = [];
+    let fromIndex = 0;
+    while (fromIndex < normalizedContent.length) {
+        const matchIndex = normalizedContent.indexOf(term, fromIndex);
+        if (matchIndex < 0) break;
+
+        const originalStart = indexMap[matchIndex];
+        const originalEnd = (indexMap[matchIndex + term.length - 1] ?? originalStart) + 1;
+        ranges.push([originalStart, originalEnd]);
+        fromIndex = matchIndex + term.length;
+    }
+
+    const mergedRanges = ranges
+        .sort((first, second) => first[0] - second[0])
+        .reduce((items, range) => {
+            const previous = items.at(-1);
+            if (!previous || range[0] > previous[1]) return [...items, range];
+
+            previous[1] = Math.max(previous[1], range[1]);
+            return items;
+        }, []);
+
+    if (mergedRanges.length === 0) return content;
+
+    const output = [];
+    let cursor = 0;
+    mergedRanges.forEach(([start, end], index) => {
+        if (cursor < start) output.push(content.slice(cursor, start));
+        output.push(
+            <mark className={styles.searchHighlight} key={`${start}-${end}-${index}`}>
+                {content.slice(start, end)}
+            </mark>
+        );
+        cursor = end;
+    });
+    if (cursor < content.length) output.push(content.slice(cursor));
+
+    return output;
+};
+
 export default function MessageList({
     messages,
     currentUserId,
@@ -101,6 +166,8 @@ export default function MessageList({
     isInitialLoading,
     isLoadingOlder,
     conversationMembers = [],
+    searchTerm = '',
+    activeSearchMessageId = null,
     onLoadOlder,
     onRetryMessage,
     onReplyMessage,
@@ -114,6 +181,7 @@ export default function MessageList({
     const shouldStickToBottomRef = useRef(true);
     const preserveScrollRef = useRef(null);
     const unreadMessageRefs = useRef(new Map());
+    const messageRefs = useRef(new Map());
     const seenUnreadMessageIdsRef = useRef(new Set());
     const unreadCount = initialUnreadCount || 0;
     const [remainingUnreadCount, setRemainingUnreadCount] = useState(unreadCount);
@@ -233,6 +301,32 @@ export default function MessageList({
 
         unreadMessageRefs.current.delete(messageId);
     }, []);
+
+    const setMessageRowRef = useCallback((messageId, node) => {
+        if (!messageId) return;
+
+        if (node) {
+            messageRefs.current.set(messageId.toString(), node);
+            return;
+        }
+
+        messageRefs.current.delete(messageId.toString());
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!activeSearchMessageId) return;
+
+        const node = messageRefs.current.get(activeSearchMessageId.toString());
+        if (!node) return;
+
+        node.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+        });
+
+        const bubble = node.querySelector(`.${styles.bubble}`);
+        bubble?.focus({ preventScroll: true });
+    }, [activeSearchMessageId, messages]);
 
     const handleJumpToUnread = () => {
         const list = listRef.current;
@@ -386,8 +480,13 @@ export default function MessageList({
                         </div>
                     ) : (
                     <div
-                        ref={isInitialUnreadMessage ? (node) => setUnreadMessageRef(messageKey, node) : undefined}
-                        className={`${styles.row} ${isMyMessage ? styles.own : styles.other} ${isFirstInGroup ? styles.groupStart : styles.groupContinue} ${isSending ? styles.sending : ''}`}
+                        ref={(node) => {
+                            setMessageRowRef(messageKey, node);
+                            if (isInitialUnreadMessage) {
+                                setUnreadMessageRef(messageKey, node);
+                            }
+                        }}
+                        className={`${styles.row} ${isMyMessage ? styles.own : styles.other} ${isFirstInGroup ? styles.groupStart : styles.groupContinue} ${isSending ? styles.sending : ''} ${activeSearchMessageId && messageKey?.toString() === activeSearchMessageId?.toString() ? styles.activeSearchMessage : ''}`}
                     >
                         {!isMyMessage && (
                             <div className={styles.avatarSlot}>
@@ -470,7 +569,11 @@ export default function MessageList({
                                 {isDeletedForEveryone ? (
                                     <p className={`${styles.content} ${styles.deletedContent}`}>Message deleted</p>
                                 ) : (
-                                    message.content && <p className={styles.content}>{message.content}</p>
+                                    message.content && (
+                                        <p className={styles.content}>
+                                            {renderHighlightedContent(message.content, searchTerm)}
+                                        </p>
+                                    )
                                 )}
                                 </div>
 

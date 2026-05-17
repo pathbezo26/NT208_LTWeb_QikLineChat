@@ -86,6 +86,12 @@
     max-width: min(78%, 720px);
 }
 
+.activeSearchMessage .bubble {
+    outline: 2px solid #f59e0b;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.14), 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
 .groupStart {
     margin-top: 14px;
 }
@@ -477,6 +483,13 @@
     user-select: text;
 }
 
+.searchHighlight {
+    padding: 0 2px;
+    border-radius: 4px;
+    background: #fde68a;
+    color: #172033;
+}
+
 .deletedContent {
     font-style: italic;
     opacity: 0.68;
@@ -807,6 +820,16 @@
     background: linear-gradient(180deg, #256fc8 0%, #1f62b4 100%);
     color: #ffffff;
     box-shadow: 0 3px 10px rgba(20, 88, 169, 0.24);
+}
+
+:global([data-theme='dark']) .activeSearchMessage .bubble {
+    outline-color: #fbbf24;
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.16), 0 8px 22px rgba(0, 0, 0, 0.24);
+}
+
+:global([data-theme='dark']) .searchHighlight {
+    background: #854d0e;
+    color: #fff7ed;
 }
 
 :global([data-theme='dark']) .other .bubble {

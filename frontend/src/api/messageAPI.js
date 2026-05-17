@@ -12,9 +12,9 @@ export const sendMessageAPI = async (data) => {
     return response.data;
 };
 
-export const searchMessagesAPI = async (conversationId, keyword) => {
+export const searchMessagesAPI = async (conversationId, keyword, params = {}) => {
     const response = await axiosInstance.get(`/messages/${conversationId}/search`, {
-        params: { q: keyword },
+        params: { q: keyword, ...params },
     });
     return response.data;
 };

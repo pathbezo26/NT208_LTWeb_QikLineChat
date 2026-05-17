@@ -54,8 +54,8 @@
     width: 82px;
     height: 82px;
     border-radius: 24px;
-    background: linear-gradient(135deg, #1877f2 0%, #26a69a 100%);
-    color: #ffffff;
+    background: #172b44;
+    color: #8ec5ff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -63,6 +63,10 @@
     font-size: 29px;
     font-weight: 800;
     box-shadow: 0 12px 26px rgba(24, 119, 242, 0.22);
+}
+
+.groupAvatar[data-avatar-type='fallback'] {
+    border-radius: 50%;
 }
 
 .avatarButton {
@@ -236,14 +240,15 @@
 .sectionHeading {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 8px;
     color: #172033;
     font-size: 13px;
     font-weight: 850;
 }
 
 .sectionHeading strong {
-    min-width: 26px;
+    min-width: 0;
     height: 22px;
     padding: 0 7px;
     border-radius: 999px;
@@ -282,14 +287,18 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    background: linear-gradient(135deg, #1877f2 0%, #26a69a 100%);
-    color: #ffffff;
+    background: #172b44;
+    color: #8ec5ff;
     display: flex;
     align-items: center;
     justify-content: center;
     object-fit: cover;
     font-size: 13px;
     font-weight: 800;
+}
+
+.memberAvatar[data-avatar-type='fallback'] {
+    border-radius: 50%;
 }
 
 .memberTitle {

@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Input, Modal, Select, message as antdMessage } from 'antd';
+import { Modal, Select, message as antdMessage } from 'antd';
 import {
-    FlagOutlined,
+    ExclamationCircleOutlined,
     InfoCircleOutlined,
     MessageOutlined,
     SearchOutlined,
-    StopOutlined,
     TeamOutlined,
-    UndoOutlined,
 } from '@ant-design/icons';
 import { getConversationsAPI } from '../api/conversationAPI';
 import {
     deleteMessageAPI,
     getMessagesAPI,
-    searchMessagesAPI,
     sendMessageAPI,
     uploadMessageAttachmentsAPI,
 } from '../api/messageAPI';
@@ -24,6 +21,8 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import UserAvatar from './UserAvatar';
 import GroupDetailsDrawer from './GroupDetailsDrawer';
+import PrivateDetailsDrawer from './PrivateDetailsDrawer';
+import MessageSearchDrawer from './MessageSearchDrawer';
 import styles from './styles/ChatWindow.module.css';
 
 const MESSAGE_PAGE_SIZE = 30;
@@ -176,10 +175,10 @@ export default function ChatWindow({
     const [isForwarding, setIsForwarding] = useState(false);
     const [messageApi, contextHolder] = antdMessage.useMessage();
     const [presenceByUserId, setPresenceByUserId] = useState({});
+    const [isPrivateDetailsOpen, setIsPrivateDetailsOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [messageSearchTerm, setMessageSearchTerm] = useState('');
-    const [messageSearchResults, setMessageSearchResults] = useState([]);
-    const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+    const [activeSearchMessageId, setActiveSearchMessageId] = useState(null);
+    const [activeSearchTerm, setActiveSearchTerm] = useState('');
     const [isReporting, setIsReporting] = useState(false);
     const [blockedUserIds, setBlockedUserIds] = useState(() => (user?.blockedUsers || []).map(getUserId).filter(Boolean));
 
@@ -469,10 +468,11 @@ export default function ChatWindow({
 
     useEffect(() => {
         setIsGroupDetailsOpen(false);
+        setIsPrivateDetailsOpen(false);
         setReplyToMessage(null);
         setIsSearchOpen(false);
-        setMessageSearchTerm('');
-        setMessageSearchResults([]);
+        setActiveSearchMessageId(null);
+        setActiveSearchTerm('');
     }, [conversation?._id]);
 
     useEffect(() => {
@@ -758,24 +758,6 @@ export default function ChatWindow({
         }
     }, [messageApi]);
 
-    const handleSearchMessages = useCallback(async (value = messageSearchTerm) => {
-        const keyword = value.trim();
-        if (!conversation?._id || !keyword) {
-            setMessageSearchResults([]);
-            return;
-        }
-
-        setIsSearchingMessages(true);
-        try {
-            const results = await searchMessagesAPI(conversation._id, keyword);
-            setMessageSearchResults(results || []);
-        } catch (error) {
-            messageApi.error(error.response?.data?.message || 'Could not search messages.');
-        } finally {
-            setIsSearchingMessages(false);
-        }
-    }, [conversation?._id, messageApi, messageSearchTerm]);
-
     const handleBlockToggle = useCallback(async (targetUser, blocked) => {
         if (!targetUser?._id) return;
 
@@ -901,7 +883,7 @@ export default function ChatWindow({
 
                 <button
                     className={styles.groupInfoButton}
-                    onClick={() => setIsSearchOpen((current) => !current)}
+                    onClick={() => setIsSearchOpen(true)}
                     type="button"
                     title="Search messages"
                     aria-label="Search messages"
@@ -912,34 +894,12 @@ export default function ChatWindow({
                 {conversation.type === 'private' && otherMember && (
                     <button
                         className={styles.groupInfoButton}
-                        onClick={() => {
-                            Modal.confirm({
-                                title: isOtherBlocked ? 'Unblock this user?' : 'Block this user?',
-                                content: isOtherBlocked
-                                    ? 'They will be able to message you again.'
-                                    : 'You will stop receiving private messages from this user.',
-                                okText: isOtherBlocked ? 'Unblock' : 'Block',
-                                okButtonProps: { danger: !isOtherBlocked },
-                                onOk: () => handleBlockToggle(otherMember, isOtherBlocked),
-                            });
-                        }}
+                        onClick={() => setIsPrivateDetailsOpen(true)}
                         type="button"
-                        title={isOtherBlocked ? 'Unblock user' : 'Block user'}
-                        aria-label={isOtherBlocked ? 'Unblock user' : 'Block user'}
+                        title="Chat info"
+                        aria-label="Open chat info"
                     >
-                        {isOtherBlocked ? <UndoOutlined /> : <StopOutlined />}
-                    </button>
-                )}
-
-                {conversation.type === 'private' && otherMember && (
-                    <button
-                        className={styles.groupInfoButton}
-                        onClick={() => handleReportUser(otherMember)}
-                        type="button"
-                        title="Report user"
-                        aria-label="Report user"
-                    >
-                        <FlagOutlined />
+                        <ExclamationCircleOutlined />
                     </button>
                 )}
 
@@ -956,37 +916,6 @@ export default function ChatWindow({
                 )}
             </div>
 
-            {isSearchOpen && (
-                <div className={styles.searchPanel}>
-                    <Input.Search
-                        allowClear
-                        value={messageSearchTerm}
-                        loading={isSearchingMessages}
-                        placeholder="Search messages"
-                        onChange={(event) => setMessageSearchTerm(event.target.value)}
-                        onSearch={handleSearchMessages}
-                    />
-                    {messageSearchResults.length > 0 && (
-                        <div className={styles.searchResults}>
-                            {messageSearchResults.map((item) => (
-                                <button
-                                    className={styles.searchResult}
-                                    key={item._id}
-                                    type="button"
-                                    onClick={() => {
-                                        setMessages((prevMessages) => mergeMessages(prevMessages, [item]));
-                                        setIsSearchOpen(false);
-                                    }}
-                                >
-                                    <span>{item.sender?.username || 'User'}</span>
-                                    <p>{item.content}</p>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
             <MessageList
                 messages={displayedMessages}
                 currentUserId={user._id}
@@ -996,6 +925,8 @@ export default function ChatWindow({
                 isInitialLoading={shouldShowInitialSkeleton}
                 isLoadingOlder={isLoadingOlder}
                 conversationMembers={conversation.members}
+                searchTerm={activeSearchTerm}
+                activeSearchMessageId={activeSearchMessageId}
                 onLoadOlder={loadOlderMessages}
                 onRetryMessage={handleRetryMessage}
                 onReplyMessage={setReplyToMessage}
@@ -1058,6 +989,44 @@ export default function ChatWindow({
                 messages={displayedMessages}
                 onConversationUpdated={onConversationUpdated}
                 onConversationLeft={onConversationLeft}
+            />
+
+            <MessageSearchDrawer
+                open={isSearchOpen}
+                onClose={() => {
+                    setIsSearchOpen(false);
+                    setActiveSearchMessageId(null);
+                    setActiveSearchTerm('');
+                }}
+                conversationId={conversation._id}
+                onSelectMessage={(message, keyword) => {
+                    setMessages((prevMessages) => mergeMessages(prevMessages, [message]));
+                    setActiveSearchMessageId(message._id);
+                    setActiveSearchTerm(keyword);
+                }}
+            />
+
+            <PrivateDetailsDrawer
+                open={isPrivateDetailsOpen}
+                onClose={() => setIsPrivateDetailsOpen(false)}
+                conversation={conversation}
+                currentUser={user}
+                otherUser={otherMember}
+                presence={otherPresence}
+                isBlocked={isOtherBlocked}
+                messages={displayedMessages}
+                onBlockToggle={(targetUser, blocked) => {
+                    Modal.confirm({
+                        title: blocked ? 'Unblock this user?' : 'Block this user?',
+                        content: blocked
+                            ? 'They will be able to message you again.'
+                            : 'You will stop receiving private messages from this user.',
+                        okText: blocked ? 'Unblock' : 'Block',
+                        okButtonProps: { danger: !blocked },
+                        onOk: () => handleBlockToggle(targetUser, blocked),
+                    });
+                }}
+                onReportUser={handleReportUser}
             />
         </div>
     );

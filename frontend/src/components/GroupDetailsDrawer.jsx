@@ -369,12 +369,12 @@ export default function GroupDetailsDrawer({
     const tabItems = [
         {
             key: 'members',
-            label: `Members (${members.length})`,
+            label: 'Members',
             children: (
                 <div className={styles.sectionStack}>
                     <div className={styles.sectionHeading}>
                         <span>People</span>
-                        <strong>{members.length}</strong>
+                        <strong>{members.length} members</strong>
                     </div>
 
                     {canManageGroup && (

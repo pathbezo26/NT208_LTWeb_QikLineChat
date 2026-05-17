@@ -11,6 +11,7 @@ export default function UserAvatar({ user, name, src, className, title, fallback
         return (
             <img
                 className={className}
+                data-avatar-type="image"
                 src={avatarUrl}
                 alt={displayName || 'Avatar'}
                 title={title || displayName}
@@ -20,7 +21,7 @@ export default function UserAvatar({ user, name, src, className, title, fallback
     }
 
     return (
-        <span className={className} title={title || displayName}>
+        <span className={className} data-avatar-type="fallback" title={title || displayName}>
             {firstLetter}
         </span>
     );

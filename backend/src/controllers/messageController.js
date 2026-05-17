@@ -10,9 +10,39 @@ const DEFAULT_MESSAGE_LIMIT = 30;
 const MAX_MESSAGE_LIMIT = 50;
 const MAX_MESSAGE_LENGTH = 5000;
 const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+const DEFAULT_SEARCH_LIMIT = 20;
+const MAX_SEARCH_LIMIT = 30;
+const SEARCH_SCAN_BATCH_SIZE = 200;
 
-const escapeRegex = (value) => {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const normalizeSearchText = (value = '') => {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u0111\u0110]/g, 'd')
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ');
+};
+
+const messageMatchesSearch = (message, keyword) => {
+    const normalizedKeyword = normalizeSearchText(keyword);
+    const normalizedContent = normalizeSearchText(message.content || '');
+
+    if (!normalizedKeyword || !normalizedContent) return false;
+    return normalizedContent.includes(normalizedKeyword);
+};
+
+const buildSearchSnippet = (content = '', keyword = '') => {
+    const normalizedKeyword = normalizeSearchText(keyword);
+    const normalizedContent = normalizeSearchText(content);
+    let normalizedIndex = normalizedContent.indexOf(normalizedKeyword);
+
+    const start = Math.max(normalizedIndex - 48, 0);
+    const end = Math.min(start + 160, content.length);
+    const prefix = start > 0 ? '...' : '';
+    const suffix = end < content.length ? '...' : '';
+
+    return `${prefix}${content.slice(start, end)}${suffix}`;
 };
 
 const normalizeLimit = (value) => {
@@ -21,6 +51,13 @@ const normalizeLimit = (value) => {
     if (Number.isNaN(parsed) || parsed <= 0) return DEFAULT_MESSAGE_LIMIT;
 
     return Math.min(parsed, MAX_MESSAGE_LIMIT);
+};
+
+const normalizeSearchLimit = (value) => {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) return DEFAULT_SEARCH_LIMIT;
+
+    return Math.min(parsed, MAX_SEARCH_LIMIT);
 };
 
 const isConversationMember = (conversation, userId) => {
@@ -360,9 +397,14 @@ const searchMessages = async (req, res) => {
         const { conversationId } = req.params;
         const userId = req.user._id;
         const keyword = req.query.q?.trim();
+        const limit = normalizeSearchLimit(req.query.limit);
 
         if (!keyword) {
-            return res.status(200).json([]);
+            return res.status(200).json({
+                messages: [],
+                hasMore: false,
+                nextCursor: null,
+            });
         }
 
         const conversation = await Conversation.findById(conversationId);
@@ -374,18 +416,49 @@ const searchMessages = async (req, res) => {
             return res.status(403).json({ message: 'You do not have permission to search this conversation' });
         }
 
-        const query = getVisibleMessagesQuery(conversation, userId);
-        query.type = 'user';
-        query.deletedForEveryone = { $ne: true };
-        query.content = { $regex: escapeRegex(keyword), $options: 'i' };
+        let cursor = req.query.before || null;
+        let hasMoreSourceMessages = true;
+        let scannedBatches = 0;
+        const messages = [];
 
-        const messages = await Message.find(query)
-            .populate('sender', SENDER_PUBLIC_FIELDS)
-            .sort({ createdAt: -1 })
-            .limit(30);
+        while (messages.length < limit && hasMoreSourceMessages) {
+            const query = {
+                ...getVisibleMessagesQuery(conversation, userId, cursor),
+                type: { $ne: 'system' },
+                deletedForEveryone: { $ne: true },
+                content: { $ne: '' },
+            };
 
-        res.status(200).json(messages);
+            const candidateMessages = await Message.find(query)
+                .populate('sender', SENDER_PUBLIC_FIELDS)
+                .sort({ createdAt: -1 })
+                .limit(SEARCH_SCAN_BATCH_SIZE);
+
+            scannedBatches += 1;
+            hasMoreSourceMessages = candidateMessages.length === SEARCH_SCAN_BATCH_SIZE;
+            cursor = candidateMessages.at(-1)?.createdAt || null;
+
+            candidateMessages.forEach((message) => {
+                if (messages.length >= limit) return;
+                if (!messageMatchesSearch(message, keyword)) return;
+
+                messages.push({
+                    ...message.toObject(),
+                    searchSnippet: buildSearchSnippet(message.content, keyword),
+                });
+            });
+        }
+
+        res.status(200).json({
+            messages,
+            hasMore: Boolean(hasMoreSourceMessages && cursor),
+            nextCursor: hasMoreSourceMessages ? cursor : null,
+        });
     } catch (error) {
+        if (error.status === 400) {
+            return res.status(400).json({ message: error.message });
+        }
+
         console.error('searchMessages error:', error);
         res.status(500).json({ message: 'Server error' });
     }

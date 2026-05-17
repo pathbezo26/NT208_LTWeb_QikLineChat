@@ -14,8 +14,8 @@
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #1877f2;
-  color: #ffffff;
+  background: #172b44;
+  color: #8ec5ff;
   font-weight: 800;
 }
 
@@ -265,10 +265,15 @@
 }
 
 .groupAvatar {
-  border: 1px solid #b9d7ff;
-  background: #edf6ff;
-  color: #156bd8;
+  border: none;
+  background: #172b44;
+  color: #8ec5ff;
   font-size: 16px;
+}
+
+.item.active .convAvatar[data-avatar-type='fallback'] {
+  border: 1px solid #4a90e8;
+  box-shadow: 0 0 0 3px rgba(142, 197, 255, 0.16);
 }
 
 .convInfo {
@@ -567,7 +572,7 @@
 }
 
 :global([data-theme='dark']) .groupAvatar {
-  border-color: #2a78d6;
+  border-color: transparent;
   background: #172b44;
   color: #8ec5ff;
 }
