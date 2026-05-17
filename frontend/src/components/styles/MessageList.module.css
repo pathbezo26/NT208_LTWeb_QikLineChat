@@ -87,11 +87,11 @@
 }
 
 .groupStart {
-    margin-top: 10px;
+    margin-top: 14px;
 }
 
 .groupContinue {
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
 .row:first-child {
@@ -109,6 +109,31 @@
 
 .other.groupStart {
     align-items: flex-start;
+}
+
+.timeDivider {
+    align-self: center;
+    display: flex;
+    align-items: center;
+    width: min(86%, 720px);
+    margin: 18px 0 8px;
+    color: #8a97a8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.timeDivider::before,
+.timeDivider::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: #dfe7f1;
+}
+
+.timeDivider span {
+    padding: 0 10px;
 }
 
 .avatarSlot {
@@ -215,10 +240,10 @@
 }
 
 .senderName {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 800;
     color: #256fc8;
-    margin: 0 0 2px;
+    margin: 0 0 3px;
     line-height: 1.2;
 }
 
@@ -743,6 +768,15 @@
 
 :global([data-theme='dark']) .senderName {
     color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .timeDivider {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .timeDivider::before,
+:global([data-theme='dark']) .timeDivider::after {
+    background: #263244;
 }
 
 :global([data-theme='dark']) .other .replyBubble {

@@ -1,15 +1,16 @@
-const dns = require("dns");
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 
 const connectDB = async () => {
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI);
-        console.log(`✅ Đã kết nối DB: ${conn.connection.host}`);
+        logger.info(`Connected to DB: ${conn.connection.host}`);
     } catch (error) {
-        console.error(`❌ Lỗi kết nối MongoDB: ${error.message}`);
-        mongoose.set('debug', true); // Xem chi tiết các query
+        logger.error(`MongoDB connection error: ${error.message}`);
+        mongoose.set('debug', process.env.NODE_ENV !== 'production');
         process.exit(1);
     }
 };

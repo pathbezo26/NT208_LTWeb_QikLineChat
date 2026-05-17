@@ -4,6 +4,7 @@ const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 const { uploadAvatar, deleteAvatar, updateUsername } = require('../controllers/userController');
+const { searchLimiter, uploadLimiter } = require('../middleware/rateLimiters');
 
 // Cau hinh multer de nhan file avatar trong RAM, sau do controller upload thang len Cloudinary.
 const upload = multer({
@@ -55,7 +56,7 @@ const isWordStartMatch = (username, keyword) => {
   );
 };
 
-router.patch('/me/avatar', protect, handleAvatarUpload, uploadAvatar);
+router.patch('/me/avatar', protect, uploadLimiter, handleAvatarUpload, uploadAvatar);
 
 // DELETE /api/users/me/avatar — xóa avatar của user hiện tại
 router.delete('/me/avatar', protect, deleteAvatar);
@@ -63,7 +64,7 @@ router.delete('/me/avatar', protect, deleteAvatar);
 router.patch('/me/username', protect, updateUsername);
 
 // GET /api/users/search?q=keyword — search users by username (exclude self)
-router.get('/search', protect, async (req, res) => {
+router.get('/search', protect, searchLimiter, async (req, res) => {
   const { q } = req.query;
   const keyword = q?.trim();
 

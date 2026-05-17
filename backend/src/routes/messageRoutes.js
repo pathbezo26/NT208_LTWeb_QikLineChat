@@ -8,6 +8,7 @@ const {
     MAX_ATTACHMENTS_PER_MESSAGE,
 } = require('../controllers/messageController');
 const { protect } = require('../middleware/authMiddleware');
+const { sendMessageLimiter, uploadLimiter } = require('../middleware/rateLimiters');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -36,7 +37,7 @@ const handleAttachmentUpload = (req, res, next) => {
 };
 
 router.get('/:conversationId', protect, getMessages);
-router.post('/:conversationId/attachments', protect, handleAttachmentUpload, uploadAttachments);
-router.post('/', protect, sendMessage);
+router.post('/:conversationId/attachments', protect, uploadLimiter, handleAttachmentUpload, uploadAttachments);
+router.post('/', protect, sendMessageLimiter, sendMessage);
 
 module.exports = router;

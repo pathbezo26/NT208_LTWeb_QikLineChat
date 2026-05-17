@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
+const { uploadLimiter } = require('../middleware/rateLimiters');
 
 const {
     getConversations,
@@ -51,7 +52,7 @@ router.post('/', protect, createConversation);
 // DELETE /api/conversations/:id - Xóa conversation theo id
 router.delete('/:id', protect, deleteConversation);
 router.patch('/:id/read', protect, markConversationRead);
-router.patch('/:id/avatar', protect, handleGroupAvatarUpload, uploadGroupAvatar);
+router.patch('/:id/avatar', protect, uploadLimiter, handleGroupAvatarUpload, uploadGroupAvatar);
 router.put('/:id/add', protect, addMembers);
 
 // PUT /api/conversations - Xóa thành viên (chỉ là cập nhật ds thành viên nên dùng PUT)

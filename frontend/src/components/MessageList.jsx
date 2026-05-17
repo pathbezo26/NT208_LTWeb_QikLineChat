@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Popover } from 'antd';
 import { FileOutlined, ShareAltOutlined, UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
@@ -25,6 +25,8 @@ const hasUserId = (items = [], userId) => {
 const SCROLL_TOP_THRESHOLD = 80;
 const SCROLL_BOTTOM_THRESHOLD = 120;
 const MESSAGE_GROUP_TIME_GAP_MS = 5 * 60 * 1000;
+const MESSAGE_TIME_DIVIDER_GAP_MS = 30 * 60 * 1000;
+const LARGE_GROUP_MEMBER_COUNT = 20;
 
 const getMessageTime = (message) => {
     const time = new Date(message?.createdAt).getTime();
@@ -63,6 +65,31 @@ const getMessagePreviewContent = (message) => {
     if (hasImage) return `${attachments.length} attachments`;
 
     return attachments.length === 1 ? 'File' : `${attachments.length} files`;
+};
+
+const isSameCalendarDay = (firstMessage, secondMessage) => {
+    if (!firstMessage || !secondMessage) return false;
+
+    const firstDate = new Date(firstMessage.createdAt);
+    const secondDate = new Date(secondMessage.createdAt);
+
+    return firstDate.getFullYear() === secondDate.getFullYear()
+        && firstDate.getMonth() === secondDate.getMonth()
+        && firstDate.getDate() === secondDate.getDate();
+};
+
+const formatDividerTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.round((todayStart - dateStart) / (1000 * 60 * 60 * 24));
+    const time = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+    if (diffDays === 0) return `Today ${time}`;
+    if (diffDays === 1) return `Yesterday ${time}`;
+
+    return `${date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })} ${time}`;
 };
 
 export default function MessageList({
@@ -265,6 +292,8 @@ export default function MessageList({
         return reference?.sender?.username || 'User';
     };
 
+    const isLargeGroup = Array.isArray(conversationMembers) && conversationMembers.length >= LARGE_GROUP_MEMBER_COUNT;
+
     if (isInitialLoading) {
         return (
             <div className={styles.list} ref={listRef}>
@@ -305,12 +334,15 @@ export default function MessageList({
                 const previousMessage = messages[index - 1];
                 const nextMessage = messages[index + 1];
                 const isFirstInGroup = !isSameMessageGroup(previousMessage, message);
+                const shouldShowTimeDivider = !previousMessage
+                    || !isSameCalendarDay(previousMessage, message)
+                    || Math.abs(getMessageTime(message) - getMessageTime(previousMessage)) > MESSAGE_TIME_DIVIDER_GAP_MS;
                 const isLastInGroup = !isSameMessageGroup(message, nextMessage);
                 const shouldShowAvatar = !isMyMessage && isFirstInGroup;
                 const senderName = message.sender?.username || 'User';
                 const isSending = isMyMessage && message.status === 'sending';
                 const isFailed = isMyMessage && message.status === 'failed';
-                const myMessageStatus = isMyMessage ? getMyMessageStatus(message) : '';
+                const myMessageStatus = isMyMessage && !isLargeGroup ? getMyMessageStatus(message) : '';
                 const shouldShowMeta = isLastInGroup || isSending || isFailed;
                 const messageKey = getMessageKey(message);
                 const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
@@ -327,8 +359,13 @@ export default function MessageList({
                     && !hasReply;
 
                 return (
+                    <Fragment key={messageKey || index}>
+                    {shouldShowTimeDivider && (
+                        <div className={styles.timeDivider} key={`divider-${messageKey || index}`}>
+                            <span>{formatDividerTime(message.createdAt)}</span>
+                        </div>
+                    )}
                     <div
-                        key={messageKey || index}
                         ref={isInitialUnreadMessage ? (node) => setUnreadMessageRef(messageKey, node) : undefined}
                         className={`${styles.row} ${isMyMessage ? styles.own : styles.other} ${isFirstInGroup ? styles.groupStart : styles.groupContinue} ${isSending ? styles.sending : ''}`}
                     >
@@ -484,6 +521,7 @@ export default function MessageList({
                             </div>
                         </div>
                     </div>
+                    </Fragment>
                 );
             })}
 

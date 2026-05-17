@@ -3,16 +3,80 @@ const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
-const SOCKET_USER_FIELDS = '_id username email avatar'; // Field user gui qua socket, bao gom avatar cho realtime message.
+const logger = require('../utils/logger');
+
+const SOCKET_USER_FIELDS = '_id username email avatar';
 const MAX_MESSAGE_LENGTH = 5000;
 const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+const SEND_MESSAGE_LIMIT_WINDOW_MS = 60 * 1000;
+const SEND_MESSAGE_LIMIT_MAX = 60;
 
-const onlineUsers = new Map(); //Mảng các user đang onl
+const onlineUsers = new Map();
 
 const isConversationMember = (conversation, userId) => {
   return conversation.members
     .map((memberId) => memberId.toString())
     .includes(userId.toString());
+};
+
+const addOnlineSocket = (userId, socketId) => {
+  const socketIds = onlineUsers.get(userId) || new Set();
+  socketIds.add(socketId);
+  onlineUsers.set(userId, socketIds);
+  return socketIds.size === 1;
+};
+
+const removeOnlineSocket = (userId, socketId) => {
+  const socketIds = onlineUsers.get(userId);
+  if (!socketIds) return false;
+
+  socketIds.delete(socketId);
+  if (socketIds.size > 0) return false;
+
+  onlineUsers.delete(userId);
+  return true;
+};
+
+const isUserOnline = (userId) => {
+  return onlineUsers.has(userId.toString());
+};
+
+const getConversationForMember = (conversationId, userId, fields = 'members') => {
+  if (!conversationId) return null;
+
+  return Conversation.findOne({
+    _id: conversationId,
+    members: userId,
+  }).select(fields);
+};
+
+const emitPresenceToConversationMembers = async (io, userId, eventName, payload) => {
+  const conversations = await Conversation.find({ members: userId })
+    .select('members')
+    .lean();
+  const recipientIds = new Set();
+
+  conversations.forEach((conversation) => {
+    conversation.members.forEach((memberId) => {
+      const memberIdString = memberId.toString();
+      if (memberIdString !== userId) {
+        recipientIds.add(memberIdString);
+      }
+    });
+  });
+
+  recipientIds.forEach((memberId) => {
+    io.to(`user:${memberId}`).emit(eventName, payload);
+  });
+};
+
+const emitToConversationMembers = (io, members, eventName, payload, excludedUserId = null) => {
+  members.forEach((memberId) => {
+    const memberIdString = memberId.toString();
+    if (excludedUserId && memberIdString === excludedUserId) return;
+
+    io.to(`user:${memberIdString}`).emit(eventName, payload);
+  });
 };
 
 const buildMessageReference = (sourceMessage) => {
@@ -66,8 +130,24 @@ const populateSocketMessage = (message) => {
   ]);
 };
 
+const isSocketRateLimited = (socket, key, limit, windowMs) => {
+  const now = Date.now();
+  const rateLimits = socket.data.rateLimits || {};
+  const current = rateLimits[key] || { count: 0, resetAt: now + windowMs };
+
+  if (current.resetAt <= now) {
+    current.count = 0;
+    current.resetAt = now + windowMs;
+  }
+
+  current.count += 1;
+  rateLimits[key] = current;
+  socket.data.rateLimits = rateLimits;
+
+  return current.count > limit;
+};
+
 const socketHandler = (io) => {
-  // Authenticate socket on connection
   io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication error: No token'));
@@ -89,26 +169,41 @@ const socketHandler = (io) => {
 
   io.on('connection', (socket) => {
     const { id: userId, username } = socket.user;
-    console.log(`🔌 User connected: ${username} (${socket.id})`);
+    const becameOnline = addOnlineSocket(userId, socket.id);
 
-    // Track online users
-    onlineUsers.set(userId, socket.id);
+    socket.data.joinedConversations = new Set();
     socket.join(`user:${userId}`);
-    io.emit('userOnline', { userId, username });
+    logger.info(`User connected: ${username} (${socket.id})`);
 
-    // Join a conversation room
-    socket.on('joinRoom', (conversationId) => {
-      socket.join(conversationId);
-      console.log(`📌 ${username} joined room: ${conversationId}`);
+    if (becameOnline) {
+      emitPresenceToConversationMembers(io, userId, 'userOnline', { userId, username })
+        .catch((error) => logger.error('userOnline emit error:', error));
+    }
+
+    socket.on('joinRoom', async (conversationId, ack) => {
+      try {
+        const conversation = await getConversationForMember(conversationId, userId);
+        if (!conversation) {
+          if (typeof ack === 'function') ack({ ok: false, message: 'Conversation not found.' });
+          return;
+        }
+
+        socket.join(conversationId);
+        socket.data.joinedConversations.add(conversationId);
+        if (typeof ack === 'function') ack({ ok: true });
+        logger.info(`${username} joined room: ${conversationId}`);
+      } catch (error) {
+        logger.error('joinRoom error:', error);
+        if (typeof ack === 'function') ack({ ok: false, message: 'Could not join conversation.' });
+      }
     });
 
-    // Leave a conversation room
     socket.on('leaveRoom', (conversationId) => {
       socket.leave(conversationId);
-      console.log(`🚪 ${username} left room: ${conversationId}`);
+      socket.data.joinedConversations.delete(conversationId);
+      logger.info(`${username} left room: ${conversationId}`);
     });
 
-    // Handle sending a message
     socket.on('sendMessage', async ({ conversationId, content, attachments: rawAttachments, clientMessageId, replyToMessageId, forwardedFromMessageId }, ack) => {
       const trimmedContent = content?.trim();
       const attachments = normalizeAttachments(rawAttachments);
@@ -119,6 +214,11 @@ const socketHandler = (io) => {
 
       if (!conversationId || (!trimmedContent && attachments.length === 0 && !forwardedFromMessageId)) {
         fail('Missing conversationId, message content, or attachment.');
+        return;
+      }
+
+      if (isSocketRateLimited(socket, 'sendMessage', SEND_MESSAGE_LIMIT_MAX, SEND_MESSAGE_LIMIT_WINDOW_MS)) {
+        fail('Too many messages. Please slow down.');
         return;
       }
 
@@ -134,11 +234,7 @@ const socketHandler = (io) => {
           return;
         }
 
-        const isMember = conversation.members
-          .map((memberId) => memberId.toString())
-          .includes(userId);
-
-        if (!isMember) {
+        if (!isConversationMember(conversation, userId)) {
           fail('You do not have permission to send messages here.');
           return;
         }
@@ -179,7 +275,7 @@ const socketHandler = (io) => {
             userId,
             ...conversation.members
               .map((memberId) => memberId.toString())
-              .filter((memberId) => memberId !== userId && onlineUsers.has(memberId)),
+              .filter((memberId) => memberId !== userId && isUserOnline(memberId)),
           ],
           readBy: [userId],
         };
@@ -193,10 +289,7 @@ const socketHandler = (io) => {
           messageData.attachments = normalizeAttachments(forwardedFromMessage.attachments);
         }
 
-        // Save to DB
         const message = await Message.create(messageData);
-
-        // Populate sender info before broadcasting, bao gom avatar cho tin nhan realtime
         const populated = await populateSocketMessage(message);
         const payload = {
           ...populated.toObject(),
@@ -204,8 +297,7 @@ const socketHandler = (io) => {
           status: 'sent',
         };
 
-        // Broadcast to everyone in the room (including sender)
-        io.to(conversationId).emit('newMessage', payload);
+        emitToConversationMembers(io, conversation.members, 'newMessage', payload);
 
         const updatedConversation = await updateConversationAfterMessage(conversation, message, userId);
 
@@ -230,7 +322,7 @@ const socketHandler = (io) => {
 
         if (typeof ack === 'function') ack({ ok: true, message: payload });
       } catch (err) {
-        console.error('Error saving message:', err);
+        logger.error('Error saving message:', err);
         const errorMessage = err.message || 'Could not send message.';
         socket.emit('messageError', { message: errorMessage });
         fail(errorMessage);
@@ -268,7 +360,7 @@ const socketHandler = (io) => {
           }
         );
 
-        io.to(conversationId).emit('messageStatusUpdated', {
+        emitToConversationMembers(io, conversation.members, 'messageStatusUpdated', {
           conversationId,
           userId,
           status: 'read',
@@ -278,25 +370,42 @@ const socketHandler = (io) => {
           ack({ ok: true, modifiedCount: updateResult.modifiedCount || 0 });
         }
       } catch (err) {
-        console.error('Error marking messages read:', err.message);
+        logger.error('Error marking messages read:', err.message);
         if (typeof ack === 'function') ack({ ok: false, message: 'Could not mark messages read.' });
       }
     });
 
-    // Typing indicators
-    socket.on('typing', ({ conversationId }) => {
-      socket.to(conversationId).emit('typing', { userId, username });
+    const emitTypingStatus = async ({ conversationId }, eventName, payload, ack) => {
+      try {
+        const conversation = await getConversationForMember(conversationId, userId);
+        if (!conversation) {
+          if (typeof ack === 'function') ack({ ok: false, message: 'Conversation not found.' });
+          return;
+        }
+
+        emitToConversationMembers(io, conversation.members, eventName, payload, userId);
+        if (typeof ack === 'function') ack({ ok: true });
+      } catch (error) {
+        logger.error(`${eventName} error:`, error);
+        if (typeof ack === 'function') ack({ ok: false, message: 'Could not send typing status.' });
+      }
+    };
+
+    socket.on('typing', (data, ack) => {
+      emitTypingStatus(data || {}, 'typing', { userId, username }, ack);
     });
 
-    socket.on('stopTyping', ({ conversationId }) => {
-      socket.to(conversationId).emit('stopTyping', { userId });
+    socket.on('stopTyping', (data, ack) => {
+      emitTypingStatus(data || {}, 'stopTyping', { userId }, ack);
     });
 
-    // Handle disconnect
     socket.on('disconnect', () => {
-      console.log(`❌ User disconnected: ${username}`);
-      onlineUsers.delete(userId);
-      io.emit('userOffline', { userId, username });
+      logger.info(`User disconnected: ${username}`);
+      const becameOffline = removeOnlineSocket(userId, socket.id);
+      if (becameOffline) {
+        emitPresenceToConversationMembers(io, userId, 'userOffline', { userId, username })
+          .catch((error) => logger.error('userOffline emit error:', error));
+      }
     });
   });
 };
