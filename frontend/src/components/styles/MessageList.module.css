@@ -136,6 +136,26 @@
     padding: 0 10px;
 }
 
+.systemMessage {
+    align-self: center;
+    max-width: min(82%, 620px);
+    margin: 12px 0 4px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: center;
+    user-select: none;
+}
+
+.systemMessage span {
+    display: inline-flex;
+    padding: 6px 10px;
+    border: 1px solid #dfe7f1;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
 .avatarSlot {
     flex-shrink: 0;
     width: 32px;
@@ -454,6 +474,7 @@
     font-size: 14.5px;
     line-height: 1.42;
     white-space: pre-wrap;
+    user-select: text;
 }
 
 .meta {
@@ -817,6 +838,15 @@
 
 :global([data-theme='dark']) .meta {
     color: #94a3b8;
+}
+
+:global([data-theme='dark']) .systemMessage {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .systemMessage span {
+    border-color: #263244;
+    background: rgba(16, 24, 38, 0.82);
 }
 
 :global([data-theme='dark']) .statusIcon {

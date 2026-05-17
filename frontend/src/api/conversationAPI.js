@@ -31,12 +31,41 @@ export const uploadGroupAvatarAPI = async (conversationId, file) => {
     return response.data; // { message, conversation }
 };
 
+export const updateGroupDetailsAPI = async (conversationId, data) => {
+    const response = await axiosInstance.patch(`/conversations/${conversationId}/details`, data);
+    return response.data; // { message, conversation }
+};
+
 export const addGroupMembersAPI = async (conversationId, memberIds) => {
     const response = await axiosInstance.put(`/conversations/${conversationId}/add`, {
         newMemberIds: memberIds,
     });
 
     return response.data; // { message, conversation }
+};
+
+export const transferGroupOwnerAPI = async (conversationId, memberId) => {
+    const response = await axiosInstance.put(`/conversations/${conversationId}/owner`, {
+        memberId,
+    });
+
+    return response.data; // { message, conversation }
+};
+
+export const updateGroupAdminsAPI = async (conversationId, adminIds, action) => {
+    const response = await axiosInstance.put(`/conversations/${conversationId}/admins`, {
+        adminIds,
+        action,
+    });
+
+    return response.data; // { message, conversation }
+};
+
+export const leaveGroupAPI = async (conversationId, newOwnerId) => {
+    const response = await axiosInstance.put(`/conversations/${conversationId}/leave`, {
+        newOwnerId,
+    });
+    return response.data; // { message, conversationId }
 };
 
 export const removeGroupMemberAPI = async (conversationId, memberId) => {

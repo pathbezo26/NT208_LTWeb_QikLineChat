@@ -2,6 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  user-select: none;
 }
 
 body {
@@ -25,6 +26,15 @@ input,
 textarea,
 button {
   font-family: inherit;
+}
+
+input,
+textarea,
+[contenteditable='true'],
+.ant-input,
+.ant-input-affix-wrapper input,
+.ant-select-selection-search-input {
+  user-select: text;
 }
 
 ::-webkit-scrollbar {

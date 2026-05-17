@@ -1,18 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Drawer, Input, List, Modal, Select, Spin, message as antdMessage } from 'antd';
-import { DeleteOutlined, MessageOutlined, TeamOutlined, UserAddOutlined } from '@ant-design/icons';
-import axiosInstance from '../api/axiosInstance';
-import {
-    addGroupMembersAPI,
-    getConversationsAPI,
-    removeGroupMemberAPI,
-} from '../api/conversationAPI';
+import { Modal, Select, message as antdMessage } from 'antd';
+import { InfoCircleOutlined, MessageOutlined, TeamOutlined } from '@ant-design/icons';
+import { getConversationsAPI } from '../api/conversationAPI';
 import { getMessagesAPI, sendMessageAPI, uploadMessageAttachmentsAPI } from '../api/messageAPI';
 import useSocket from '../hooks/useSocket';
 import useAuth from '../hooks/useAuth';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import UserAvatar from './UserAvatar';
+import GroupDetailsDrawer from './GroupDetailsDrawer';
 import styles from './styles/ChatWindow.module.css';
 
 const MESSAGE_PAGE_SIZE = 30;
@@ -118,6 +114,7 @@ export default function ChatWindow({
     conversation,
     onConversationUpdated,
     onConversationPreviewUpdate,
+    onConversationLeft,
 }) {
     const socket = useSocket();
     const { user } = useAuth();
@@ -134,12 +131,7 @@ export default function ChatWindow({
     const isLoadingOlderRef = useRef(false);
     const messageCacheRef = useRef(new Map());
 
-    const [isMemberDrawerOpen, setIsMemberDrawerOpen] = useState(false);
-    const [memberSearchQuery, setMemberSearchQuery] = useState('');
-    const [memberSearchResults, setMemberSearchResults] = useState([]);
-    const [isSearchingMembers, setIsSearchingMembers] = useState(false);
-    const [memberActionId, setMemberActionId] = useState(null);
-    const [memberError, setMemberError] = useState('');
+    const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
     const [replyToMessage, setReplyToMessage] = useState(null);
     const [forwardMessage, setForwardMessage] = useState(null);
     const [forwardTargetId, setForwardTargetId] = useState(null);
@@ -338,10 +330,7 @@ export default function ChatWindow({
     }, [socket, user]);
 
     useEffect(() => {
-        setIsMemberDrawerOpen(false);
-        setMemberSearchQuery('');
-        setMemberSearchResults([]);
-        setMemberError('');
+        setIsGroupDetailsOpen(false);
         setReplyToMessage(null);
     }, [conversation?._id]);
 
@@ -622,71 +611,6 @@ export default function ChatWindow({
         return getOtherMember()?.username || 'User';
     };
 
-    const isGroupOwner = getUserId(conversation.createdBy) === user._id;
-
-    const resetMemberSearch = () => {
-        setMemberSearchQuery('');
-        setMemberSearchResults([]);
-        setMemberError('');
-    };
-
-    const handleSearchMembers = async (e) => {
-        const keyword = e.target.value;
-        setMemberSearchQuery(keyword);
-
-        if (!keyword.trim()) {
-            setMemberSearchResults([]);
-            setIsSearchingMembers(false);
-            return;
-        }
-
-        setIsSearchingMembers(true);
-        setMemberError('');
-
-        try {
-            const response = await axiosInstance.get(`/users/search?q=${encodeURIComponent(keyword)}`);
-            const currentMemberIds = new Set(conversation.members.map(getUserId));
-            const availableUsers = response.data.filter((searchUser) => !currentMemberIds.has(searchUser._id));
-
-            setMemberSearchResults(availableUsers);
-        } catch (error) {
-            console.error('Search group members error:', error);
-            setMemberSearchResults([]);
-            setMemberError('Could not find users.');
-        } finally {
-            setIsSearchingMembers(false);
-        }
-    };
-
-    const handleAddMember = async (member) => {
-        setMemberActionId(member._id);
-        setMemberError('');
-
-        try {
-            const data = await addGroupMembersAPI(conversation._id, [member._id]);
-            onConversationUpdated(data.conversation);
-            resetMemberSearch();
-        } catch (error) {
-            setMemberError(error.response?.data?.message || 'Could not add member.');
-        } finally {
-            setMemberActionId(null);
-        }
-    };
-
-    const handleRemoveMember = async (member) => {
-        setMemberActionId(member._id);
-        setMemberError('');
-
-        try {
-            const data = await removeGroupMemberAPI(conversation._id, member._id);
-            onConversationUpdated(data.conversation);
-        } catch (error) {
-            setMemberError(error.response?.data?.message || 'Could not remove member.');
-        } finally {
-            setMemberActionId(null);
-        }
-    };
-
     const cachedDisplayState = messageCacheRef.current.get(conversation._id);
     const deletedAt = getDeletedAtForUser(conversation, user._id);
     const isMessageStateReady = messagesConversationId === conversation._id;
@@ -713,21 +637,38 @@ export default function ChatWindow({
                 />
 
                 <div className={styles.headerInfo}>
-                    <span className={styles.headerName}>{getChatName()}</span>
-                    {conversation.type === 'group' && (
+                    {conversation.type === 'group' ? (
                         <button
-                            className={styles.memberCount}
-                            onClick={() => setIsMemberDrawerOpen(true)}
+                            className={styles.headerDetailsButton}
+                            onClick={() => setIsGroupDetailsOpen(true)}
                             type="button"
+                            title="Open group details"
                         >
-                            <TeamOutlined />
-                            {conversation.members.length} members
+                            <span className={styles.headerName}>{getChatName()}</span>
+                            <span className={styles.memberCount}>
+                                <TeamOutlined />
+                                {conversation.members.length} members
+                            </span>
                         </button>
+                    ) : (
+                        <span className={styles.headerName}>{getChatName()}</span>
                     )}
                     {conversation.type === 'private' && (
                         <span className={styles.chatStatus}>Direct message</span>
                     )}
                 </div>
+
+                {conversation.type === 'group' && (
+                    <button
+                        className={styles.groupInfoButton}
+                        onClick={() => setIsGroupDetailsOpen(true)}
+                        type="button"
+                        title="Group details"
+                        aria-label="Open group details"
+                    >
+                        <InfoCircleOutlined />
+                    </button>
+                )}
             </div>
 
             <MessageList
@@ -790,89 +731,15 @@ export default function ChatWindow({
                 />
             </Modal>
 
-            <Drawer
-                title="Group members"
-                open={isMemberDrawerOpen}
-                onClose={() => setIsMemberDrawerOpen(false)}
-                width={360}
-            >
-                {memberError && (
-                    <Alert
-                        type="error"
-                        message={memberError}
-                        showIcon
-                        style={{ marginBottom: 12 }}
-                    />
-                )}
-
-                <Input
-                    prefix={<UserAddOutlined />}
-                    value={memberSearchQuery}
-                    onChange={handleSearchMembers}
-                    placeholder="Search people to add to the group"
-                    allowClear
-                    style={{ marginBottom: 12 }}
-                />
-
-                {isSearchingMembers && (
-                    <Spin size="small" style={{ marginBottom: 12 }} />
-                )}
-
-                {memberSearchResults.length > 0 && (
-                    <List
-                        size="small"
-                        dataSource={memberSearchResults}
-                        style={{ marginBottom: 18 }}
-                        renderItem={(searchUser) => (
-                            <List.Item
-                                actions={[
-                                    <Button
-                                        key="add"
-                                        type="link"
-                                        loading={memberActionId === searchUser._id}
-                                        onClick={() => handleAddMember(searchUser)}
-                                    >
-                                        Add
-                                    </Button>,
-                                ]}
-                            >
-                                <List.Item.Meta
-                                    avatar={<UserAvatar user={searchUser} className={styles.drawerAvatar} />}
-                                    title={searchUser.username}
-                                />
-                            </List.Item>
-                        )}
-                    />
-                )}
-
-                <List
-                    size="small"
-                    dataSource={conversation.members}
-                    renderItem={(member) => {
-                        const canRemoveMember = isGroupOwner && getUserId(member) !== user._id;
-
-                        return (
-                            <List.Item
-                                actions={canRemoveMember ? [
-                                    <Button
-                                        key="remove"
-                                        danger
-                                        type="text"
-                                        icon={<DeleteOutlined />}
-                                        loading={memberActionId === member._id}
-                                        onClick={() => handleRemoveMember(member)}
-                                    />,
-                                ] : []}
-                            >
-                                <List.Item.Meta
-                                    avatar={<UserAvatar user={member} className={styles.drawerAvatar} />}
-                                    title={member.username}
-                                />
-                            </List.Item>
-                        );
-                    }}
-                />
-            </Drawer>
+            <GroupDetailsDrawer
+                open={isGroupDetailsOpen}
+                onClose={() => setIsGroupDetailsOpen(false)}
+                conversation={conversation}
+                currentUser={user}
+                messages={displayedMessages}
+                onConversationUpdated={onConversationUpdated}
+                onConversationLeft={onConversationLeft}
+            />
         </div>
     );
 }

@@ -11,8 +11,12 @@ const {
     deleteConversation,
     markConversationRead,
     uploadGroupAvatar,
+    updateGroupDetails,
     addMembers,
     removeMember,
+    updateGroupAdmins,
+    transferGroupOwner,
+    leaveGroup,
 } = require('../controllers/conversationController');
 
 const upload = multer({
@@ -53,7 +57,11 @@ router.post('/', protect, createConversation);
 router.delete('/:id', protect, deleteConversation);
 router.patch('/:id/read', protect, markConversationRead);
 router.patch('/:id/avatar', protect, uploadLimiter, handleGroupAvatarUpload, uploadGroupAvatar);
+router.patch('/:id/details', protect, updateGroupDetails);
 router.put('/:id/add', protect, addMembers);
+router.put('/:id/admins', protect, updateGroupAdmins);
+router.put('/:id/owner', protect, transferGroupOwner);
+router.put('/:id/leave', protect, leaveGroup);
 
 // PUT /api/conversations - Xóa thành viên (chỉ là cập nhật ds thành viên nên dùng PUT)
 router.put('/:id/remove', protect, removeMember);

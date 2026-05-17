@@ -11,6 +11,8 @@ export default function ChatPage() {
     const [activeSection, setActiveSection] = useState('messages');
     const [activeConversation, setActiveConversation] = useState(null);
     const [optimisticConversationUpdate, setOptimisticConversationUpdate] = useState(null);
+    const [syncedConversationUpdate, setSyncedConversationUpdate] = useState(null);
+    const [removedConversation, setRemovedConversation] = useState(null);
     const [colorMode, setColorMode] = useState(() => {
         return localStorage.getItem(THEME_STORAGE_KEY) || 'light';
     });
@@ -24,6 +26,12 @@ export default function ChatPage() {
 
     const handleConversationUpdated = (updatedConversation) => {
         setActiveConversation(updatedConversation);
+        if (updatedConversation?._id) {
+            setSyncedConversationUpdate({
+                conversation: updatedConversation,
+                eventId: Date.now(),
+            });
+        }
     };
 
     const handleConversationPreviewUpdate = (previewUpdate) => {
@@ -48,6 +56,14 @@ export default function ChatPage() {
         });
     };
 
+    const handleConversationLeft = (conversationId) => {
+        setActiveConversation(null);
+        setRemovedConversation({
+            conversationId,
+            eventId: Date.now(),
+        });
+    };
+
     return (
         <ConfigProvider
             theme={{
@@ -66,11 +82,14 @@ export default function ChatPage() {
                     activeConversation={activeConversation}
                     onSelectConversation={setActiveConversation}
                     optimisticConversationUpdate={optimisticConversationUpdate}
+                    syncedConversationUpdate={syncedConversationUpdate}
+                    removedConversation={removedConversation}
                 />
                 <ChatWindow
                     conversation={activeConversation}
                     onConversationUpdated={handleConversationUpdated}
                     onConversationPreviewUpdate={handleConversationPreviewUpdate}
+                    onConversationLeft={handleConversationLeft}
                 />
             </div>
         </ConfigProvider>

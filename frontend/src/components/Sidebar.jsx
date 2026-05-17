@@ -37,6 +37,8 @@ export default function Sidebar({
     activeConversation,
     onSelectConversation,
     optimisticConversationUpdate,
+    syncedConversationUpdate,
+    removedConversation,
 }) {
     const { user } = useAuth();
     const socket = useSocket();
@@ -129,12 +131,34 @@ export default function Sidebar({
             unreadCount,
             updatedAt,
             lastMessage,
+            conversation,
         }) => {
             const requestNumber = (conversationUpdateRequestRef.current[conversationId] || 0) + 1;
             conversationUpdateRequestRef.current[conversationId] = requestNumber;
 
             try {
                 const isActiveConversation = activeConversationId === conversationId;
+
+                if (conversation?._id) {
+                    const normalizedConversation = {
+                        ...conversation,
+                        unreadCount: isActiveConversation ? 0 : unreadCount ?? conversation.unreadCount ?? 0,
+                        lastMessage: lastMessage || conversation.lastMessage,
+                        updatedAt: updatedAt || conversation.updatedAt,
+                    };
+
+                    setConversations((prev) => {
+                        const otherConversations = prev.filter((item) => item._id !== conversationId);
+                        return sortConversationsByUpdatedAt([normalizedConversation, ...otherConversations]);
+                    });
+
+                    if (isActiveConversation) {
+                        await markConversationReadAPI(conversationId);
+                        onSelectConversation({ ...normalizedConversation, unreadCount: 0 });
+                    }
+
+                    return;
+                }
 
                 let shouldFetchConversation = false;
 
@@ -188,9 +212,21 @@ export default function Sidebar({
             }
         };
 
-        socket.on('conversationUpdated', handleConversationUpdated);
+        const handleConversationRemoved = ({ conversationId }) => {
+            setConversations((prev) => prev.filter((conversation) => conversation._id !== conversationId));
 
-        return () => socket.off('conversationUpdated', handleConversationUpdated);
+            if (activeConversationId === conversationId) {
+                onSelectConversation(null);
+            }
+        };
+
+        socket.on('conversationUpdated', handleConversationUpdated);
+        socket.on('conversationRemoved', handleConversationRemoved);
+
+        return () => {
+            socket.off('conversationUpdated', handleConversationUpdated);
+            socket.off('conversationRemoved', handleConversationRemoved);
+        };
     }, [socket, user, activeConversationId, onSelectConversation]);
 
     useEffect(() => {
@@ -224,6 +260,28 @@ export default function Sidebar({
             return [updatedConversation, ...otherConversations];
         });
     }, [optimisticConversationUpdate]);
+
+    useEffect(() => {
+        if (!syncedConversationUpdate?.conversation?._id) return;
+
+        setConversations((prev) => {
+            const otherConversations = prev.filter((conversation) => {
+                return conversation._id !== syncedConversationUpdate.conversation._id;
+            });
+
+            return sortConversationsByUpdatedAt([syncedConversationUpdate.conversation, ...otherConversations]);
+        });
+    }, [syncedConversationUpdate]);
+
+    useEffect(() => {
+        if (!removedConversation?.conversationId) return;
+
+        setConversations((prev) => {
+            return prev.filter((conversation) => conversation._id !== removedConversation.conversationId);
+        });
+        setOpenMenuId(null);
+        setDeleteConfirmId(null);
+    }, [removedConversation]);
 
     const getConversationName = (conversation) => {
         if (conversation.type === 'group') {

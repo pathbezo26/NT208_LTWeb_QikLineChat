@@ -22,6 +22,12 @@ const ConversationSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
+        admins: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
         avatar: {
             url: {
                 type: String,

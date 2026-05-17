@@ -365,6 +365,11 @@ export default function MessageList({
                             <span>{formatDividerTime(message.createdAt)}</span>
                         </div>
                     )}
+                    {message.type === 'system' ? (
+                        <div className={styles.systemMessage}>
+                            <span>{message.content}</span>
+                        </div>
+                    ) : (
                     <div
                         ref={isInitialUnreadMessage ? (node) => setUnreadMessageRef(messageKey, node) : undefined}
                         className={`${styles.row} ${isMyMessage ? styles.own : styles.other} ${isFirstInGroup ? styles.groupStart : styles.groupContinue} ${isSending ? styles.sending : ''}`}
@@ -521,6 +526,7 @@ export default function MessageList({
                             </div>
                         </div>
                     </div>
+                    )}
                     </Fragment>
                 );
             })}

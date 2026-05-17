@@ -3,6 +3,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const cloudinary = require('../config/cloudinary');
+const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
 // Cac field user duoc phep tra ve khi populate trong conversation.
 // Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
@@ -24,7 +25,109 @@ const populateConversationForSidebar = (query) => {
     return query
         .populate('members', USER_PUBLIC_FIELDS)
         .populate('createdBy', USER_COMPACT_FIELDS)
+        .populate('admins', USER_COMPACT_FIELDS)
         .populate('lastMessage.sender', LAST_MESSAGE_SENDER_FIELDS);
+};
+
+const populateConversationDetails = async (conversation) => {
+    await conversation.populate('members', USER_PUBLIC_FIELDS);
+    await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+    await conversation.populate('admins', USER_COMPACT_FIELDS);
+    await conversation.populate('lastMessage.sender', LAST_MESSAGE_SENDER_FIELDS);
+    return conversation;
+};
+
+const getIdString = (value) => {
+    if (!value) return '';
+    return typeof value === 'object' ? (value._id || value.id || value).toString() : value.toString();
+};
+
+const isConversationMember = (conversation, userId) => {
+    const userIdString = userId.toString();
+    return conversation.members.some((memberId) => getIdString(memberId) === userIdString);
+};
+
+const isGroupOwner = (conversation, userId) => {
+    return getIdString(conversation.createdBy) === userId.toString();
+};
+
+const isGroupAdmin = (conversation, userId) => {
+    const userIdString = userId.toString();
+    return (conversation.admins || []).some((adminId) => getIdString(adminId) === userIdString);
+};
+
+const canManageGroup = (conversation, userId) => {
+    return isGroupOwner(conversation, userId) || isGroupAdmin(conversation, userId);
+};
+
+const getUserLabel = (user) => {
+    if (!user) return 'Someone';
+    return user.username || user.email || 'Someone';
+};
+
+const emitToConversationMembers = (io, members, eventName, payload) => {
+    if (!io) return;
+
+    members.forEach((memberId) => {
+        io.to(`user:${getIdString(memberId)}`).emit(eventName, payload);
+    });
+};
+
+const populateSystemMessage = (message) => {
+    return message.populate([
+        { path: 'sender', select: USER_PUBLIC_FIELDS },
+    ]);
+};
+
+const createSystemMessageAndEmit = async (req, conversation, actorId, content) => {
+    const io = req.app.get('io');
+    const message = await Message.create({
+        conversationId: conversation._id,
+        sender: actorId,
+        type: 'system',
+        content,
+        deliveredTo: [actorId],
+        readBy: [actorId],
+    });
+    const populatedMessage = await populateSystemMessage(message);
+    const updatedConversation = await updateConversationAfterMessage(
+        {
+            _id: conversation._id,
+            members: conversation.members.map(getIdString),
+        },
+        message,
+        actorId
+    );
+    if (updatedConversation) {
+        conversation.lastMessage = updatedConversation.lastMessage;
+        conversation.updatedAt = updatedConversation.updatedAt;
+        conversation.unreadCounts = updatedConversation.unreadCounts;
+        conversation.deletedFor = updatedConversation.deletedFor;
+    }
+    await populateConversationDetails(conversation);
+
+    emitToConversationMembers(io, conversation.members, 'newMessage', populatedMessage.toObject());
+    conversation.members.forEach((memberId) => {
+        const memberIdString = getIdString(memberId);
+        const unreadCount = updatedConversation?.unreadCounts?.get(memberIdString) || 0;
+
+        io?.to(`user:${memberIdString}`).emit('conversationUpdated', {
+            conversationId: conversation._id,
+            senderId: actorId,
+            messageId: populatedMessage._id,
+            unreadCount,
+            updatedAt: updatedConversation?.updatedAt || message.createdAt,
+            conversation: conversation.toObject(),
+            lastMessage: {
+                messageId: populatedMessage._id,
+                sender: populatedMessage.sender,
+                content: populatedMessage.content,
+                createdAt: populatedMessage.createdAt,
+            },
+        });
+    });
+
+    return populatedMessage;
 };
 
 const hasCloudinaryConfig = () => {
@@ -167,6 +270,7 @@ const createConversation = async (req, res) => {
             name: type === 'group' ? name : null,
             members: finalMembers,
             createdBy: userId,
+            admins: [],
             deletedFor: type === 'private'
                 ? finalMembers.filter((memberId) => memberId !== userId.toString())
                 : [],
@@ -183,6 +287,7 @@ const createConversation = async (req, res) => {
         // Populate data trước khi trả về, bao gồm avatar để UI dùng ngay
         await conversation.populate('members', USER_PUBLIC_FIELDS);
         await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+        await conversation.populate('admins', USER_COMPACT_FIELDS);
 
         res.status(201).json(conversation);
     } catch (error) {
@@ -318,10 +423,7 @@ const uploadGroupAvatar = async (req, res) => {
             return res.status(400).json({ message: 'Only group chats can have a group image' });
         }
 
-        const isMember = conversation.members.some(
-            (memberId) => memberId.toString() === req.user._id.toString()
-        );
-        if (!isMember) {
+        if (!canManageGroup(conversation, req.user._id)) {
             return res.status(403).json({ message: 'You do not have permission to update this group' });
         }
 
@@ -341,8 +443,13 @@ const uploadGroupAvatar = async (req, res) => {
             });
         }
 
-        await conversation.populate('members', USER_PUBLIC_FIELDS);
-        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+        await populateConversationDetails(conversation);
+        await createSystemMessageAndEmit(
+            req,
+            conversation,
+            req.user._id,
+            `${getUserLabel(req.user)} updated the group photo`
+        );
 
         res.status(200).json({
             message: 'Group image updated successfully',
@@ -351,6 +458,51 @@ const uploadGroupAvatar = async (req, res) => {
     } catch (error) {
         console.error('Upload group avatar error:', error);
         res.status(500).json({ message: 'Server error while updating group image' });
+    }
+};
+
+const updateGroupDetails = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const userId = req.user._id;
+        const { name } = req.body;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Only group chats can be updated' });
+        }
+
+        if (!canManageGroup(conversation, userId)) {
+            return res.status(403).json({ message: 'Only group admins can update group details' });
+        }
+
+        const oldName = conversation.name;
+        if (typeof name === 'string') {
+            const nextName = name.trim();
+            if (!nextName) {
+                return res.status(400).json({ message: 'Group name is required' });
+            }
+
+            conversation.name = nextName;
+        }
+
+        conversation.updatedAt = new Date();
+        await conversation.save();
+        await populateConversationDetails(conversation);
+        if (oldName !== conversation.name) {
+            await createSystemMessageAndEmit(
+                req,
+                conversation,
+                userId,
+                `${getUserLabel(req.user)} renamed the group to "${conversation.name}"`
+            );
+        }
+
+        res.status(200).json({ message: 'Group details updated successfully', conversation });
+    } catch (error) {
+        console.error('updateGroupDetails error:', error);
+        res.status(500).json({ message: 'Server error while updating group details' });
     }
 };
 
@@ -372,6 +524,10 @@ const addMembers = async (req, res) => {
             return res.status(400).json({ message: 'Members can only be added to a group' });
         }
 
+        if (!canManageGroup(conversation, userId)) {
+            return res.status(403).json({ message: 'Only group admins can add members' });
+        }
+
         // Bỏ người bị trùng
         const currentMembers = conversation.members.map(m => m.toString());
         const toAdd = newMemberIds.filter(id => !currentMembers.includes(id));
@@ -381,13 +537,23 @@ const addMembers = async (req, res) => {
         }
 
         // Cập nhật DB
+        const addedUsers = await User.find({ _id: { $in: toAdd } }).select(USER_PUBLIC_FIELDS);
+        if (addedUsers.length !== toAdd.length) {
+            return res.status(400).json({ message: 'Some users do not exist' });
+        }
+
         conversation.members.push(...toAdd);
         conversation.updatedAt = new Date();
         await conversation.save();
 
         // Populate members sau khi thêm thành viên, bao gồm avatar của từng người.
-        await conversation.populate('members', USER_PUBLIC_FIELDS);
-        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+        await populateConversationDetails(conversation);
+        await createSystemMessageAndEmit(
+            req,
+            conversation,
+            userId,
+            `${getUserLabel(req.user)} added ${addedUsers.map(getUserLabel).join(', ')}`
+        );
 
         res.status(200).json({ message: 'Members added successfully', conversation });
     } catch (error) {
@@ -415,8 +581,7 @@ const removeMember = async (req, res) => {
             return res.status(400).json({ message: 'Members can only be removed from a group' });
         }
 
-        // Check admin
-        if (conversation.createdBy.toString() !== userId.toString()) {
+        if (!canManageGroup(conversation, userId)) {
             return res.status(403).json({ message: 'You do not have permission to remove members' });
         }
 
@@ -430,8 +595,24 @@ const removeMember = async (req, res) => {
             return res.status(400).json({ message: 'This user is not in the group' });
         }
 
+        const isTargetOwner = isGroupOwner(conversation, memberId);
+        if (isTargetOwner) {
+            return res.status(400).json({ message: 'The group owner cannot be removed' });
+        }
+
+        const isRequesterOwner = isGroupOwner(conversation, userId);
+        const isTargetAdmin = isGroupAdmin(conversation, memberId);
+        if (!isRequesterOwner && isTargetAdmin) {
+            return res.status(403).json({ message: 'Only the group owner can remove admins' });
+        }
+
         // Xóa khỏi nhóm
+        const removedUser = await User.findById(memberId).select(USER_PUBLIC_FIELDS);
+
         conversation.members = conversation.members.filter(
+            id => id.toString() !== memberId
+        );
+        conversation.admins = (conversation.admins || []).filter(
             id => id.toString() !== memberId
         );
 
@@ -439,12 +620,217 @@ const removeMember = async (req, res) => {
         conversation.updatedAt = new Date();
         await conversation.save();
 
-        await conversation.populate('members', USER_PUBLIC_FIELDS);
-        await conversation.populate('createdBy', USER_COMPACT_FIELDS);
+        await populateConversationDetails(conversation);
+        await createSystemMessageAndEmit(
+            req,
+            conversation,
+            userId,
+            `${getUserLabel(req.user)} removed ${getUserLabel(removedUser)}`
+        );
+        req.app.get('io')?.to(`user:${memberId}`).emit('conversationRemoved', { conversationId });
 
         res.status(200).json({ message: 'Member removed successfully', conversation });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const updateGroupAdmins = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const { adminIds, action } = req.body;
+        const userId = req.user._id;
+
+        if (!Array.isArray(adminIds) || adminIds.length === 0) {
+            return res.status(400).json({ message: 'Missing list of admins' });
+        }
+
+        if (!['add', 'remove'].includes(action)) {
+            return res.status(400).json({ message: 'Action must be "add" or "remove"' });
+        }
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Admins can only be managed in a group' });
+        }
+
+        if (!isGroupOwner(conversation, userId)) {
+            return res.status(403).json({ message: 'Only the group owner can manage admins' });
+        }
+
+        const memberIds = new Set(conversation.members.map(getIdString));
+        const ownerId = getIdString(conversation.createdBy);
+        const normalizedAdminIds = Array.from(new Set(adminIds.map(String)));
+
+        const invalidAdminId = normalizedAdminIds.find((adminId) => {
+            return !memberIds.has(adminId) || adminId === ownerId;
+        });
+        if (invalidAdminId) {
+            return res.status(400).json({ message: 'Admins must be group members and cannot be the owner' });
+        }
+
+        const targetAdmins = await User.find({ _id: { $in: normalizedAdminIds } }).select(USER_PUBLIC_FIELDS);
+        const currentAdmins = new Set((conversation.admins || []).map(getIdString));
+        if (action === 'add') {
+            normalizedAdminIds.forEach((adminId) => currentAdmins.add(adminId));
+        } else {
+            normalizedAdminIds.forEach((adminId) => currentAdmins.delete(adminId));
+        }
+
+        conversation.admins = Array.from(currentAdmins);
+        conversation.updatedAt = new Date();
+        await conversation.save();
+        await populateConversationDetails(conversation);
+        await createSystemMessageAndEmit(
+            req,
+            conversation,
+            userId,
+            action === 'add'
+                ? `${getUserLabel(req.user)} made ${targetAdmins.map(getUserLabel).join(', ')} admin`
+                : `${getUserLabel(req.user)} removed admin from ${targetAdmins.map(getUserLabel).join(', ')}`
+        );
+
+        res.status(200).json({ message: 'Group admins updated successfully', conversation });
+    } catch (error) {
+        console.error('updateGroupAdmins error:', error);
+        res.status(500).json({ message: 'Server error while updating group admins' });
+    }
+};
+
+const transferGroupOwner = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const { memberId } = req.body;
+        const userId = req.user._id;
+
+        if (!memberId) {
+            return res.status(400).json({ message: 'Missing memberId' });
+        }
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Ownership can only be transferred in a group' });
+        }
+
+        if (conversation.createdBy?.toString() !== userId.toString()) {
+            return res.status(403).json({ message: 'Only the group owner can transfer ownership' });
+        }
+
+        const isMember = conversation.members.some(
+            id => id.toString() === memberId.toString()
+        );
+        if (!isMember) {
+            return res.status(400).json({ message: 'The new owner must be a group member' });
+        }
+
+        if (memberId.toString() === userId.toString()) {
+            return res.status(400).json({ message: 'This member is already the group owner' });
+        }
+
+        const newOwner = await User.findById(memberId).select(USER_PUBLIC_FIELDS);
+        conversation.createdBy = memberId;
+        conversation.admins = (conversation.admins || []).filter(
+            id => id.toString() !== memberId.toString()
+        );
+        conversation.updatedAt = new Date();
+        await conversation.save();
+        await populateConversationDetails(conversation);
+        await createSystemMessageAndEmit(
+            req,
+            conversation,
+            userId,
+            `${getUserLabel(req.user)} made ${getUserLabel(newOwner)} the group owner`
+        );
+
+        res.status(200).json({ message: 'Group owner transferred successfully', conversation });
+    } catch (error) {
+        console.error('transferGroupOwner error:', error);
+        res.status(500).json({ message: 'Server error while transferring group owner' });
+    }
+};
+
+const leaveGroup = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'You can only leave a group chat' });
+        }
+
+        const isMember = conversation.members.some(
+            id => id.toString() === userId.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: 'You are not a member of this group' });
+        }
+
+        const isOwner = isGroupOwner(conversation, userId);
+        let newOwner = null;
+        if (isOwner && conversation.members.length > 1) {
+            const { newOwnerId } = req.body;
+            if (!newOwnerId) {
+                return res.status(400).json({ message: 'Choose a new group owner before leaving' });
+            }
+
+            if (newOwnerId.toString() === userId.toString()) {
+                return res.status(400).json({ message: 'New owner must be another member' });
+            }
+
+            const isNewOwnerMember = conversation.members.some(
+                id => id.toString() === newOwnerId.toString()
+            );
+            if (!isNewOwnerMember) {
+                return res.status(400).json({ message: 'New owner must be a group member' });
+            }
+
+            newOwner = await User.findById(newOwnerId).select(USER_PUBLIC_FIELDS);
+            conversation.createdBy = newOwnerId;
+        }
+
+        conversation.members = conversation.members.filter(
+            id => id.toString() !== userId.toString()
+        );
+        conversation.admins = (conversation.admins || []).filter((id) => {
+            const idString = id.toString();
+            return idString !== userId.toString() && idString !== getIdString(conversation.createdBy);
+        });
+
+        const alreadyDeleted = (conversation.deletedFor || []).some(
+            deletedUserId => deletedUserId.toString() === userId.toString()
+        );
+        if (!alreadyDeleted) {
+            conversation.deletedFor.push(userId);
+        }
+
+        conversation.deletedAtBy.set(userId.toString(), new Date());
+        conversation.unreadCounts.set(userId.toString(), 0);
+        conversation.updatedAt = new Date();
+        await conversation.save();
+        await populateConversationDetails(conversation);
+
+        if (conversation.members.length > 0) {
+            await createSystemMessageAndEmit(
+                req,
+                conversation,
+                userId,
+                newOwner
+                    ? `${getUserLabel(req.user)} left the group. ${getUserLabel(newOwner)} is now the owner`
+                    : `${getUserLabel(req.user)} left the group`
+            );
+        }
+
+        res.status(200).json({
+            message: 'You left the group',
+            conversationId,
+        });
+    } catch (error) {
+        console.error('leaveGroup error:', error);
+        res.status(500).json({ message: 'Server error while leaving group' });
     }
 };
 
@@ -455,6 +841,10 @@ module.exports = {
     deleteConversation,
     markConversationRead,
     uploadGroupAvatar,
+    updateGroupDetails,
     addMembers,
     removeMember,
+    updateGroupAdmins,
+    transferGroupOwner,
+    leaveGroup,
 };
