@@ -3,7 +3,9 @@ const multer = require('multer');
 const router = express.Router();
 const {
     getMessages,
+    searchMessages,
     sendMessage,
+    deleteMessage,
     uploadAttachments,
     MAX_ATTACHMENTS_PER_MESSAGE,
 } = require('../controllers/messageController');
@@ -36,8 +38,10 @@ const handleAttachmentUpload = (req, res, next) => {
     });
 };
 
+router.get('/:conversationId/search', protect, searchMessages);
 router.get('/:conversationId', protect, getMessages);
 router.post('/:conversationId/attachments', protect, uploadLimiter, handleAttachmentUpload, uploadAttachments);
 router.post('/', protect, sendMessageLimiter, sendMessage);
+router.delete('/:messageId', protect, deleteMessage);
 
 module.exports = router;

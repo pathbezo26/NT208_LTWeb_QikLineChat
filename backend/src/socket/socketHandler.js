@@ -41,6 +41,25 @@ const isUserOnline = (userId) => {
   return onlineUsers.has(userId.toString());
 };
 
+const isPrivateConversationBlocked = async (conversation, userId) => {
+  if (conversation.type !== 'private') return false;
+
+  const memberIds = conversation.members.map((memberId) => memberId.toString());
+  const otherMemberId = memberIds.find((memberId) => memberId !== userId.toString());
+  if (!otherMemberId) return false;
+
+  const users = await User.find({ _id: { $in: [userId, otherMemberId] } })
+    .select('blockedUsers')
+    .lean();
+  const currentUser = users.find((item) => item._id.toString() === userId.toString());
+  const otherUser = users.find((item) => item._id.toString() === otherMemberId);
+
+  const currentBlocksOther = currentUser?.blockedUsers?.some((id) => id.toString() === otherMemberId);
+  const otherBlocksCurrent = otherUser?.blockedUsers?.some((id) => id.toString() === userId.toString());
+
+  return Boolean(currentBlocksOther || otherBlocksCurrent);
+};
+
 const getConversationForMember = (conversationId, userId, fields = 'members') => {
   if (!conversationId) return null;
 
@@ -228,7 +247,7 @@ const socketHandler = (io) => {
       }
 
       try {
-        const conversation = await Conversation.findById(conversationId).select('members deletedFor unreadCounts');
+        const conversation = await Conversation.findById(conversationId).select('members type deletedFor unreadCounts');
         if (!conversation) {
           fail('Conversation not found.');
           return;
@@ -236,6 +255,11 @@ const socketHandler = (io) => {
 
         if (!isConversationMember(conversation, userId)) {
           fail('You do not have permission to send messages here.');
+          return;
+        }
+
+        if (await isPrivateConversationBlocked(conversation, userId)) {
+          fail('This private chat is blocked.');
           return;
         }
 
@@ -399,11 +423,32 @@ const socketHandler = (io) => {
       emitTypingStatus(data || {}, 'stopTyping', { userId }, ack);
     });
 
+    socket.on('getPresence', async ({ userIds } = {}, ack) => {
+      try {
+        const ids = Array.isArray(userIds) ? userIds.map(String).filter(Boolean) : [];
+        const users = await User.find({ _id: { $in: ids } }).select('_id lastSeenAt').lean();
+        const statuses = users.map((item) => ({
+          userId: item._id.toString(),
+          online: isUserOnline(item._id),
+          lastSeenAt: item.lastSeenAt,
+        }));
+
+        if (typeof ack === 'function') ack({ ok: true, statuses });
+      } catch (error) {
+        logger.error('getPresence error:', error);
+        if (typeof ack === 'function') ack({ ok: false, message: 'Could not load presence.' });
+      }
+    });
+
     socket.on('disconnect', () => {
       logger.info(`User disconnected: ${username}`);
       const becameOffline = removeOnlineSocket(userId, socket.id);
       if (becameOffline) {
-        emitPresenceToConversationMembers(io, userId, 'userOffline', { userId, username })
+        const lastSeenAt = new Date();
+        User.findByIdAndUpdate(userId, { lastSeenAt }).catch((error) => {
+          logger.error('lastSeen update error:', error);
+        });
+        emitPresenceToConversationMembers(io, userId, 'userOffline', { userId, username, lastSeenAt })
           .catch((error) => logger.error('userOffline emit error:', error));
       }
     });

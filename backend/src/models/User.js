@@ -37,6 +37,16 @@ const UserSchema = new mongoose.Schema(
                 default: null,
             },
         },
+        lastSeenAt: {
+            type: Date,
+            default: null,
+        },
+        blockedUsers: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
     },
     { timestamps: true }
 );

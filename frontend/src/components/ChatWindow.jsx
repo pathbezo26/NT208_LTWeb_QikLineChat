@@ -1,8 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Select, message as antdMessage } from 'antd';
-import { InfoCircleOutlined, MessageOutlined, TeamOutlined } from '@ant-design/icons';
+import { Input, Modal, Select, message as antdMessage } from 'antd';
+import {
+    FlagOutlined,
+    InfoCircleOutlined,
+    MessageOutlined,
+    SearchOutlined,
+    StopOutlined,
+    TeamOutlined,
+    UndoOutlined,
+} from '@ant-design/icons';
 import { getConversationsAPI } from '../api/conversationAPI';
-import { getMessagesAPI, sendMessageAPI, uploadMessageAttachmentsAPI } from '../api/messageAPI';
+import {
+    deleteMessageAPI,
+    getMessagesAPI,
+    searchMessagesAPI,
+    sendMessageAPI,
+    uploadMessageAttachmentsAPI,
+} from '../api/messageAPI';
+import { blockUserAPI, reportUserAPI, unblockUserAPI } from '../api/userAPI';
 import useSocket from '../hooks/useSocket';
 import useAuth from '../hooks/useAuth';
 import MessageList from './MessageList';
@@ -110,6 +125,27 @@ const filterMessagesAfterDeletedAt = (items, deletedAt) => {
     });
 };
 
+const formatLastSeen = (lastSeenAt) => {
+    if (!lastSeenAt) return 'Offline';
+
+    const date = new Date(lastSeenAt);
+    if (Number.isNaN(date.getTime())) return 'Offline';
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0);
+
+    if (diffMinutes < 1) return 'Last seen just now';
+    if (diffMinutes < 60) return `Last seen ${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+
+    return `Last seen ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+    })}`;
+};
+
 export default function ChatWindow({
     conversation,
     onConversationUpdated,
@@ -139,6 +175,13 @@ export default function ChatWindow({
     const [isForwardLoading, setIsForwardLoading] = useState(false);
     const [isForwarding, setIsForwarding] = useState(false);
     const [messageApi, contextHolder] = antdMessage.useMessage();
+    const [presenceByUserId, setPresenceByUserId] = useState({});
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [messageSearchTerm, setMessageSearchTerm] = useState('');
+    const [messageSearchResults, setMessageSearchResults] = useState([]);
+    const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+    const [isReporting, setIsReporting] = useState(false);
+    const [blockedUserIds, setBlockedUserIds] = useState(() => (user?.blockedUsers || []).map(getUserId).filter(Boolean));
 
     const markActiveConversationRead = useCallback((conversationId) => {
         if (!socket || !conversationId) return;
@@ -149,6 +192,10 @@ export default function ChatWindow({
     useEffect(() => {
         activeConversationIdRef.current = conversation?._id || null;
     }, [conversation?._id]);
+
+    useEffect(() => {
+        setBlockedUserIds((user?.blockedUsers || []).map(getUserId).filter(Boolean));
+    }, [user?.blockedUsers]);
 
     useEffect(() => {
         if (!messagesConversationId) return;
@@ -235,6 +282,39 @@ export default function ChatWindow({
     }, [socket, conversation]);
 
     useEffect(() => {
+        if (!socket || !conversation || !user?._id) return;
+
+        const otherMember = conversation.type === 'private'
+            ? conversation.members?.find((member) => getUserId(member) !== user._id)
+            : null;
+        const otherMemberId = getUserId(otherMember);
+        if (!otherMemberId) return;
+
+        setPresenceByUserId((prevState) => ({
+            ...prevState,
+            [otherMemberId]: {
+                online: false,
+                lastSeenAt: otherMember?.lastSeenAt || null,
+            },
+        }));
+
+        socket.timeout(5000).emit('getPresence', { userIds: [otherMemberId] }, (error, response) => {
+            if (error || !response?.ok) return;
+
+            const status = response.statuses?.find((item) => item.userId === otherMemberId);
+            if (!status) return;
+
+            setPresenceByUserId((prevState) => ({
+                ...prevState,
+                [otherMemberId]: {
+                    online: Boolean(status.online),
+                    lastSeenAt: status.lastSeenAt || otherMember?.lastSeenAt || null,
+                },
+            }));
+        });
+    }, [conversation, socket, user?._id]);
+
+    useEffect(() => {
         if (!socket) return;
 
         const handleNewMessage = (newMessage) => {
@@ -291,12 +371,38 @@ export default function ChatWindow({
             });
         };
 
+        const handleMessageDeleted = ({ conversationId, messageId, scope, deletedForEveryone, deletedAt }) => {
+            if (conversationId?.toString() !== activeConversationIdRef.current || !messageId) return;
+
+            setMessages((prevMessages) => {
+                if (scope === 'me') {
+                    return prevMessages.filter((message) => getMessageKey(message) !== messageId?.toString());
+                }
+
+                return prevMessages.map((message) => {
+                    if (getMessageKey(message)?.toString() !== messageId?.toString()) return message;
+
+                    return {
+                        ...message,
+                        content: '',
+                        attachments: [],
+                        replyTo: null,
+                        forwardedFrom: null,
+                        deletedForEveryone: Boolean(deletedForEveryone),
+                        deletedAt,
+                    };
+                });
+            });
+        };
+
         socket.on('newMessage', handleNewMessage);
         socket.on('messageStatusUpdated', handleMessageStatusUpdated);
+        socket.on('messageDeleted', handleMessageDeleted);
 
         return () => {
             socket.off('newMessage', handleNewMessage);
             socket.off('messageStatusUpdated', handleMessageStatusUpdated);
+            socket.off('messageDeleted', handleMessageDeleted);
         };
     }, [markActiveConversationRead, socket, user?._id]);
 
@@ -330,8 +436,43 @@ export default function ChatWindow({
     }, [socket, user]);
 
     useEffect(() => {
+        if (!socket) return;
+
+        const handleUserOnline = ({ userId, lastSeenAt }) => {
+            setPresenceByUserId((prevState) => ({
+                ...prevState,
+                [userId]: {
+                    online: true,
+                    lastSeenAt: lastSeenAt || prevState[userId]?.lastSeenAt || null,
+                },
+            }));
+        };
+
+        const handleUserOffline = ({ userId, lastSeenAt }) => {
+            setPresenceByUserId((prevState) => ({
+                ...prevState,
+                [userId]: {
+                    online: false,
+                    lastSeenAt: lastSeenAt || new Date().toISOString(),
+                },
+            }));
+        };
+
+        socket.on('userOnline', handleUserOnline);
+        socket.on('userOffline', handleUserOffline);
+
+        return () => {
+            socket.off('userOnline', handleUserOnline);
+            socket.off('userOffline', handleUserOffline);
+        };
+    }, [socket]);
+
+    useEffect(() => {
         setIsGroupDetailsOpen(false);
         setReplyToMessage(null);
+        setIsSearchOpen(false);
+        setMessageSearchTerm('');
+        setMessageSearchResults([]);
     }, [conversation?._id]);
 
     useEffect(() => {
@@ -587,6 +728,97 @@ export default function ChatWindow({
         );
     }, [forwardMessage, forwardTargetId, messageApi, socket]);
 
+    const handleDeleteMessage = useCallback(async (targetMessage, scope) => {
+        if (!targetMessage?._id || String(targetMessage._id).startsWith('client-')) return;
+
+        try {
+            const result = await deleteMessageAPI(targetMessage._id, scope);
+            setMessages((prevMessages) => {
+                if (scope === 'me') {
+                    return prevMessages.filter((message) => getMessageKey(message) !== targetMessage._id);
+                }
+
+                return prevMessages.map((message) => {
+                    if (message._id !== targetMessage._id) return message;
+
+                    return {
+                        ...message,
+                        content: '',
+                        attachments: [],
+                        replyTo: null,
+                        forwardedFrom: null,
+                        deletedForEveryone: true,
+                        deletedAt: result.deletedAt,
+                    };
+                });
+            });
+            messageApi.success(scope === 'everyone' ? 'Message deleted for everyone.' : 'Message deleted for you.');
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not delete message.');
+        }
+    }, [messageApi]);
+
+    const handleSearchMessages = useCallback(async (value = messageSearchTerm) => {
+        const keyword = value.trim();
+        if (!conversation?._id || !keyword) {
+            setMessageSearchResults([]);
+            return;
+        }
+
+        setIsSearchingMessages(true);
+        try {
+            const results = await searchMessagesAPI(conversation._id, keyword);
+            setMessageSearchResults(results || []);
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not search messages.');
+        } finally {
+            setIsSearchingMessages(false);
+        }
+    }, [conversation?._id, messageApi, messageSearchTerm]);
+
+    const handleBlockToggle = useCallback(async (targetUser, blocked) => {
+        if (!targetUser?._id) return;
+
+        try {
+            if (blocked) {
+                await unblockUserAPI(targetUser._id);
+                setBlockedUserIds((prevIds) => prevIds.filter((id) => id !== targetUser._id));
+                messageApi.success('User unblocked.');
+            } else {
+                await blockUserAPI(targetUser._id);
+                setBlockedUserIds((prevIds) => Array.from(new Set([...prevIds, targetUser._id])));
+                messageApi.success('User blocked.');
+            }
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not update block status.');
+        }
+    }, [messageApi]);
+
+    const handleReportUser = useCallback((targetUser) => {
+        if (!targetUser?._id) return;
+
+        Modal.confirm({
+            title: `Report ${targetUser.username || 'user'}?`,
+            content: 'This will send a report to the app moderators.',
+            okText: 'Report',
+            okButtonProps: { danger: true, loading: isReporting },
+            onOk: async () => {
+                setIsReporting(true);
+                try {
+                    await reportUserAPI(targetUser._id, {
+                        conversationId: conversation._id,
+                        reason: 'Inappropriate behavior',
+                    });
+                    messageApi.success('Report submitted.');
+                } catch (error) {
+                    messageApi.error(error.response?.data?.message || 'Could not submit report.');
+                } finally {
+                    setIsReporting(false);
+                }
+            },
+        });
+    }, [conversation?._id, isReporting, messageApi]);
+
     if (!conversation || !user?._id) {
         return (
             <div className={styles.empty}>
@@ -623,6 +855,12 @@ export default function ChatWindow({
     const shouldShowInitialSkeleton = !isMessageStateReady
         ? !cachedDisplayState
         : isLoading && displayedMessages.length === 0;
+    const otherMember = getOtherMember();
+    const otherMemberId = getUserId(otherMember);
+    const otherPresence = otherMemberId ? presenceByUserId[otherMemberId] : null;
+    const isOtherOnline = Boolean(otherPresence?.online);
+    const isOtherBlocked = otherMemberId ? blockedUserIds.includes(otherMemberId) : false;
+    const privateStatusText = isOtherOnline ? 'Online' : formatLastSeen(otherPresence?.lastSeenAt || otherMember?.lastSeenAt);
 
     return (
         <div className={styles.window}>
@@ -654,9 +892,56 @@ export default function ChatWindow({
                         <span className={styles.headerName}>{getChatName()}</span>
                     )}
                     {conversation.type === 'private' && (
-                        <span className={styles.chatStatus}>Direct message</span>
+                        <span className={`${styles.chatStatus} ${isOtherOnline ? styles.onlineStatus : ''}`}>
+                            <span className={styles.statusDot} />
+                            {privateStatusText}
+                        </span>
                     )}
                 </div>
+
+                <button
+                    className={styles.groupInfoButton}
+                    onClick={() => setIsSearchOpen((current) => !current)}
+                    type="button"
+                    title="Search messages"
+                    aria-label="Search messages"
+                >
+                    <SearchOutlined />
+                </button>
+
+                {conversation.type === 'private' && otherMember && (
+                    <button
+                        className={styles.groupInfoButton}
+                        onClick={() => {
+                            Modal.confirm({
+                                title: isOtherBlocked ? 'Unblock this user?' : 'Block this user?',
+                                content: isOtherBlocked
+                                    ? 'They will be able to message you again.'
+                                    : 'You will stop receiving private messages from this user.',
+                                okText: isOtherBlocked ? 'Unblock' : 'Block',
+                                okButtonProps: { danger: !isOtherBlocked },
+                                onOk: () => handleBlockToggle(otherMember, isOtherBlocked),
+                            });
+                        }}
+                        type="button"
+                        title={isOtherBlocked ? 'Unblock user' : 'Block user'}
+                        aria-label={isOtherBlocked ? 'Unblock user' : 'Block user'}
+                    >
+                        {isOtherBlocked ? <UndoOutlined /> : <StopOutlined />}
+                    </button>
+                )}
+
+                {conversation.type === 'private' && otherMember && (
+                    <button
+                        className={styles.groupInfoButton}
+                        onClick={() => handleReportUser(otherMember)}
+                        type="button"
+                        title="Report user"
+                        aria-label="Report user"
+                    >
+                        <FlagOutlined />
+                    </button>
+                )}
 
                 {conversation.type === 'group' && (
                     <button
@@ -671,6 +956,37 @@ export default function ChatWindow({
                 )}
             </div>
 
+            {isSearchOpen && (
+                <div className={styles.searchPanel}>
+                    <Input.Search
+                        allowClear
+                        value={messageSearchTerm}
+                        loading={isSearchingMessages}
+                        placeholder="Search messages"
+                        onChange={(event) => setMessageSearchTerm(event.target.value)}
+                        onSearch={handleSearchMessages}
+                    />
+                    {messageSearchResults.length > 0 && (
+                        <div className={styles.searchResults}>
+                            {messageSearchResults.map((item) => (
+                                <button
+                                    className={styles.searchResult}
+                                    key={item._id}
+                                    type="button"
+                                    onClick={() => {
+                                        setMessages((prevMessages) => mergeMessages(prevMessages, [item]));
+                                        setIsSearchOpen(false);
+                                    }}
+                                >
+                                    <span>{item.sender?.username || 'User'}</span>
+                                    <p>{item.content}</p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             <MessageList
                 messages={displayedMessages}
                 currentUserId={user._id}
@@ -684,6 +1000,7 @@ export default function ChatWindow({
                 onRetryMessage={handleRetryMessage}
                 onReplyMessage={setReplyToMessage}
                 onForwardMessage={setForwardMessage}
+                onDeleteMessage={handleDeleteMessage}
             />
 
             {typingUsers.length > 0 && (
@@ -697,6 +1014,8 @@ export default function ChatWindow({
                 onSendMessage={handleSendMessage}
                 replyToMessage={replyToMessage}
                 onCancelReply={() => setReplyToMessage(null)}
+                disabled={conversation.type === 'private' && isOtherBlocked}
+                disabledReason="You blocked this user"
             />
 
             <Modal

@@ -103,7 +103,15 @@ const MessageSchema = new mongoose.Schema(
                 default: null,
             },
         },
-        deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+        deletedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        deletedForEveryone: {
+            type: Boolean,
+            default: false,
+        },
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );

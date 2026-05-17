@@ -26,3 +26,18 @@ export const updateUsernameAPI = async (username) => {
     const response = await axiosInstance.patch('/users/me/username', { username });
     return response.data; // { message, user }
 };
+
+export const blockUserAPI = async (userId) => {
+    const response = await axiosInstance.post(`/users/${userId}/block`);
+    return response.data;
+};
+
+export const unblockUserAPI = async (userId) => {
+    const response = await axiosInstance.delete(`/users/${userId}/block`);
+    return response.data;
+};
+
+export const reportUserAPI = async (userId, data) => {
+    const response = await axiosInstance.post(`/users/${userId}/report`, data);
+    return response.data;
+};

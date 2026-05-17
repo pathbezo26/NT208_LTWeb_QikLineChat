@@ -477,6 +477,11 @@
     user-select: text;
 }
 
+.deletedContent {
+    font-style: italic;
+    opacity: 0.68;
+}
+
 .meta {
     display: inline-flex;
     align-items: center;
@@ -608,6 +613,30 @@
     background: #ffffff;
     color: #1877f2;
     transform: translateY(-1px);
+}
+
+.deleteMenu {
+    display: grid;
+    gap: 4px;
+    min-width: 150px;
+}
+
+.deleteMenu button {
+    width: 100%;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #334155;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+}
+
+.deleteMenu button:hover {
+    background: #f1f5f9;
+    color: #dc2626;
 }
 
 .quoteIcon {
@@ -834,6 +863,15 @@
     border-color: rgba(142, 197, 255, 0.28);
     background: #172234;
     color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .deleteMenu button {
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .deleteMenu button:hover {
+    background: #172234;
+    color: #fca5a5;
 }
 
 :global([data-theme='dark']) .meta {

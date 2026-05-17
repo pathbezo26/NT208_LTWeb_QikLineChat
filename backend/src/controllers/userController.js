@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Conversation = require('../models/Conversation');
+const UserReport = require('../models/UserReport');
 const cloudinary = require('../config/cloudinary');
 
 const getPublicUser = (user) => ({
@@ -10,6 +12,8 @@ const getPublicUser = (user) => ({
         publicId: user.avatar?.publicId || null,
         updatedAt: user.avatar?.updatedAt || null,
     },
+    lastSeenAt: user.lastSeenAt,
+    blockedUsers: user.blockedUsers || [],
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
 });
@@ -167,4 +171,102 @@ const deleteAvatar = async (req, res) => {
     }
 };
 
-module.exports = { uploadAvatar, deleteAvatar, updateUsername };
+const blockUser = async (req, res) => {
+    try {
+        const targetUserId = req.params.id;
+
+        if (targetUserId === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot block yourself' });
+        }
+
+        const targetUser = await User.findById(targetUserId).select('_id username avatar lastSeenAt');
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { $addToSet: { blockedUsers: targetUserId } },
+            { new: true }
+        ).select('_id username email avatar lastSeenAt blockedUsers');
+
+        res.status(200).json({
+            message: `${targetUser.username} has been blocked`,
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('blockUser error:', error);
+        res.status(500).json({ message: 'Server error while blocking user' });
+    }
+};
+
+const unblockUser = async (req, res) => {
+    try {
+        const targetUserId = req.params.id;
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { $pull: { blockedUsers: targetUserId } },
+            { new: true }
+        ).select('_id username email avatar lastSeenAt blockedUsers');
+
+        res.status(200).json({
+            message: 'User has been unblocked',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('unblockUser error:', error);
+        res.status(500).json({ message: 'Server error while unblocking user' });
+    }
+};
+
+const reportUser = async (req, res) => {
+    try {
+        const targetUserId = req.params.id;
+        const { conversationId, reason, details } = req.body;
+
+        if (targetUserId === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot report yourself' });
+        }
+
+        const targetUser = await User.findById(targetUserId).select('_id');
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (conversationId) {
+            const conversation = await Conversation.findOne({
+                _id: conversationId,
+                members: { $all: [req.user._id, targetUserId] },
+            }).select('_id');
+
+            if (!conversation) {
+                return res.status(403).json({ message: 'Conversation not found for this report' });
+            }
+        }
+
+        const report = await UserReport.create({
+            reporter: req.user._id,
+            reportedUser: targetUserId,
+            conversation: conversationId || null,
+            reason: reason?.trim() || 'Inappropriate behavior',
+            details: details?.trim() || '',
+        });
+
+        res.status(201).json({
+            message: 'Report submitted',
+            reportId: report._id,
+        });
+    } catch (error) {
+        console.error('reportUser error:', error);
+        res.status(500).json({ message: 'Server error while reporting user' });
+    }
+};
+
+module.exports = {
+    uploadAvatar,
+    deleteAvatar,
+    updateUsername,
+    blockUser,
+    unblockUser,
+    reportUser,
+};

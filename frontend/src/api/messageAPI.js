@@ -12,6 +12,20 @@ export const sendMessageAPI = async (data) => {
     return response.data;
 };
 
+export const searchMessagesAPI = async (conversationId, keyword) => {
+    const response = await axiosInstance.get(`/messages/${conversationId}/search`, {
+        params: { q: keyword },
+    });
+    return response.data;
+};
+
+export const deleteMessageAPI = async (messageId, scope = 'me') => {
+    const response = await axiosInstance.delete(`/messages/${messageId}`, {
+        data: { scope },
+    });
+    return response.data;
+};
+
 export const uploadMessageAttachmentsAPI = async (conversationId, files) => {
     const formData = new FormData();
 

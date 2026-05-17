@@ -3,7 +3,14 @@ const multer = require('multer');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
-const { uploadAvatar, deleteAvatar, updateUsername } = require('../controllers/userController');
+const {
+  uploadAvatar,
+  deleteAvatar,
+  updateUsername,
+  blockUser,
+  unblockUser,
+  reportUser,
+} = require('../controllers/userController');
 const { searchLimiter, uploadLimiter } = require('../middleware/rateLimiters');
 
 // Cau hinh multer de nhan file avatar trong RAM, sau do controller upload thang len Cloudinary.
@@ -62,6 +69,9 @@ router.patch('/me/avatar', protect, uploadLimiter, handleAvatarUpload, uploadAva
 router.delete('/me/avatar', protect, deleteAvatar);
 // PATCH /api/users/me/username - doi username cua user hien tai
 router.patch('/me/username', protect, updateUsername);
+router.post('/:id/block', protect, blockUser);
+router.delete('/:id/block', protect, unblockUser);
+router.post('/:id/report', protect, reportUser);
 
 // GET /api/users/search?q=keyword — search users by username (exclude self)
 router.get('/search', protect, searchLimiter, async (req, res) => {

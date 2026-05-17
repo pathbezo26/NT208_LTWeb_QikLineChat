@@ -11,6 +11,22 @@
     position: relative;
 }
 
+.disabledOverlay {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: -32px;
+    min-height: 26px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fff7f7;
+    color: #b91c1c;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .attachmentTray {
     display: flex;
     flex-wrap: wrap;
@@ -267,6 +283,12 @@
 :global([data-theme='dark']) .inputWrap {
     border-top-color: #263244;
     background: #101826;
+}
+
+:global([data-theme='dark']) .disabledOverlay {
+    border-color: #7f1d1d;
+    background: #2a1114;
+    color: #fca5a5;
 }
 
 :global([data-theme='dark']) .replyPreview {

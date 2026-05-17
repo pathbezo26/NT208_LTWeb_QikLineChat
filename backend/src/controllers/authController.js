@@ -20,6 +20,8 @@ const formatAuthUser = (user) => ({
         publicId: user.avatar?.publicId || null,
         updatedAt: user.avatar?.updatedAt || null,
     },
+    lastSeenAt: user.lastSeenAt,
+    blockedUsers: user.blockedUsers || [],
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
 });

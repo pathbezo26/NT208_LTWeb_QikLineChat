@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
+const User = require('../models/User');
 const cloudinary = require('../config/cloudinary');
 const supabase = require('../config/supabase');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
@@ -9,6 +10,10 @@ const DEFAULT_MESSAGE_LIMIT = 30;
 const MAX_MESSAGE_LIMIT = 50;
 const MAX_MESSAGE_LENGTH = 5000;
 const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+
+const escapeRegex = (value) => {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
 const normalizeLimit = (value) => {
     const parsed = Number.parseInt(value, 10);
@@ -22,6 +27,25 @@ const isConversationMember = (conversation, userId) => {
     return conversation.members
         .map((id) => id.toString())
         .includes(userId.toString());
+};
+
+const isPrivateConversationBlocked = async (conversation, userId) => {
+    if (conversation.type !== 'private') return false;
+
+    const memberIds = conversation.members.map((id) => id.toString());
+    const otherMemberId = memberIds.find((memberId) => memberId !== userId.toString());
+    if (!otherMemberId) return false;
+
+    const users = await User.find({ _id: { $in: [userId, otherMemberId] } })
+        .select('blockedUsers')
+        .lean();
+    const currentUser = users.find((item) => item._id.toString() === userId.toString());
+    const otherUser = users.find((item) => item._id.toString() === otherMemberId);
+
+    const currentBlocksOther = currentUser?.blockedUsers?.some((id) => id.toString() === otherMemberId);
+    const otherBlocksCurrent = otherUser?.blockedUsers?.some((id) => id.toString() === userId.toString());
+
+    return Boolean(currentBlocksOther || otherBlocksCurrent);
 };
 
 const buildMessageReference = (sourceMessage) => {
@@ -221,6 +245,10 @@ const sendMessage = async (req, res) => {
             return res.status(403).json({ message: 'You do not have permission to send messages here' });
         }
 
+        if (await isPrivateConversationBlocked(conversation, userId)) {
+            return res.status(403).json({ message: 'This private chat is blocked' });
+        }
+
         const [replyToMessage, forwardedFromMessage] = await Promise.all([
             replyToMessageId
                 ? Message.findOne({ _id: replyToMessageId, conversationId })
@@ -327,4 +355,115 @@ const uploadAttachments = async (req, res) => {
     }
 };
 
-module.exports = { getMessages, sendMessage, uploadAttachments, MAX_ATTACHMENTS_PER_MESSAGE };
+const searchMessages = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user._id;
+        const keyword = req.query.q?.trim();
+
+        if (!keyword) {
+            return res.status(200).json([]);
+        }
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        if (!isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to search this conversation' });
+        }
+
+        const query = getVisibleMessagesQuery(conversation, userId);
+        query.type = 'user';
+        query.deletedForEveryone = { $ne: true };
+        query.content = { $regex: escapeRegex(keyword), $options: 'i' };
+
+        const messages = await Message.find(query)
+            .populate('sender', SENDER_PUBLIC_FIELDS)
+            .sort({ createdAt: -1 })
+            .limit(30);
+
+        res.status(200).json(messages);
+    } catch (error) {
+        console.error('searchMessages error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user._id;
+        const scope = req.body.scope === 'everyone' ? 'everyone' : 'me';
+
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.status(404).json({ message: 'Message not found' });
+        }
+
+        const conversation = await Conversation.findById(message.conversationId).select('members type');
+        if (!conversation || !isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to delete this message' });
+        }
+
+        if (message.type === 'system') {
+            return res.status(400).json({ message: 'System messages cannot be deleted' });
+        }
+
+        if (scope === 'everyone') {
+            if (message.sender.toString() !== userId.toString()) {
+                return res.status(403).json({ message: 'Only the sender can delete this message for everyone' });
+            }
+
+            message.content = '';
+            message.attachments = [];
+            message.deletedForEveryone = true;
+            message.deletedAt = new Date();
+            message.replyTo = undefined;
+            message.forwardedFrom = undefined;
+        } else {
+            const isAlreadyDeleted = message.deletedBy.some((deletedUserId) => {
+                return deletedUserId.toString() === userId.toString();
+            });
+
+            if (!isAlreadyDeleted) {
+                message.deletedBy.push(userId);
+            }
+        }
+
+        await message.save({ validateBeforeSave: false });
+
+        const payload = {
+            messageId: message._id,
+            conversationId: message.conversationId,
+            scope,
+            userId,
+            deletedForEveryone: message.deletedForEveryone,
+            deletedAt: message.deletedAt,
+        };
+
+        const io = req.app.get('io');
+        if (scope === 'everyone') {
+            conversation.members.forEach((memberId) => {
+                io?.to(`user:${memberId.toString()}`).emit('messageDeleted', payload);
+            });
+        } else {
+            io?.to(`user:${userId.toString()}`).emit('messageDeleted', payload);
+        }
+
+        res.status(200).json(payload);
+    } catch (error) {
+        console.error('deleteMessage error:', error);
+        res.status(500).json({ message: 'Server error while deleting message' });
+    }
+};
+
+module.exports = {
+    getMessages,
+    searchMessages,
+    sendMessage,
+    deleteMessage,
+    uploadAttachments,
+    MAX_ATTACHMENTS_PER_MESSAGE,
+};

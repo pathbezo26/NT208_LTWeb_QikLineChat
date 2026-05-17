@@ -7,7 +7,7 @@ const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
 // Cac field user duoc phep tra ve khi populate trong conversation.
 // Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
-const USER_PUBLIC_FIELDS = 'username email avatar';
+const USER_PUBLIC_FIELDS = 'username email avatar lastSeenAt blockedUsers';
 const USER_COMPACT_FIELDS = 'username avatar';
 const LAST_MESSAGE_SENDER_FIELDS = 'username avatar';
 
@@ -58,6 +58,19 @@ const isGroupAdmin = (conversation, userId) => {
 
 const canManageGroup = (conversation, userId) => {
     return isGroupOwner(conversation, userId) || isGroupAdmin(conversation, userId);
+};
+
+const isPrivateChatBlocked = async (firstUserId, secondUserId) => {
+    const users = await User.find({ _id: { $in: [firstUserId, secondUserId] } })
+        .select('blockedUsers')
+        .lean();
+    const firstUser = users.find((item) => item._id.toString() === firstUserId.toString());
+    const secondUser = users.find((item) => item._id.toString() === secondUserId.toString());
+
+    const firstBlocksSecond = firstUser?.blockedUsers?.some((id) => id.toString() === secondUserId.toString());
+    const secondBlocksFirst = secondUser?.blockedUsers?.some((id) => id.toString() === firstUserId.toString());
+
+    return Boolean(firstBlocksSecond || secondBlocksFirst);
 };
 
 const getUserLabel = (user) => {
@@ -240,6 +253,11 @@ const createConversation = async (req, res) => {
             // Kiểm tra private chat — chỉ 2 thành viên
             if (finalMembers.length !== 2) {
                 return res.status(400).json({ message: 'Private chat must have exactly 2 members' });
+            }
+
+            const otherMemberId = finalMembers.find((memberId) => memberId !== userId.toString());
+            if (await isPrivateChatBlocked(userId, otherMemberId)) {
+                return res.status(403).json({ message: 'This private chat is blocked' });
             }
 
             const existing = await Conversation.findOne({

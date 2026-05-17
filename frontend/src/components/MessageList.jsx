@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Popover } from 'antd';
-import { FileOutlined, ShareAltOutlined, UpOutlined } from '@ant-design/icons';
+import { DeleteOutlined, FileOutlined, ShareAltOutlined, UpOutlined } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
@@ -105,6 +105,7 @@ export default function MessageList({
     onRetryMessage,
     onReplyMessage,
     onForwardMessage,
+    onDeleteMessage,
 }) {
     const listRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -352,11 +353,25 @@ export default function MessageList({
                 const fileAttachments = attachments.filter((attachment) => attachment.type !== 'image');
                 const hasTextContent = Boolean(message.content);
                 const hasReply = hasMessageReference(message.replyTo);
+                const isDeletedForEveryone = Boolean(message.deletedForEveryone);
                 const showsSenderName = !isMyMessage && shouldShowAvatar && message.sender?.username;
                 const hasOnlyImages = imageAttachments.length > 0
                     && fileAttachments.length === 0
                     && !hasTextContent
-                    && !hasReply;
+                    && !hasReply
+                    && !isDeletedForEveryone;
+                const deleteMenu = (
+                    <div className={styles.deleteMenu}>
+                        <button type="button" onClick={() => onDeleteMessage?.(message, 'me')}>
+                            Delete for me
+                        </button>
+                        {isMyMessage && (
+                            <button type="button" onClick={() => onDeleteMessage?.(message, 'everyone')}>
+                                Delete for everyone
+                            </button>
+                        )}
+                    </div>
+                );
 
                 return (
                     <Fragment key={messageKey || index}>
@@ -452,10 +467,14 @@ export default function MessageList({
                                     </div>
                                 )}
 
-                                {message.content && <p className={styles.content}>{message.content}</p>}
+                                {isDeletedForEveryone ? (
+                                    <p className={`${styles.content} ${styles.deletedContent}`}>Message deleted</p>
+                                ) : (
+                                    message.content && <p className={styles.content}>{message.content}</p>
+                                )}
                                 </div>
 
-                                {!isSending && !isFailed && message._id && !String(message._id).startsWith('client-') && (
+                                {!isSending && !isFailed && !isDeletedForEveryone && message._id && !String(message._id).startsWith('client-') && (
                                 <div className={styles.messageActions}>
                                     <button
                                         className={styles.actionBtn}
@@ -489,6 +508,20 @@ export default function MessageList({
                                             aria-label="Show message time"
                                         >
                                             <span className={styles.infoIcon}>!</span>
+                                        </button>
+                                    </Popover>
+                                    <Popover
+                                        content={deleteMenu}
+                                        trigger="click"
+                                        placement={isMyMessage ? 'left' : 'right'}
+                                    >
+                                        <button
+                                            className={styles.actionBtn}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            type="button"
+                                            aria-label="Delete message"
+                                        >
+                                            <DeleteOutlined />
                                         </button>
                                     </Popover>
                                 </div>

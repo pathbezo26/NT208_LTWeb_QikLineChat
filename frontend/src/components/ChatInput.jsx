@@ -13,7 +13,7 @@ const formatFileSize = (size) => {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export default function ChatInput({ conversationId, onSendMessage, replyToMessage, onCancelReply }) {
+export default function ChatInput({ conversationId, onSendMessage, replyToMessage, onCancelReply, disabled = false, disabledReason = '' }) {
     const socket = useSocket();
 
     const [message, setMessage] = useState('');
@@ -110,7 +110,7 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
 
     const handleSend = () => {
         const content = message.trim();
-        if ((!content && selectedFiles.length === 0) || !socket || !onSendMessage) return;
+        if (disabled || (!content && selectedFiles.length === 0) || !socket || !onSendMessage) return;
 
         setAttachmentError('');
         onSendMessage(content, null, {
@@ -190,17 +190,21 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
             )}
             {attachmentError && <div className={styles.attachmentError}>{attachmentError}</div>}
             <div className={styles.inputBar}>
+            {disabled && (
+                <div className={styles.disabledOverlay}>{disabledReason || 'Messaging is disabled'}</div>
+            )}
             <input
                 ref={fileInputRef}
                 className={styles.fileInput}
                 type="file"
                 multiple
                 onChange={handlePickFiles}
+                disabled={disabled}
             />
             <button
                 className={styles.attachBtn}
                 onClick={() => fileInputRef.current?.click()}
-                disabled={selectedFiles.length >= MAX_ATTACHMENTS}
+                disabled={disabled || selectedFiles.length >= MAX_ATTACHMENTS}
                 title="Attach file"
                 aria-label="Attach file"
                 type="button"
@@ -213,6 +217,7 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
+                disabled={disabled}
                 placeholder={selectedFiles.length > 0 ? 'Add a message' : 'Type a message'}
                 rows={1}
             />
@@ -220,7 +225,7 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
             <button
                 className={styles.sendBtn}
                 onClick={handleSend}
-                disabled={!message.trim() && selectedFiles.length === 0}
+                disabled={disabled || (!message.trim() && selectedFiles.length === 0)}
                 title="Send message"
                 aria-label="Send message"
                 type="button"
