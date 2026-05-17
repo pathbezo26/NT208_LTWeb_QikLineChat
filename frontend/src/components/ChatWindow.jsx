@@ -7,7 +7,7 @@ import {
     getConversationsAPI,
     removeGroupMemberAPI,
 } from '../api/conversationAPI';
-import { getMessagesAPI, sendMessageAPI } from '../api/messageAPI';
+import { getMessagesAPI, sendMessageAPI, uploadMessageAttachmentsAPI } from '../api/messageAPI';
 import useSocket from '../hooks/useSocket';
 import useAuth from '../hooks/useAuth';
 import MessageList from './MessageList';
@@ -431,6 +431,7 @@ export default function ChatWindow({
         const clientMessageId = retryClientMessageId || createClientMessageId();
         const replyReference = options.replyToMessage ? buildMessageReference(options.replyToMessage) : null;
         const attachments = Array.isArray(options.attachments) ? options.attachments : [];
+        const uploadFiles = Array.isArray(options.files) ? options.files : [];
 
         if (!retryClientMessageId) {
             const optimisticMessage = {
@@ -444,6 +445,7 @@ export default function ChatWindow({
                 },
                 content: content || '',
                 attachments,
+                uploadFiles,
                 createdAt: new Date().toISOString(),
                 status: 'sending',
                 replyTo: replyReference,
@@ -486,12 +488,12 @@ export default function ChatWindow({
             }
         };
 
-        const sendViaRestFallback = async (fallbackErrorMessage) => {
+        const sendViaRestFallback = async (uploadedAttachments, fallbackErrorMessage) => {
             try {
                 const serverMessage = await sendMessageAPI({
                     conversationId: conversation._id,
                     content,
-                    attachments,
+                    attachments: uploadedAttachments,
                     replyToMessageId: options.replyToMessage?._id || options.replyToMessage?.messageId,
                 });
 
@@ -504,12 +506,13 @@ export default function ChatWindow({
             }
         };
 
-        socket.timeout(10000).emit(
+        const sendWithUploadedAttachments = (uploadedAttachments) => {
+            socket.timeout(10000).emit(
             'sendMessage',
             {
                 conversationId: conversation._id,
                 content,
-                attachments,
+                attachments: uploadedAttachments,
                 clientMessageId,
                 replyToMessageId: options.replyToMessage?._id || options.replyToMessage?.messageId,
             },
@@ -517,8 +520,8 @@ export default function ChatWindow({
                 if (activeConversationIdRef.current !== conversation._id) return;
 
                 if (error || !response?.ok) {
-                    if (attachments.length > 0) {
-                        sendViaRestFallback(response?.message || error?.message);
+                    if (uploadedAttachments.length > 0) {
+                        sendViaRestFallback(uploadedAttachments, response?.message || error?.message);
                         return;
                     }
 
@@ -528,13 +531,33 @@ export default function ChatWindow({
 
                 replaceOptimisticMessage(response.message);
             }
-        );
+            );
+        };
+
+        const uploadThenSend = async () => {
+            try {
+                const uploadedAttachments = uploadFiles.length > 0
+                    ? (await uploadMessageAttachmentsAPI(conversation._id, uploadFiles)).attachments || []
+                    : attachments;
+
+                if (uploadFiles.length > 0 && uploadedAttachments.length === 0) {
+                    throw new Error('Could not upload attachment.');
+                }
+
+                sendWithUploadedAttachments(uploadedAttachments);
+            } catch (error) {
+                markMessageFailed(clientMessageId, error.message || error.response?.data?.message);
+            }
+        };
+
+        uploadThenSend();
     }, [conversation, markMessageFailed, onConversationPreviewUpdate, socket, user]);
 
     const handleRetryMessage = useCallback((message) => {
         handleSendMessage(message.content, message.clientMessageId, {
             replyToMessage: message.replyTo?.messageId ? message.replyTo : null,
             attachments: message.attachments || [],
+            files: message.uploadFiles || [],
         });
     }, [handleSendMessage]);
 

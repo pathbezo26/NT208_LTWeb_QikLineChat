@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CloseOutlined, FileOutlined, PaperClipOutlined, SendOutlined } from '@ant-design/icons';
-import { uploadMessageAttachmentsAPI } from '../api/messageAPI';
 import useSocket from '../hooks/useSocket';
 import styles from './styles/ChatInput.module.css';
 
@@ -20,7 +19,6 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
     const [message, setMessage] = useState('');
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [attachmentError, setAttachmentError] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
     const typingTimeoutRef = useRef(null);
     const isTypingRef = useRef(false);
     const fileInputRef = useRef(null);
@@ -37,13 +35,6 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
             });
         };
     }, []);
-
-    const clearSelectedFiles = useCallback(() => {
-        selectedFiles.forEach((item) => {
-            if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-        });
-        setSelectedFiles([]);
-    }, [selectedFiles]);
 
     const stopTyping = useCallback(() => {
         if (!socket) return;
@@ -117,34 +108,28 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
         });
     };
 
-    const handleSend = async () => {
+    const handleSend = () => {
         const content = message.trim();
-        if ((!content && selectedFiles.length === 0) || !socket || !onSendMessage || isUploading) return;
+        if ((!content && selectedFiles.length === 0) || !socket || !onSendMessage) return;
 
         setAttachmentError('');
-        setIsUploading(true);
-
-        try {
-            const uploadedAttachments = selectedFiles.length > 0
-                ? (await uploadMessageAttachmentsAPI(conversationId, selectedFiles.map((item) => item.file))).attachments || []
-                : [];
-
-            if (selectedFiles.length > 0 && uploadedAttachments.length === 0) {
-                throw new Error('Could not upload attachment.');
-            }
-
-            onSendMessage(content, null, {
-                ...(replyToMessage ? { replyToMessage } : {}),
-                attachments: uploadedAttachments,
-            });
-            setMessage('');
-            clearSelectedFiles();
-            stopTyping();
-        } catch (error) {
-            setAttachmentError(error.message || error.response?.data?.message || 'Could not upload attachment.');
-        } finally {
-            setIsUploading(false);
-        }
+        onSendMessage(content, null, {
+            ...(replyToMessage ? { replyToMessage } : {}),
+            attachments: selectedFiles.map((item) => ({
+                type: item.file.type.startsWith('image/') ? 'image' : 'file',
+                url: item.previewUrl,
+                publicId: '',
+                name: item.file.name,
+                size: item.file.size,
+                mimeType: item.file.type,
+                width: null,
+                height: null,
+            })),
+            files: selectedFiles.map((item) => item.file),
+        });
+        setMessage('');
+        setSelectedFiles([]);
+        stopTyping();
     };
 
     const handleKeyDown = (e) => {
@@ -215,7 +200,7 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
             <button
                 className={styles.attachBtn}
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || selectedFiles.length >= MAX_ATTACHMENTS}
+                disabled={selectedFiles.length >= MAX_ATTACHMENTS}
                 title="Attach file"
                 aria-label="Attach file"
                 type="button"
@@ -235,8 +220,8 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
             <button
                 className={styles.sendBtn}
                 onClick={handleSend}
-                disabled={isUploading || (!message.trim() && selectedFiles.length === 0)}
-                title={isUploading ? 'Uploading...' : 'Send message'}
+                disabled={!message.trim() && selectedFiles.length === 0}
+                title="Send message"
                 aria-label="Send message"
                 type="button"
             >

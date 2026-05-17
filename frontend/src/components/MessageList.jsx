@@ -223,19 +223,42 @@ export default function MessageList({
             .map(getUserId)
             .filter((memberId) => memberId && memberId !== currentUserId);
 
-        if (recipientIds.length === 0) return 'Sent';
+        if (recipientIds.length === 0) return 'sent';
 
         const readCount = recipientIds.filter((memberId) => hasUserId(message.readBy, memberId)).length;
         if (readCount > 0) {
-            return recipientIds.length === 1 ? 'Read' : `Read ${readCount}/${recipientIds.length}`;
+            return recipientIds.length === 1 ? 'read' : `read:${readCount}/${recipientIds.length}`;
         }
 
         const deliveredCount = recipientIds.filter((memberId) => hasUserId(message.deliveredTo, memberId)).length;
         if (deliveredCount > 0) {
-            return recipientIds.length === 1 ? 'Delivered' : `Delivered ${deliveredCount}/${recipientIds.length}`;
+            return 'delivered';
         }
 
-        return 'Sent';
+        return 'sent';
+    };
+
+    const renderMessageStatus = (status) => {
+        if (!status) return null;
+
+        return (
+            <span
+                className={`${styles.statusIcon} ${status === 'delivered' ? styles.statusIconDouble : styles.statusIconSingle}`}
+                aria-label={status === 'delivered' ? 'Delivered' : 'Sent'}
+                title={status === 'delivered' ? 'Delivered' : 'Sent'}
+            >
+                {status === 'delivered' ? '✓✓' : '✓'}
+            </span>
+        );
+    };
+
+    const renderReadStatus = (status) => {
+        if (!status?.startsWith('read')) return null;
+
+        const [, count] = status.split(':');
+        const label = count ? `Read ${count}` : 'Read';
+
+        return <span className={styles.statusText}>{label}</span>;
     };
 
     const getReferenceSenderName = (reference) => {
@@ -293,6 +316,15 @@ export default function MessageList({
                 const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
                 const isInitialUnreadMessage = unreadCount > 0 && index >= firstUnreadIndex;
                 const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+                const imageAttachments = attachments.filter((attachment) => attachment.type === 'image');
+                const fileAttachments = attachments.filter((attachment) => attachment.type !== 'image');
+                const hasTextContent = Boolean(message.content);
+                const hasReply = hasMessageReference(message.replyTo);
+                const showsSenderName = !isMyMessage && shouldShowAvatar && message.sender?.username;
+                const hasOnlyImages = imageAttachments.length > 0
+                    && fileAttachments.length === 0
+                    && !hasTextContent
+                    && !hasReply;
 
                 return (
                     <div
@@ -314,17 +346,18 @@ export default function MessageList({
                             </div>
                         )}
 
-                        <div className={styles.messageStack}>
-                            <div
-                                className={styles.bubble}
-                                tabIndex={0}
-                                aria-label={`${getMessagePreviewContent(message)}. Sent ${formatFullTime(message.createdAt)}`}
-                            >
-                                {!isMyMessage && shouldShowAvatar && message.sender?.username && (
-                                    <span className={styles.senderName}>{message.sender.username}</span>
-                                )}
+                        <div className={`${styles.messageColumn} ${isMyMessage ? styles.ownColumn : styles.otherColumn}`}>
+                            <div className={styles.messageStack}>
+                                <div
+                                    className={`${styles.bubble} ${hasOnlyImages ? styles.mediaOnlyBubble : ''}`}
+                                    tabIndex={0}
+                                    aria-label={`${getMessagePreviewContent(message)}. Sent ${formatFullTime(message.createdAt)}`}
+                                >
+                                    {showsSenderName && (
+                                        <span className={styles.senderName}>{message.sender.username}</span>
+                                    )}
 
-                                {hasMessageReference(message.replyTo) && (
+                                {hasReply && (
                                     <div className={styles.replyBubble}>
                                         <span className={styles.replyAuthor}>
                                             {getReferenceSenderName(message.replyTo)}
@@ -335,23 +368,30 @@ export default function MessageList({
                                     </div>
                                 )}
 
-                                {attachments.length > 0 && (
-                                    <div className={styles.attachments}>
-                                        {attachments.map((attachment, attachmentIndex) => (
-                                            attachment.type === 'image' ? (
+                                {imageAttachments.length > 0 && (
+                                    <div
+                                        className={`${styles.attachments} ${styles.imageGrid} ${imageAttachments.length === 1 ? styles.imageGridSingle : ''} ${imageAttachments.length > 1 ? styles.imageGridMulti : ''}`}
+                                    >
+                                        {imageAttachments.map((attachment, attachmentIndex) => (
                                                 <a
                                                     className={styles.imageAttachment}
-                                                    href={attachment.url}
+                                                    href={attachment.url || undefined}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     key={`${attachment.url}-${attachmentIndex}`}
                                                 >
                                                     <img src={attachment.url} alt={attachment.name || 'Image attachment'} />
                                                 </a>
-                                            ) : (
+                                        ))}
+                                    </div>
+                                )}
+
+                                {fileAttachments.length > 0 && (
+                                    <div className={styles.attachments}>
+                                        {fileAttachments.map((attachment, attachmentIndex) => (
                                                 <a
                                                     className={styles.fileAttachment}
-                                                    href={attachment.url}
+                                                    href={attachment.url || undefined}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     key={`${attachment.url}-${attachmentIndex}`}
@@ -366,15 +406,14 @@ export default function MessageList({
                                                         </span>
                                                     </span>
                                                 </a>
-                                            )
                                         ))}
                                     </div>
                                 )}
 
                                 {message.content && <p className={styles.content}>{message.content}</p>}
-                            </div>
+                                </div>
 
-                            {!isSending && !isFailed && message._id && !String(message._id).startsWith('client-') && (
+                                {!isSending && !isFailed && message._id && !String(message._id).startsWith('client-') && (
                                 <div className={styles.messageActions}>
                                     <button
                                         className={styles.actionBtn}
@@ -411,12 +450,14 @@ export default function MessageList({
                                         </button>
                                     </Popover>
                                 </div>
-                            )}
+                                )}
 
-                            {shouldShowMeta && (
+                                {shouldShowMeta && (
                                 <span className={styles.meta}>
                                     <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
-                                    {myMessageStatus && <span className={styles.status}>{myMessageStatus}</span>}
+                                    {myMessageStatus?.startsWith('read')
+                                        ? renderReadStatus(myMessageStatus)
+                                        : renderMessageStatus(myMessageStatus)}
 
                                     {isSending && (
                                         <span
@@ -439,7 +480,8 @@ export default function MessageList({
                                         </span>
                                     )}
                                 </span>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 );
