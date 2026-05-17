@@ -478,7 +478,7 @@ export default function GroupDetailsDrawer({
                                                 {isAdmin && !isOwner && <span className={styles.adminBadge}>Admin</span>}
                                             </span>
                                         )}
-                                        description={member.email || 'Group member'}
+                                        description={isOwner ? 'Owner' : isAdmin ? 'Admin' : 'Member'}
                                     />
                                 </List.Item>
                             );
@@ -760,7 +760,7 @@ export default function GroupDetailsDrawer({
                         .filter((member) => getUserId(member) !== currentUserId)
                         .map((member) => ({
                             value: getUserId(member),
-                            label: member.username || member.email || 'Member',
+                            label: member.username || 'Member',
                         }))}
                     placeholder="Choose new owner"
                 />

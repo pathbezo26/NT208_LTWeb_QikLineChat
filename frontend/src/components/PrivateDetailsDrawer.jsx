@@ -172,7 +172,6 @@ export default function PrivateDetailsDrawer({
                     <span />
                     {statusText}
                 </span>
-                {otherUser.email && <p>{otherUser.email}</p>}
             </div>
 
             <div className={styles.quickActions}>
@@ -199,12 +198,6 @@ export default function PrivateDetailsDrawer({
                             <span>Username</span>
                             <strong>{otherUser.username || 'User'}</strong>
                         </div>
-                        {otherUser.email && (
-                            <div className={styles.infoRow}>
-                                <span>Email</span>
-                                <strong>{otherUser.email}</strong>
-                            </div>
-                        )}
                         <div className={styles.infoRow}>
                             <span>Status</span>
                             <strong>{statusText}</strong>

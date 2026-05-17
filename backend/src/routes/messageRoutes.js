@@ -3,9 +3,11 @@ const multer = require('multer');
 const router = express.Router();
 const {
     getMessages,
+    getPinnedMessages,
     searchMessages,
     sendMessage,
     deleteMessage,
+    togglePinMessage,
     uploadAttachments,
     MAX_ATTACHMENTS_PER_MESSAGE,
 } = require('../controllers/messageController');
@@ -39,9 +41,11 @@ const handleAttachmentUpload = (req, res, next) => {
 };
 
 router.get('/:conversationId/search', protect, searchMessages);
+router.get('/:conversationId/pinned', protect, getPinnedMessages);
 router.get('/:conversationId', protect, getMessages);
 router.post('/:conversationId/attachments', protect, uploadLimiter, handleAttachmentUpload, uploadAttachments);
 router.post('/', protect, sendMessageLimiter, sendMessage);
+router.patch('/:messageId/pin', protect, togglePinMessage);
 router.delete('/:messageId', protect, deleteMessage);
 
 module.exports = router;

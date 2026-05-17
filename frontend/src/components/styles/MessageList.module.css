@@ -273,6 +273,18 @@
     line-height: 1.2;
 }
 
+.pinLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    margin-bottom: 2px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    opacity: 0.82;
+}
+
 .replyBubble {
     display: flex;
     flex-direction: column;
@@ -628,30 +640,6 @@
     transform: translateY(-1px);
 }
 
-.deleteMenu {
-    display: grid;
-    gap: 4px;
-    min-width: 150px;
-}
-
-.deleteMenu button {
-    width: 100%;
-    padding: 7px 8px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: #334155;
-    cursor: pointer;
-    font: inherit;
-    font-size: 13px;
-    text-align: left;
-}
-
-.deleteMenu button:hover {
-    background: #f1f5f9;
-    color: #dc2626;
-}
-
 .quoteIcon {
     display: inline-flex;
     align-items: center;
@@ -666,15 +654,35 @@
     transform: translateY(3px);
 }
 
-.infoIcon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
+.messageActionDropdown :global(.ant-dropdown-menu) {
+    min-width: 210px;
+    padding: 6px;
+    border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+}
+
+.messageActionDropdown :global(.ant-dropdown-menu-item) {
+    min-height: 34px;
+    border-radius: 8px;
+}
+
+.infoModalContent {
+    display: grid;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.infoModalContent span {
+    color: #64748b;
     font-size: 13px;
-    font-weight: 900;
-    line-height: 1;
+    font-weight: 700;
+}
+
+.infoModalContent strong {
+    color: #172033;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.25;
 }
 
 .sendingDot {
@@ -888,13 +896,27 @@
     color: #8ec5ff;
 }
 
-:global([data-theme='dark']) .deleteMenu button {
+:global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu) {
+    background: #101826;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+}
+
+:global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu-item),
+:global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu-title-content),
+:global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu-item-icon) {
     color: #e5edf6;
 }
 
-:global([data-theme='dark']) .deleteMenu button:hover {
+:global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu-item:hover) {
     background: #172234;
-    color: #fca5a5;
+}
+
+:global([data-theme='dark']) .infoModalContent span {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .infoModalContent strong {
+    color: #e5edf6;
 }
 
 :global([data-theme='dark']) .meta {

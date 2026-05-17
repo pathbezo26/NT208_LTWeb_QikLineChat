@@ -1,6 +1,14 @@
 import { Fragment, useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Badge, Popover } from 'antd';
-import { DeleteOutlined, FileOutlined, ShareAltOutlined, UpOutlined } from '@ant-design/icons';
+import { Badge, Dropdown, Modal } from 'antd';
+import {
+    DeleteOutlined,
+    EllipsisOutlined,
+    FileOutlined,
+    InfoCircleOutlined,
+    PushpinOutlined,
+    ShareAltOutlined,
+    UpOutlined,
+} from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
@@ -173,6 +181,7 @@ export default function MessageList({
     onReplyMessage,
     onForwardMessage,
     onDeleteMessage,
+    onTogglePinMessage,
 }) {
     const listRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -185,7 +194,7 @@ export default function MessageList({
     const seenUnreadMessageIdsRef = useRef(new Set());
     const unreadCount = initialUnreadCount || 0;
     const [remainingUnreadCount, setRemainingUnreadCount] = useState(unreadCount);
-    const [openTimePopoverId, setOpenTimePopoverId] = useState(null);
+    const [infoMessage, setInfoMessage] = useState(null);
 
     const isNearBottom = useCallback(() => {
         const list = listRef.current;
@@ -454,18 +463,49 @@ export default function MessageList({
                     && !hasTextContent
                     && !hasReply
                     && !isDeletedForEveryone;
-                const deleteMenu = (
-                    <div className={styles.deleteMenu}>
-                        <button type="button" onClick={() => onDeleteMessage?.(message, 'me')}>
-                            Delete for me
-                        </button>
-                        {isMyMessage && (
-                            <button type="button" onClick={() => onDeleteMessage?.(message, 'everyone')}>
-                                Delete for everyone
-                            </button>
-                        )}
-                    </div>
-                );
+                const messageActionItems = [
+                    {
+                        key: 'info',
+                        icon: <InfoCircleOutlined />,
+                        label: 'Message info',
+                    },
+                    { type: 'divider' },
+                    {
+                        key: 'pin',
+                        icon: <PushpinOutlined />,
+                        label: message.isPinned ? 'Unpin message' : 'Pin message',
+                    },
+                    {
+                        key: 'deleteForMe',
+                        icon: <DeleteOutlined />,
+                        label: 'Remove for me',
+                    },
+                    ...(isMyMessage ? [{
+                        key: 'deleteForEveryone',
+                        icon: <DeleteOutlined />,
+                        label: 'Unsend message',
+                        danger: true,
+                    }] : []),
+                ];
+                const handleMessageActionClick = ({ key, domEvent }) => {
+                    domEvent?.stopPropagation();
+
+                    if (key === 'info') {
+                        setInfoMessage(message);
+                    }
+
+                    if (key === 'pin') {
+                        onTogglePinMessage?.(message);
+                    }
+
+                    if (key === 'deleteForMe') {
+                        onDeleteMessage?.(message, 'me');
+                    }
+
+                    if (key === 'deleteForEveryone') {
+                        onDeleteMessage?.(message, 'everyone');
+                    }
+                };
 
                 return (
                     <Fragment key={messageKey || index}>
@@ -511,6 +551,13 @@ export default function MessageList({
                                 >
                                     {showsSenderName && (
                                         <span className={styles.senderName}>{message.sender.username}</span>
+                                    )}
+
+                                    {message.isPinned && (
+                                        <span className={styles.pinLabel}>
+                                            <PushpinOutlined />
+                                            Pinned
+                                        </span>
                                     )}
 
                                 {hasReply && (
@@ -597,36 +644,24 @@ export default function MessageList({
                                     >
                                         <ShareAltOutlined />
                                     </button>
-                                    <Popover
-                                        content={formatFullTime(message.createdAt)}
-                                        trigger="click"
-                                        placement={isMyMessage ? 'left' : 'right'}
-                                        open={openTimePopoverId === messageKey}
-                                        onOpenChange={(open) => setOpenTimePopoverId(open ? messageKey : null)}
+                                    <Dropdown
+                                        menu={{
+                                            items: messageActionItems,
+                                            onClick: handleMessageActionClick,
+                                        }}
+                                        trigger={['click']}
+                                        placement={isMyMessage ? 'bottomLeft' : 'bottomRight'}
+                                        overlayClassName={styles.messageActionDropdown}
                                     >
                                         <button
                                             className={styles.actionBtn}
                                             onMouseDown={(event) => event.preventDefault()}
                                             type="button"
-                                            aria-label="Show message time"
+                                            aria-label="More message actions"
                                         >
-                                            <span className={styles.infoIcon}>!</span>
+                                            <EllipsisOutlined />
                                         </button>
-                                    </Popover>
-                                    <Popover
-                                        content={deleteMenu}
-                                        trigger="click"
-                                        placement={isMyMessage ? 'left' : 'right'}
-                                    >
-                                        <button
-                                            className={styles.actionBtn}
-                                            onMouseDown={(event) => event.preventDefault()}
-                                            type="button"
-                                            aria-label="Delete message"
-                                        >
-                                            <DeleteOutlined />
-                                        </button>
-                                    </Popover>
+                                    </Dropdown>
                                 </div>
                                 )}
 
@@ -683,6 +718,21 @@ export default function MessageList({
                     </Badge>
                 </button>
             )}
+
+            <Modal
+                title="Message info"
+                open={Boolean(infoMessage)}
+                onCancel={() => setInfoMessage(null)}
+                footer={null}
+                centered
+            >
+                {infoMessage && (
+                    <div className={styles.infoModalContent}>
+                        <span>Sent at</span>
+                        <strong>{formatFullTime(infoMessage.createdAt)}</strong>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

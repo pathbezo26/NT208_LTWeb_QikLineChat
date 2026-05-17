@@ -26,6 +26,16 @@ export const deleteMessageAPI = async (messageId, scope = 'me') => {
     return response.data;
 };
 
+export const togglePinMessageAPI = async (messageId) => {
+    const response = await axiosInstance.patch(`/messages/${messageId}/pin`);
+    return response.data;
+};
+
+export const getPinnedMessagesAPI = async (conversationId) => {
+    const response = await axiosInstance.get(`/messages/${conversationId}/pinned`);
+    return response.data;
+};
+
 export const uploadMessageAttachmentsAPI = async (conversationId, files) => {
     const formData = new FormData();
 

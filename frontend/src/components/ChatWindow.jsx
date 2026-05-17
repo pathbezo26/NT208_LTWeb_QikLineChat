@@ -4,6 +4,7 @@ import {
     ExclamationCircleOutlined,
     InfoCircleOutlined,
     MessageOutlined,
+    PushpinOutlined,
     SearchOutlined,
     TeamOutlined,
 } from '@ant-design/icons';
@@ -11,7 +12,9 @@ import { getConversationsAPI } from '../api/conversationAPI';
 import {
     deleteMessageAPI,
     getMessagesAPI,
+    getPinnedMessagesAPI,
     sendMessageAPI,
+    togglePinMessageAPI,
     uploadMessageAttachmentsAPI,
 } from '../api/messageAPI';
 import { blockUserAPI, reportUserAPI, unblockUserAPI } from '../api/userAPI';
@@ -70,6 +73,19 @@ const getMessagePreviewContent = (message) => {
     return attachments.length === 1 ? 'File' : `${attachments.length} files`;
 };
 
+const formatPinnedMessageTime = (dateString) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return date.toLocaleString([], {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
 const mergeServerMessage = (serverMessage, fallbackMessage = {}) => {
     return {
         ...serverMessage,
@@ -97,6 +113,20 @@ const mergeMessages = (currentMessages, incomingMessages) => {
 
     return Array.from(messagesById.values()).sort((first, second) => {
         return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
+    });
+};
+
+const mergePinnedMessages = (currentMessages, incomingMessage) => {
+    if (!incomingMessage?._id) return currentMessages;
+
+    const messagesById = new Map();
+    [incomingMessage, ...currentMessages].forEach((message) => {
+        if (message?._id) messagesById.set(message._id.toString(), message);
+    });
+
+    return Array.from(messagesById.values()).sort((first, second) => {
+        return new Date(second.pinnedAt || second.createdAt).getTime()
+            - new Date(first.pinnedAt || first.createdAt).getTime();
     });
 };
 
@@ -179,6 +209,8 @@ export default function ChatWindow({
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [activeSearchMessageId, setActiveSearchMessageId] = useState(null);
     const [activeSearchTerm, setActiveSearchTerm] = useState('');
+    const [pinnedMessages, setPinnedMessages] = useState([]);
+    const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
     const [isReporting, setIsReporting] = useState(false);
     const [blockedUserIds, setBlockedUserIds] = useState(() => (user?.blockedUsers || []).map(getUserId).filter(Boolean));
 
@@ -269,6 +301,34 @@ export default function ChatWindow({
             ignore = true;
         };
     }, [conversation, markActiveConversationRead, user?._id]);
+
+    useEffect(() => {
+        if (!conversation?._id || !user?._id) {
+            setPinnedMessages([]);
+            return;
+        }
+
+        let ignore = false;
+
+        const loadPinnedMessages = async () => {
+            try {
+                const data = await getPinnedMessagesAPI(conversation._id);
+                if (!ignore && activeConversationIdRef.current === conversation._id) {
+                    setPinnedMessages(data.messages || []);
+                }
+            } catch (error) {
+                console.error('Load pinned messages error:', error);
+            }
+        };
+
+        setPinnedMessages([]);
+        setIsPinnedListOpen(false);
+        loadPinnedMessages();
+
+        return () => {
+            ignore = true;
+        };
+    }, [conversation?._id, user?._id]);
 
     useEffect(() => {
         if (!socket || !conversation) return;
@@ -373,6 +433,12 @@ export default function ChatWindow({
         const handleMessageDeleted = ({ conversationId, messageId, scope, deletedForEveryone, deletedAt }) => {
             if (conversationId?.toString() !== activeConversationIdRef.current || !messageId) return;
 
+            if (scope === 'me' || deletedForEveryone) {
+                setPinnedMessages((prevMessages) => {
+                    return prevMessages.filter((message) => message._id?.toString() !== messageId?.toString());
+                });
+            }
+
             setMessages((prevMessages) => {
                 if (scope === 'me') {
                     return prevMessages.filter((message) => getMessageKey(message) !== messageId?.toString());
@@ -394,14 +460,49 @@ export default function ChatWindow({
             });
         };
 
+        const handleMessagePinUpdated = ({ conversationId, messageId, isPinned, pinnedBy, pinnedAt, message }) => {
+            if (conversationId?.toString() !== activeConversationIdRef.current || !messageId) return;
+
+            setPinnedMessages((prevMessages) => {
+                if (!isPinned) {
+                    return prevMessages.filter((item) => item._id?.toString() !== messageId?.toString());
+                }
+
+                const pinnedMessage = message || prevMessages.find((item) => item._id?.toString() === messageId?.toString());
+                if (!pinnedMessage) return prevMessages;
+
+                return mergePinnedMessages(prevMessages, {
+                    ...pinnedMessage,
+                    isPinned: true,
+                    pinnedBy: pinnedBy || pinnedMessage.pinnedBy || null,
+                    pinnedAt: pinnedAt || pinnedMessage.pinnedAt || null,
+                });
+            });
+
+            setMessages((prevMessages) => {
+                return prevMessages.map((message) => {
+                    if (getMessageKey(message)?.toString() !== messageId?.toString()) return message;
+
+                    return {
+                        ...message,
+                        isPinned: Boolean(isPinned),
+                        pinnedBy: pinnedBy || null,
+                        pinnedAt: pinnedAt || null,
+                    };
+                });
+            });
+        };
+
         socket.on('newMessage', handleNewMessage);
         socket.on('messageStatusUpdated', handleMessageStatusUpdated);
         socket.on('messageDeleted', handleMessageDeleted);
+        socket.on('messagePinUpdated', handleMessagePinUpdated);
 
         return () => {
             socket.off('newMessage', handleNewMessage);
             socket.off('messageStatusUpdated', handleMessageStatusUpdated);
             socket.off('messageDeleted', handleMessageDeleted);
+            socket.off('messagePinUpdated', handleMessagePinUpdated);
         };
     }, [markActiveConversationRead, socket, user?._id]);
 
@@ -733,6 +834,13 @@ export default function ChatWindow({
 
         try {
             const result = await deleteMessageAPI(targetMessage._id, scope);
+            setPinnedMessages((prevMessages) => {
+                if (scope === 'me' || scope === 'everyone') {
+                    return prevMessages.filter((message) => message._id !== targetMessage._id);
+                }
+
+                return prevMessages;
+            });
             setMessages((prevMessages) => {
                 if (scope === 'me') {
                     return prevMessages.filter((message) => getMessageKey(message) !== targetMessage._id);
@@ -757,6 +865,50 @@ export default function ChatWindow({
             messageApi.error(error.response?.data?.message || 'Could not delete message.');
         }
     }, [messageApi]);
+
+    const handleTogglePinMessage = useCallback(async (targetMessage) => {
+        if (!targetMessage?._id || String(targetMessage._id).startsWith('client-')) return;
+
+        try {
+            const result = await togglePinMessageAPI(targetMessage._id);
+            setPinnedMessages((prevMessages) => {
+                if (!result.isPinned) {
+                    return prevMessages.filter((message) => message._id !== targetMessage._id);
+                }
+
+                return mergePinnedMessages(prevMessages, {
+                    ...(result.message || targetMessage),
+                    isPinned: true,
+                    pinnedBy: result.pinnedBy || null,
+                    pinnedAt: result.pinnedAt || null,
+                });
+            });
+            setMessages((prevMessages) => {
+                return prevMessages.map((message) => {
+                    if (message._id !== targetMessage._id) return message;
+
+                    return {
+                        ...message,
+                        isPinned: Boolean(result.isPinned),
+                        pinnedBy: result.pinnedBy || null,
+                        pinnedAt: result.pinnedAt || null,
+                    };
+                });
+            });
+            messageApi.success(result.isPinned ? 'Message pinned.' : 'Message unpinned.');
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not update pinned message.');
+        }
+    }, [messageApi]);
+
+    const handleSelectPinnedMessage = useCallback((message) => {
+        if (!message?._id) return;
+
+        setMessages((prevMessages) => mergeMessages(prevMessages, [message]));
+        setActiveSearchMessageId(message._id);
+        setActiveSearchTerm('');
+        setIsPinnedListOpen(false);
+    }, []);
 
     const handleBlockToggle = useCallback(async (targetUser, blocked) => {
         if (!targetUser?._id) return;
@@ -843,6 +995,7 @@ export default function ChatWindow({
     const isOtherOnline = Boolean(otherPresence?.online);
     const isOtherBlocked = otherMemberId ? blockedUserIds.includes(otherMemberId) : false;
     const privateStatusText = isOtherOnline ? 'Online' : formatLastSeen(otherPresence?.lastSeenAt || otherMember?.lastSeenAt);
+    const topPinnedMessage = pinnedMessages[0] || null;
 
     return (
         <div className={styles.window}>
@@ -916,6 +1069,34 @@ export default function ChatWindow({
                 )}
             </div>
 
+            {topPinnedMessage && (
+                <button
+                    className={styles.pinnedBar}
+                    type="button"
+                    onClick={() => {
+                        if (pinnedMessages.length > 1) {
+                            setIsPinnedListOpen(true);
+                            return;
+                        }
+
+                        handleSelectPinnedMessage(topPinnedMessage);
+                    }}
+                >
+                    <span className={styles.pinnedIcon}>
+                        <PushpinOutlined />
+                    </span>
+                    <span className={styles.pinnedContent}>
+                        <span className={styles.pinnedTitle}>
+                            {pinnedMessages.length > 1 ? `${pinnedMessages.length} pinned messages` : 'Pinned message'}
+                        </span>
+                        <span className={styles.pinnedText}>{getMessagePreviewContent(topPinnedMessage) || 'Attachment'}</span>
+                    </span>
+                    {pinnedMessages.length > 1 && (
+                        <span className={styles.pinnedAction}>View all</span>
+                    )}
+                </button>
+            )}
+
             <MessageList
                 messages={displayedMessages}
                 currentUserId={user._id}
@@ -932,6 +1113,7 @@ export default function ChatWindow({
                 onReplyMessage={setReplyToMessage}
                 onForwardMessage={setForwardMessage}
                 onDeleteMessage={handleDeleteMessage}
+                onTogglePinMessage={handleTogglePinMessage}
             />
 
             {typingUsers.length > 0 && (
@@ -979,6 +1161,32 @@ export default function ChatWindow({
                     showSearch
                     optionFilterProp="label"
                 />
+            </Modal>
+
+            <Modal
+                title="Pinned messages"
+                open={isPinnedListOpen}
+                onCancel={() => setIsPinnedListOpen(false)}
+                footer={null}
+                centered
+            >
+                <div className={styles.pinnedList}>
+                    {pinnedMessages.map((message) => (
+                        <button
+                            className={styles.pinnedListItem}
+                            key={message._id}
+                            type="button"
+                            onClick={() => handleSelectPinnedMessage(message)}
+                        >
+                            <span className={styles.pinnedListText}>
+                                {getMessagePreviewContent(message) || 'Attachment'}
+                            </span>
+                            <span className={styles.pinnedListMeta}>
+                                {message.sender?.username || 'User'} · {formatPinnedMessageTime(message.createdAt)}
+                            </span>
+                        </button>
+                    ))}
+                </div>
             </Modal>
 
             <GroupDetailsDrawer

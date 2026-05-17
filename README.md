@@ -41,9 +41,15 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 - **Tin nhắn tới khi đang ở room khác** — sidebar vẫn nghe `conversationUpdated`, cập nhật last message, unread count và đưa conversation mới nhắn lên đầu danh sách.
 - **Tin nhắn realtime trong phòng đang mở** — nếu user đang ở đúng conversation, tin mới render trực tiếp trong `MessageList` và conversation được mark read để không tăng badge không cần thiết.
 - **Lịch sử tin nhắn có pagination / infinite scroll** — `GET /api/messages/:conversationId` hỗ trợ `limit` và `before`, frontend tải trang mới hơn/ cũ hơn theo cursor để không load toàn bộ lịch sử một lần.
+- **Tìm kiếm tin nhắn trong conversation** — mở drawer search bên phải, tự tìm khi nhập, duyệt kết quả từ mới nhất tới cũ nhất bằng cursor và highlight nội dung khi nhảy về tin nhắn gốc.
+- **Gửi ảnh / file trong tin nhắn** — hỗ trợ chọn nhiều attachment, preview trước khi gửi, upload file qua API riêng rồi gửi kèm message realtime; ảnh/file cũng được gom lại trong drawer chi tiết.
 - 🎨 **UI: Nút nhảy tới tin chưa đọc** — hỗ trợ đọc nhanh khu vực tin mới trong `MessageList`.
 - **Typing indicator** — khi user gõ, `ChatInput` emit `typing`; khi dừng gõ hoặc gửi tin thì emit `stopTyping`, bên còn lại thấy trạng thái đang nhập.
+- **Online / offline và last seen** — private chat header hiển thị trạng thái online realtime hoặc mốc last seen gần nhất của người còn lại.
 - **Xóa conversation theo từng user** — dùng `deletedFor` để ẩn conversation khỏi sidebar của user hiện tại thay vì xóa cứng dữ liệu conversation/message.
+- **Xóa từng tin nhắn** — hỗ trợ `Delete for me` và `Delete for everyone`; tin đã thu hồi hiển thị placeholder phù hợp thay vì làm lệch lịch sử chat.
+- **Chi tiết chat dạng drawer** — group/private drawer gom thông tin quan trọng như thành viên, nhóm chung, media, file và link đã chia sẻ.
+- **Block / report user** — private chat có khu vực privacy/safety để chặn hoặc báo cáo người dùng.
 - 🎨 **UI: Delete conversation an toàn hơn** — menu ba chấm chỉ hiện khi hover và có bước xác nhận trước khi xóa.
 - 🎨 **UI: Dark mode** — bật/tắt trong Settings, đồng bộ màu với Ant Design qua `ConfigProvider`.
 - 🎨 **UI: Sidebar chuyên nghiệp hơn** — avatar, tên, icon group, last message, thời gian sát phải và unread badge gọn hơn.
@@ -705,14 +711,10 @@ Collection: messages
 Các tính năng có thể bổ sung trong các phiên bản tiếp theo:
 
 - **Emoji & reaction** — emoji picker và react vào tin nhắn
-- **Gửi hình ảnh / file trong cuộc trò chuyện** — ngoài avatar đã có trên hồ sơ
 - **Thông báo đẩy (push)** — nhận thông báo kể cả khi không mở tab
-- **Dark mode** — giao diện tối
-- **Tìm kiếm tin nhắn** — trong lịch sử trò chuyện
 - **Hồ sơ người dùng** — bio, thông tin bổ sung (avatar / đổi tên đã có)
 - **Gọi video / audio** — WebRTC
 - **Ghim tin nhắn** — trong nhóm
-- **Thu hồi / xóa tin nhắn** — sau khi đã gửi
 
 ---
 

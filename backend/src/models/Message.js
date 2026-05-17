@@ -127,6 +127,19 @@ const MessageSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        isPinned: {
+            type: Boolean,
+            default: false,
+        },
+        pinnedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null,
+        },
+        pinnedAt: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );

@@ -258,6 +258,40 @@ const getMessages = async (req, res) => {
     }
 };
 
+const getPinnedMessages = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        if (!isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to view this conversation' });
+        }
+
+        const query = {
+            ...getVisibleMessagesQuery(conversation, userId),
+            isPinned: true,
+            deletedForEveryone: { $ne: true },
+        };
+
+        const messages = await Message.find(query)
+            .populate('sender', SENDER_PUBLIC_FIELDS)
+            .populate('replyTo.sender', SENDER_PUBLIC_FIELDS)
+            .populate('forwardedFrom.sender', SENDER_PUBLIC_FIELDS)
+            .sort({ pinnedAt: -1, createdAt: -1 })
+            .limit(50);
+
+        res.status(200).json({ messages });
+    } catch (error) {
+        console.error('getPinnedMessages error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 const sendMessage = async (req, res) => {
     try {
         const { conversationId, content, replyToMessageId, forwardedFromMessageId } = req.body;
@@ -532,11 +566,61 @@ const deleteMessage = async (req, res) => {
     }
 };
 
+const togglePinMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user._id;
+
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.status(404).json({ message: 'Message not found' });
+        }
+
+        const conversation = await Conversation.findById(message.conversationId).select('members');
+        if (!conversation || !isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to pin this message' });
+        }
+
+        if (message.type === 'system' || message.deletedForEveryone) {
+            return res.status(400).json({ message: 'This message cannot be pinned' });
+        }
+
+        const nextPinnedState = !message.isPinned;
+        message.isPinned = nextPinnedState;
+        message.pinnedBy = nextPinnedState ? userId : null;
+        message.pinnedAt = nextPinnedState ? new Date() : null;
+
+        await message.save({ validateBeforeSave: false });
+
+        const populated = await populateMessage(message);
+        const payload = {
+            messageId: message._id,
+            conversationId: message.conversationId,
+            isPinned: message.isPinned,
+            pinnedBy: message.pinnedBy,
+            pinnedAt: message.pinnedAt,
+            message: populated,
+        };
+
+        const io = req.app.get('io');
+        conversation.members.forEach((memberId) => {
+            io?.to(`user:${memberId.toString()}`).emit('messagePinUpdated', payload);
+        });
+
+        res.status(200).json(payload);
+    } catch (error) {
+        console.error('togglePinMessage error:', error);
+        res.status(500).json({ message: 'Server error while updating pinned message' });
+    }
+};
+
 module.exports = {
     getMessages,
+    getPinnedMessages,
     searchMessages,
     sendMessage,
     deleteMessage,
+    togglePinMessage,
     uploadAttachments,
     MAX_ATTACHMENTS_PER_MESSAGE,
 };
