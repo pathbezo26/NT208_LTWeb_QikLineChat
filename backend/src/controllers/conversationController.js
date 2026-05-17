@@ -219,6 +219,20 @@ const deleteConversation = async (req, res) => {
 
         conversation.deletedAtBy.set(userId.toString(), new Date());
         conversation.unreadCounts.set(userId.toString(), 0);
+        
+        // Xóa conversation nếu tất cả thành viên đã delete
+        const allDeleted = conversation.members.every(memberId =>
+            (conversation.deletedFor || []).some(
+                deletedUserId => deletedUserId.toString() === memberId.toString()
+            )
+        );
+
+        if (allDeleted) {
+            await Conversation.findByIdAndDelete(conversationId);
+            return res.status(200).json({message: 'Conversation deleted permanently (all members deleted it)', conversationId,
+            });
+        }
+
         await conversation.save();
 
         res.status(200).json({
@@ -448,6 +462,95 @@ const removeMember = async (req, res) => {
     }
 };
 
+const leaveGroupConversation = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'This is not a group conversation' });
+        }
+
+        const isMember = conversation.members.some(
+            (memberId) => memberId.equals(userId)
+        );
+
+        if (!isMember) {
+            return res.status(403).json({ message: 'You are not a member of this group' });
+        }
+
+        // remove user khỏi members
+        conversation.members = conversation.members.filter(
+            (memberId) => !memberId.equals(userId)
+        );
+
+        // remove khỏi deletedFor (nếu có)
+        conversation.deletedFor = (conversation.deletedFor || []).filter(
+            (id) => !id.equals(userId)
+        );
+
+        //cleanup metadata
+        conversation.deletedAtBy?.delete(userId.toString());
+        conversation.unreadCounts?.delete(userId.toString());
+
+        await conversation.save();
+
+        // auto delete group nếu không còn ai
+        if (conversation.members.length === 0) {
+            await Conversation.findByIdAndDelete(conversationId);
+            return res.status(200).json({message: 'Group deleted because no members left', conversationId,});
+        }
+
+        return res.status(200).json({message: 'Left group successfully', conversationId,});
+
+    } catch (error) {
+        console.error('leaveGroupConversation error:', error);
+        return res.status(500).json({
+            message: 'Server error while leaving group'
+        });
+    }
+};
+
+const deleteGroupConversation = async (req, res) => {
+    try {
+        const conversationId = req.params.id;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+
+        if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+        if (conversation.type !== 'group') {
+            return res.status(400).json({ message: 'Members can only be removed from a group' });
+        }
+
+        if (conversation.createdBy.toString() !== userId.toString()) {
+            return res.status(403).json({ message: 'You do not have permission to remove members' });
+        }
+
+        // xóa toàn bộ messages liên quan
+        await Message.deleteMany({ conversationId });
+
+        // xóa conversation
+        await Conversation.findByIdAndDelete(conversationId);
+
+        return res.status(200).json({
+            message: 'Group deleted successfully',
+            conversationId,
+        });
+
+    } catch (error) {
+        console.error('deleteGroupConversation error:', error);
+        return res.status(500).json({
+            message: 'Server error while deleting group'
+        });
+    }
+};
+
 module.exports = {
     getConversations,
     getConversationById,
@@ -457,4 +560,6 @@ module.exports = {
     uploadGroupAvatar,
     addMembers,
     removeMember,
+    leaveGroupConversation,
+    deleteGroupConversation,
 };

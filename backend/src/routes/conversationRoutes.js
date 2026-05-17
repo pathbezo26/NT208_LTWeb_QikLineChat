@@ -12,6 +12,8 @@ const {
     uploadGroupAvatar,
     addMembers,
     removeMember,
+    leaveGroupConversation,
+    deleteGroupConversation,
 } = require('../controllers/conversationController');
 
 const upload = multer({
@@ -56,5 +58,9 @@ router.put('/:id/add', protect, addMembers);
 
 // PUT /api/conversations - Xóa thành viên (chỉ là cập nhật ds thành viên nên dùng PUT)
 router.put('/:id/remove', protect, removeMember);
+
+router.put('/:id/leaveGroup', protect, leaveGroupConversation)
+
+router.delete('/:id/deleteGroup', protect, deleteGroupConversation)
 
 module.exports = router;
