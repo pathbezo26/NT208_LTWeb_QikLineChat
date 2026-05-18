@@ -60,8 +60,8 @@
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -311,18 +311,130 @@
     width: 100%;
 }
 
+.privateConfirmModal :global(.ant-modal-content) {
+    padding: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+
+.privateConfirmPanel {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 12px;
+    user-select: none;
+}
+
+.privateConfirmIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+}
+
+.privateConfirmDanger {
+    background: #fff1f2;
+    color: #e11d48;
+}
+
+.privateConfirmPrimary {
+    background: #eef6ff;
+    color: #1877f2;
+}
+
+.privateConfirmCopy {
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.privateConfirmCopy h3 {
+    margin: 0 0 6px;
+    color: #172033;
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 850;
+}
+
+.privateConfirmCopy p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.privateConfirmActions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding-top: 8px;
+}
+
+.privateConfirmCancel,
+.privateConfirmDangerButton,
+.privateConfirmPrimaryButton {
+    min-width: 88px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font: inherit;
+    font-weight: 800;
+}
+
+.privateConfirmCancel {
+    border-color: #dbe4ee;
+    background: #ffffff;
+    color: #334155;
+}
+
+.privateConfirmCancel:hover:not(:disabled) {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #172033;
+}
+
+.privateConfirmDangerButton {
+    background: #e11d48;
+    color: #ffffff;
+}
+
+.privateConfirmDangerButton:hover:not(:disabled) {
+    background: #be123c;
+}
+
+.privateConfirmPrimaryButton {
+    background: #1877f2;
+    color: #ffffff;
+}
+
+.privateConfirmPrimaryButton:hover:not(:disabled) {
+    background: #156bd8;
+}
+
+.privateConfirmCancel:disabled,
+.privateConfirmDangerButton:disabled,
+.privateConfirmPrimaryButton:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
 :global([data-theme='dark']) .window {
-    background: #0b1220;
+    background: #05080f;
 }
 
 :global([data-theme='dark']) .empty {
-    background: linear-gradient(180deg, #0f1724 0%, #0b1220 100%);
+    background: linear-gradient(180deg, #080d16 0%, #05080f 100%);
     color: #94a3b8;
 }
 
 :global([data-theme='dark']) .emptyIcon {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
     box-shadow: none;
 }
 
@@ -332,14 +444,14 @@
 }
 
 :global([data-theme='dark']) .header {
-    border-bottom-color: #263244;
-    background: #101826;
+    border-bottom-color: #1a2431;
+    background: #070b13;
     box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
 }
 
 :global([data-theme='dark']) .headerAvatar {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .memberCount,
@@ -353,34 +465,34 @@
 }
 
 :global([data-theme='dark']) .groupInfoButton {
-    border-color: #263244;
-    background: #172b44;
+    border-color: #1a2431;
+    background: #101927;
     color: #d8e3ef;
 }
 
 :global([data-theme='dark']) .groupInfoButton:hover {
-    border-color: #8ec5ff;
-    background: #1b3555;
-    color: #8ec5ff;
+    border-color: #8aa4c3;
+    background: #0f1722;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .pinnedBar {
-    border-bottom-color: #263244;
-    background: #0f1724;
+    border-bottom-color: #1a2431;
+    background: #080d16;
     color: #e5edf6;
 }
 
 :global([data-theme='dark']) .pinnedBar:hover {
-    background: #111c2b;
+    background: #0a101a;
 }
 
 :global([data-theme='dark']) .pinnedIcon {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .pinnedTitle {
-    color: #8ec5ff;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .pinnedText,
@@ -394,29 +506,63 @@
 }
 
 :global([data-theme='dark']) .pinnedListItem {
-    border-color: #263244;
-    background: #101826;
+    border-color: #1a2431;
+    background: #070b13;
 }
 
 :global([data-theme='dark']) .pinnedListItem:hover {
-    border-color: #315d8f;
-    background: #172234;
+    border-color: #222b39;
+    background: #0d1420;
 }
 
 :global([data-theme='dark']) .drawerAvatar {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .forwardPreview {
-    border-left-color: #8ec5ff;
-    background: #111c2b;
+    border-left-color: #8aa4c3;
+    background: #0a101a;
 }
 
 :global([data-theme='dark']) .forwardPreviewLabel {
-    color: #8ec5ff;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .forwardPreview p {
     color: #e5edf6;
+}
+
+:global([data-theme='dark']) .privateConfirmModal :global(.ant-modal-content) {
+    background: #070b13;
+}
+
+:global([data-theme='dark']) .privateConfirmCopy h3 {
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .privateConfirmCopy p {
+    color: #94a3b8;
+}
+
+:global([data-theme='dark']) .privateConfirmCancel {
+    border-color: #243041;
+    background: #0a101a;
+    color: #cbd5e1;
+}
+
+:global([data-theme='dark']) .privateConfirmCancel:hover:not(:disabled) {
+    border-color: #303c4d;
+    background: #0d1420;
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .privateConfirmDanger {
+    background: rgba(225, 29, 72, 0.14);
+    color: #fb7185;
+}
+
+:global([data-theme='dark']) .privateConfirmPrimary {
+    background: #101927;
+    color: #8aa4c3;
 }

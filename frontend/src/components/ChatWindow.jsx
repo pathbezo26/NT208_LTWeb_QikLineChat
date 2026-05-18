@@ -13,6 +13,7 @@ import {
     deleteMessageAPI,
     getMessagesAPI,
     getPinnedMessagesAPI,
+    getSharedResourcesAPI,
     sendMessageAPI,
     togglePinMessageAPI,
     uploadMessageAttachmentsAPI,
@@ -130,6 +131,96 @@ const mergePinnedMessages = (currentMessages, incomingMessage) => {
     });
 };
 
+const EMPTY_SHARED_RESOURCES = {
+    photos: [],
+    files: [],
+    links: [],
+};
+
+const linkPattern = /(https?:\/\/[^\s]+)/g;
+
+const getLinksFromMessage = (message) => {
+    const matches = (message.content || '').match(linkPattern) || [];
+
+    return matches.map((url) => ({
+        url,
+        domain: (() => {
+            try {
+                return new URL(url).hostname.replace(/^www\./, '');
+            } catch {
+                return url;
+            }
+        })(),
+        messageId: message._id,
+        senderName: message.sender?.username || 'Unknown',
+        createdAt: message.createdAt,
+    }));
+};
+
+const getSharedResourcesFromMessage = (message) => {
+    const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
+    const senderName = message?.sender?.username || 'Unknown';
+
+    return {
+        photos: attachments
+            .filter((attachment) => attachment.type === 'image')
+            .map((attachment) => ({
+                ...attachment,
+                messageId: message._id,
+                senderName,
+                createdAt: message.createdAt,
+            })),
+        files: attachments
+            .filter((attachment) => attachment.type !== 'image')
+            .map((attachment) => ({
+                ...attachment,
+                messageId: message._id,
+                senderName,
+                createdAt: message.createdAt,
+            })),
+        links: getLinksFromMessage(message),
+    };
+};
+
+const mergeResourceItems = (currentItems = [], incomingItems = []) => {
+    const itemsByKey = new Map();
+
+    [...incomingItems, ...currentItems].forEach((item) => {
+        const key = `${item.messageId || ''}-${item.url || ''}-${item.name || ''}`;
+        if (item.url) itemsByKey.set(key, item);
+    });
+
+    return Array.from(itemsByKey.values()).sort((first, second) => {
+        return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+    });
+};
+
+const mergeSharedResourcesFromMessage = (currentResources, message) => {
+    if (!message?._id || message.deletedForEveryone) return currentResources;
+
+    const safeResources = currentResources || EMPTY_SHARED_RESOURCES;
+    const nextResources = getSharedResourcesFromMessage(message);
+
+    return {
+        photos: mergeResourceItems(safeResources.photos, nextResources.photos),
+        files: mergeResourceItems(safeResources.files, nextResources.files),
+        links: mergeResourceItems(safeResources.links, nextResources.links),
+    };
+};
+
+const removeSharedResourcesByMessageId = (currentResources, messageId) => {
+    if (!messageId) return currentResources;
+    const safeResources = currentResources || EMPTY_SHARED_RESOURCES;
+    const targetId = messageId.toString();
+    const keepItem = (item) => item.messageId?.toString() !== targetId;
+
+    return {
+        photos: safeResources.photos.filter(keepItem),
+        files: safeResources.files.filter(keepItem),
+        links: safeResources.links.filter(keepItem),
+    };
+};
+
 const getDeletedAtForUser = (conversation, userId) => {
     if (conversation?.deletedAt) return conversation.deletedAt;
 
@@ -210,8 +301,11 @@ export default function ChatWindow({
     const [activeSearchMessageId, setActiveSearchMessageId] = useState(null);
     const [activeSearchTerm, setActiveSearchTerm] = useState('');
     const [pinnedMessages, setPinnedMessages] = useState([]);
+    const [sharedResources, setSharedResources] = useState(null);
     const [isPinnedListOpen, setIsPinnedListOpen] = useState(false);
     const [isReporting, setIsReporting] = useState(false);
+    const [privateConfirm, setPrivateConfirm] = useState(null);
+    const [isPrivateConfirming, setIsPrivateConfirming] = useState(false);
     const [blockedUserIds, setBlockedUserIds] = useState(() => (user?.blockedUsers || []).map(getUserId).filter(Boolean));
 
     const markActiveConversationRead = useCallback((conversationId) => {
@@ -331,6 +425,41 @@ export default function ChatWindow({
     }, [conversation?._id, user?._id]);
 
     useEffect(() => {
+        if (!conversation?._id || !user?._id) {
+            setSharedResources(null);
+            return;
+        }
+
+        let ignore = false;
+        const requestConversationId = conversation._id;
+
+        const loadSharedResources = async () => {
+            try {
+                const data = await getSharedResourcesAPI(requestConversationId);
+                if (!ignore && activeConversationIdRef.current === requestConversationId) {
+                    setSharedResources({
+                        photos: data.photos || [],
+                        files: data.files || [],
+                        links: data.links || [],
+                    });
+                }
+            } catch (error) {
+                console.error('Load shared resources error:', error);
+                if (!ignore && activeConversationIdRef.current === requestConversationId) {
+                    setSharedResources(null);
+                }
+            }
+        };
+
+        setSharedResources(null);
+        loadSharedResources();
+
+        return () => {
+            ignore = true;
+        };
+    }, [conversation?._id, user?._id]);
+
+    useEffect(() => {
         if (!socket || !conversation) return;
 
         socket.emit('joinRoom', conversation._id);
@@ -403,6 +532,7 @@ export default function ChatWindow({
 
                 return [...prevMessages, newMessage];
             });
+            setSharedResources((prevResources) => mergeSharedResourcesFromMessage(prevResources, newMessage));
 
             if (getUserId(newMessage.sender) !== user?._id) {
                 markActiveConversationRead(newMessage.conversationId);
@@ -437,6 +567,7 @@ export default function ChatWindow({
                 setPinnedMessages((prevMessages) => {
                     return prevMessages.filter((message) => message._id?.toString() !== messageId?.toString());
                 });
+                setSharedResources((prevResources) => removeSharedResourcesByMessageId(prevResources, messageId));
             }
 
             setMessages((prevMessages) => {
@@ -713,6 +844,7 @@ export default function ChatWindow({
 
                 return [...withoutOptimistic, mergeServerMessage(serverMessage, optimisticMessage)];
             });
+            setSharedResources((prevResources) => mergeSharedResourcesFromMessage(prevResources, serverMessage));
 
             if (options.replyToMessage) {
                 setReplyToMessage(null);
@@ -841,6 +973,7 @@ export default function ChatWindow({
 
                 return prevMessages;
             });
+            setSharedResources((prevResources) => removeSharedResourcesByMessageId(prevResources, targetMessage._id));
             setMessages((prevMessages) => {
                 if (scope === 'me') {
                     return prevMessages.filter((message) => getMessageKey(message) !== targetMessage._id);
@@ -931,12 +1064,12 @@ export default function ChatWindow({
     const handleReportUser = useCallback((targetUser) => {
         if (!targetUser?._id) return;
 
-        Modal.confirm({
+        setPrivateConfirm({
+            tone: 'danger',
             title: `Report ${targetUser.username || 'user'}?`,
-            content: 'This will send a report to the app moderators.',
-            okText: 'Report',
-            okButtonProps: { danger: true, loading: isReporting },
-            onOk: async () => {
+            description: 'This will send a report to the app moderators for review.',
+            confirmText: 'Report',
+            onConfirm: async () => {
                 setIsReporting(true);
                 try {
                     await reportUserAPI(targetUser._id, {
@@ -951,7 +1084,34 @@ export default function ChatWindow({
                 }
             },
         });
-    }, [conversation?._id, isReporting, messageApi]);
+    }, [conversation?._id, messageApi]);
+
+    const openBlockConfirm = useCallback((targetUser, blocked) => {
+        if (!targetUser?._id) return;
+
+        setPrivateConfirm({
+            tone: blocked ? 'primary' : 'danger',
+            title: blocked ? 'Unblock this user?' : 'Block this user?',
+            description: blocked
+                ? 'They will be able to message you again in private chats.'
+                : 'You will stop receiving private messages from this user.',
+            confirmText: blocked ? 'Unblock' : 'Block',
+            onConfirm: () => handleBlockToggle(targetUser, blocked),
+        });
+    }, [handleBlockToggle]);
+
+    const handlePrivateConfirmOk = useCallback(async () => {
+        if (!privateConfirm?.onConfirm) return;
+
+        setIsPrivateConfirming(true);
+
+        try {
+            await privateConfirm.onConfirm();
+            setPrivateConfirm(null);
+        } finally {
+            setIsPrivateConfirming(false);
+        }
+    }, [privateConfirm]);
 
     if (!conversation || !user?._id) {
         return (
@@ -1195,6 +1355,7 @@ export default function ChatWindow({
                 conversation={conversation}
                 currentUser={user}
                 messages={displayedMessages}
+                sharedResources={sharedResources}
                 onConversationUpdated={onConversationUpdated}
                 onConversationLeft={onConversationLeft}
             />
@@ -1223,19 +1384,49 @@ export default function ChatWindow({
                 presence={otherPresence}
                 isBlocked={isOtherBlocked}
                 messages={displayedMessages}
-                onBlockToggle={(targetUser, blocked) => {
-                    Modal.confirm({
-                        title: blocked ? 'Unblock this user?' : 'Block this user?',
-                        content: blocked
-                            ? 'They will be able to message you again.'
-                            : 'You will stop receiving private messages from this user.',
-                        okText: blocked ? 'Unblock' : 'Block',
-                        okButtonProps: { danger: !blocked },
-                        onOk: () => handleBlockToggle(targetUser, blocked),
-                    });
-                }}
+                sharedResources={sharedResources}
+                onBlockToggle={openBlockConfirm}
                 onReportUser={handleReportUser}
             />
+
+            <Modal
+                centered
+                open={Boolean(privateConfirm)}
+                onCancel={() => setPrivateConfirm(null)}
+                footer={null}
+                closable={false}
+                width={372}
+                zIndex={1400}
+                className={styles.privateConfirmModal}
+            >
+                <div className={styles.privateConfirmPanel}>
+                    <span className={`${styles.privateConfirmIcon} ${privateConfirm?.tone === 'danger' ? styles.privateConfirmDanger : styles.privateConfirmPrimary}`}>
+                        <ExclamationCircleOutlined />
+                    </span>
+                    <div className={styles.privateConfirmCopy}>
+                        <h3>{privateConfirm?.title}</h3>
+                        <p>{privateConfirm?.description}</p>
+                    </div>
+                    <div className={styles.privateConfirmActions}>
+                        <button
+                            className={styles.privateConfirmCancel}
+                            type="button"
+                            onClick={() => setPrivateConfirm(null)}
+                            disabled={isPrivateConfirming || isReporting}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            className={privateConfirm?.tone === 'danger' ? styles.privateConfirmDangerButton : styles.privateConfirmPrimaryButton}
+                            type="button"
+                            onClick={handlePrivateConfirmOk}
+                            disabled={isPrivateConfirming || isReporting}
+                        >
+                            {(isPrivateConfirming || isReporting) ? 'Working...' : privateConfirm?.confirmText || 'Confirm'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

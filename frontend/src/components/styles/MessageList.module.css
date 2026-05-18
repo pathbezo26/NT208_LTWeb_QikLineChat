@@ -221,7 +221,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 9px 13px;
+    padding: 10px 14px;
     border-radius: 18px;
     max-width: 100%;
     word-break: break-word;
@@ -247,10 +247,10 @@
 }
 
 .own .bubble {
-    background: linear-gradient(180deg, #2d78d3 0%, #236bc2 100%);
+    background: linear-gradient(180deg, #3385e5 0%, #2875d6 100%);
     color: #ffffff;
     border-bottom-right-radius: 5px;
-    box-shadow: 0 3px 10px rgba(35, 107, 194, 0.18);
+    box-shadow: 0 5px 14px rgba(40, 117, 214, 0.22);
 }
 
 .own.sending .bubble {
@@ -258,17 +258,17 @@
 }
 
 .other .bubble {
-    background: #edf3fb;
+    background: #f4f8fd;
     color: #172033;
     border-bottom-left-radius: 5px;
-    border: 1px solid #dbe7f3;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+    border: 1px solid #dce9f6;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.07);
 }
 
 .senderName {
     font-size: 12.5px;
     font-weight: 800;
-    color: #256fc8;
+    color: #1b4a7d;
     margin: 0 0 3px;
     line-height: 1.2;
 }
@@ -461,7 +461,7 @@
 
 .other .fileIcon {
     background: #d3e3f4;
-    color: #256fc8;
+    color: #1b4a7d;
 }
 
 .fileInfo {
@@ -489,8 +489,8 @@
 
 .content {
     margin: 0;
-    font-size: 14.5px;
-    line-height: 1.42;
+    font-size: 15.5px;
+    line-height: 1.45;
     white-space: pre-wrap;
     user-select: text;
 }
@@ -510,6 +510,27 @@
 .meta {
     display: inline-flex;
     align-items: center;
+    align-self: flex-start;
+    gap: 5px;
+    min-height: 16px;
+    margin: -1px 12px 0 0;
+    padding: 0;
+    color: rgba(23, 32, 51, 0.48);
+    white-space: nowrap;
+}
+
+.own .meta {
+    justify-content: flex-start;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.other .meta {
+    justify-content: flex-start;
+}
+
+.statusMeta {
+    display: inline-flex;
+    align-items: center;
     gap: 5px;
     min-height: 16px;
     margin-top: 4px;
@@ -518,16 +539,17 @@
     white-space: nowrap;
 }
 
-.own .meta {
+.own .statusMeta {
     justify-content: flex-end;
 }
 
-.other .meta {
+.other .statusMeta {
     justify-content: flex-start;
 }
 
 .time {
     font-size: 11px;
+    font-weight: 600;
     line-height: 1;
 }
 
@@ -536,7 +558,7 @@
     align-items: center;
     justify-content: center;
     font-size: 11px;
-    color: #256fc8;
+    color: #1b4a7d;
     font-weight: 800;
     line-height: 1;
 }
@@ -544,7 +566,7 @@
 .statusIcon::before {
     content: "·";
     margin-right: 5px;
-    color: #94a3b8;
+    color: #1b4a7d;
     font-weight: 500;
 }
 
@@ -559,7 +581,7 @@
 
 .statusText {
     font-size: 11px;
-    color: #256fc8;
+    color: #1b4a7d;
     font-weight: 600;
     line-height: 1;
 }
@@ -567,7 +589,7 @@
 .statusText::before {
     content: "·";
     margin-right: 5px;
-    color: #94a3b8;
+    color: currentColor;
     font-weight: 500;
 }
 
@@ -625,7 +647,7 @@
     border: 1px solid rgba(148, 163, 184, 0.28);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.92);
-    color: #475569;
+    color: #334155;
     cursor: pointer;
     font-size: 12px;
     backdrop-filter: blur(10px);
@@ -666,23 +688,102 @@
     border-radius: 8px;
 }
 
-.infoModalContent {
-    display: grid;
-    gap: 6px;
-    padding: 4px 0;
+.infoModal :global(.ant-modal-content) {
+    padding: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 22px 70px rgba(15, 23, 42, 0.22);
 }
 
-.infoModalContent span {
+.infoModalContent {
+    padding: 18px;
+    display: grid;
+    gap: 14px;
+    user-select: none;
+}
+
+.infoModalHeader {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 12px;
+    align-items: center;
+}
+
+.infoModalIcon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: #eef6ff;
+    color: #1877f2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.infoModalHeader h3 {
+    margin: 0 0 4px;
+    color: #172033;
+    font-size: 17px;
+    line-height: 1.2;
+    font-weight: 850;
+}
+
+.infoModalHeader p {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
     color: #64748b;
     font-size: 13px;
-    font-weight: 700;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
-.infoModalContent strong {
-    color: #172033;
-    font-size: 15px;
+.infoStatusList {
+    display: grid;
+    gap: 6px;
+}
+
+.infoStatusRow {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 6px 8px;
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.infoStatusIcon {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.infoStatusActive .infoStatusIcon {
+    color: #16a34a;
+}
+
+.infoStatusLabel {
+    color: #334155;
+    font-size: 13px;
     font-weight: 800;
-    line-height: 1.25;
+}
+
+.infoStatusRow strong {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: right;
 }
 
 .sendingDot {
@@ -785,7 +886,7 @@
 
 :global([data-theme='dark']) .list,
 :global([data-theme='dark']) .empty {
-    background: #0d1522;
+    background: #070c14;
 }
 
 @keyframes uploadSweep {
@@ -820,14 +921,14 @@
 :global([data-theme='dark']) .skeletonBubble,
 :global([data-theme='dark']) .skeletonBubbleShort,
 :global([data-theme='dark']) .skeletonBubbleWide {
-    background: linear-gradient(90deg, #172234 0%, #202d42 45%, #172234 100%);
+    background: linear-gradient(90deg, #0d1420 0%, #121b29 45%, #0d1420 100%);
     background-size: 180% 100%;
 }
 
 :global([data-theme='dark']) .own .bubble {
-    background: linear-gradient(180deg, #256fc8 0%, #1f62b4 100%);
+    background: linear-gradient(180deg, #2564a8 0%, #1f5593 100%);
     color: #ffffff;
-    box-shadow: 0 3px 10px rgba(20, 88, 169, 0.24);
+    box-shadow: 0 6px 16px rgba(37, 100, 168, 0.32);
 }
 
 :global([data-theme='dark']) .activeSearchMessage .bubble {
@@ -841,14 +942,14 @@
 }
 
 :global([data-theme='dark']) .other .bubble {
-    border-color: #2b3b50;
-    background: #151f2d;
+    border-color: #354254;
+    background: #242c36;
     color: #e5edf6;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
 }
 
 :global([data-theme='dark']) .senderName {
-    color: #8ec5ff;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .timeDivider {
@@ -857,12 +958,12 @@
 
 :global([data-theme='dark']) .timeDivider::before,
 :global([data-theme='dark']) .timeDivider::after {
-    background: #263244;
+    background: #1a2431;
 }
 
 :global([data-theme='dark']) .other .replyBubble {
-    border-left-color: #6ca8e8;
-    background: #1c2a3c;
+    border-left-color: #7897bb;
+    background: #111b29;
 }
 
 :global([data-theme='dark']) .own .replyBubble {
@@ -875,12 +976,12 @@
 }
 
 :global([data-theme='dark']) .other .fileAttachment {
-    background: #1c2a3c;
+    background: #111b29;
 }
 
 :global([data-theme='dark']) .other .fileIcon {
-    background: #24364d;
-    color: #8ec5ff;
+    background: #182537;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .actionBtn {
@@ -891,13 +992,13 @@
 }
 
 :global([data-theme='dark']) .actionBtn:hover {
-    border-color: rgba(142, 197, 255, 0.28);
-    background: #172234;
-    color: #8ec5ff;
+    border-color: rgba(138, 164, 195, 0.16);
+    background: #0d1420;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu) {
-    background: #101826;
+    background: #070b13;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
 }
 
@@ -908,19 +1009,52 @@
 }
 
 :global([data-theme='dark']) .messageActionDropdown :global(.ant-dropdown-menu-item:hover) {
-    background: #172234;
+    background: #0d1420;
 }
 
-:global([data-theme='dark']) .infoModalContent span {
-    color: #94a3b8;
+:global([data-theme='dark']) .infoModal :global(.ant-modal-content) {
+    background: #101826;
 }
 
-:global([data-theme='dark']) .infoModalContent strong {
+:global([data-theme='dark']) .infoModalIcon {
+    background: #172b44;
+    color: #8ec5ff;
+}
+
+:global([data-theme='dark']) .infoModalHeader h3 {
     color: #e5edf6;
 }
 
-:global([data-theme='dark']) .meta {
+:global([data-theme='dark']) .infoModalHeader p,
+:global([data-theme='dark']) .infoStatusRow strong {
     color: #94a3b8;
+}
+
+:global([data-theme='dark']) .infoStatusRow {
+    border-color: #263244;
+    background: #111c2b;
+}
+
+:global([data-theme='dark']) .infoStatusLabel {
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .infoStatusIcon {
+    background: #263244;
+    color: #64748b;
+}
+
+:global([data-theme='dark']) .infoStatusActive .infoStatusIcon {
+    background: rgba(34, 197, 94, 0.16);
+    color: #86efac;
+}
+
+:global([data-theme='dark']) .meta {
+    color: rgba(229, 237, 246, 0.48);
+}
+
+:global([data-theme='dark']) .own .meta {
+    color: rgba(255, 255, 255, 0.7);
 }
 
 :global([data-theme='dark']) .systemMessage {
@@ -928,24 +1062,24 @@
 }
 
 :global([data-theme='dark']) .systemMessage span {
-    border-color: #263244;
+    border-color: #1a2431;
     background: rgba(16, 24, 38, 0.82);
 }
 
 :global([data-theme='dark']) .statusIcon {
-    color: #8ec5ff;
+    color: currentColor;
 }
 
 :global([data-theme='dark']) .statusIcon::before {
-    color: #64748b;
+    color: currentColor;
 }
 
 :global([data-theme='dark']) .statusText {
-    color: #8ec5ff;
+    color: currentColor;
 }
 
 :global([data-theme='dark']) .statusText::before {
-    color: #64748b;
+    color: currentColor;
 }
 
 :global([data-theme='dark']) .failed {
@@ -962,7 +1096,7 @@
     }
 
     .content {
-        font-size: 14px;
+        font-size: 15px;
     }
 
     .messageActions {
@@ -979,15 +1113,15 @@
 }
 
 :global([data-theme='dark']) .unreadJump {
-    background: #101826;
-    color: #8ec5ff;
+    background: #070b13;
+    color: #8aa4c3;
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.34);
 }
 
 :global([data-theme='dark']) .unreadJump:hover {
-    background: #162234;
+    background: #0d1420;
 }
 
 :global([data-theme='dark']) .unreadJump :global(.ant-badge-count) {
-    box-shadow: 0 0 0 2px #101826;
+    box-shadow: 0 0 0 2px #070b13;
 }

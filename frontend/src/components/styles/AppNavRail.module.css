@@ -186,15 +186,15 @@
 }
 
 :global([data-theme='dark']) .rail {
-  border-right-color: #263244;
-  background: #101826;
+  border-right-color: #1a2431;
+  background: #070b13;
   box-shadow: 1px 0 0 rgba(0, 0, 0, 0.18);
 }
 
 :global([data-theme='dark']) .userIcon {
-  border-color: #2a78d6;
-  background: #142338;
-  color: #8ec5ff;
+  border-color: #222b39;
+  background: #111a28;
+  color: #8aa4c3;
   box-shadow: none;
 }
 
@@ -203,15 +203,15 @@
 }
 
 :global([data-theme='dark']) .navButton:hover {
-  border-color: #263d59;
-  background: #162234;
-  color: #8ec5ff;
+  border-color: #223145;
+  background: #0d1420;
+  color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .navButton.active {
-  border-color: #2a78d6;
-  background: #172b44;
-  color: #8ec5ff;
+  border-color: #222b39;
+  background: #101927;
+  color: #8aa4c3;
   box-shadow: none;
 }
 
@@ -222,7 +222,7 @@
 
 :global([data-theme='dark']) .profileName,
 :global([data-theme='dark']) .settingRow {
-  border-bottom-color: #263244;
+  border-bottom-color: #1a2431;
 }
 
 :global([data-theme='dark']) .settingDesc {
@@ -230,13 +230,13 @@
 }
 
 :global([data-theme='dark']) .usernameInput {
-  border-color: #2d3a4d;
-  background: #111c2b;
+  border-color: #243041;
+  background: #0a101a;
   color: #e5edf6;
 }
 
 :global([data-theme='dark']) .usernameInput:focus {
-  border-color: #3b82f6;
+  border-color: #34465f;
 }
 
 :global([data-theme='dark']) .profileMenu,
@@ -249,7 +249,7 @@
 }
 
 :global([data-theme='dark']) .menuButton:not(:disabled):hover {
-  background: #162234;
+  background: #0d1420;
   color: #e5edf6;
 }
 
@@ -264,13 +264,13 @@
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-popover-inner) {
-  background: #101826 !important;
+  background: #070b13 !important;
   color: #e5edf6 !important;
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42) !important;
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-popover-arrow)::before {
-  background: #101826 !important;
+  background: #070b13 !important;
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-btn-text) {
@@ -278,7 +278,7 @@
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-btn-text:not(:disabled):hover) {
-  background: #162234 !important;
+  background: #0d1420 !important;
   color: #e5edf6 !important;
 }
 

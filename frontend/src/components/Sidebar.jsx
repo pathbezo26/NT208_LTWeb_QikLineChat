@@ -14,7 +14,7 @@ import useSocket from '../hooks/useSocket';
 import CreateGroupModal from './CreateGroupModal';
 import SidebarSearch from './SidebarSearch';
 import UserAvatar from './UserAvatar';
-import { formatMessageTime } from '../utils/formatTime';
+import { formatRelativeTime } from '../utils/formatTime';
 import styles from './styles/Sidebar.module.css';
 
 const sectionTitles = {
@@ -25,6 +25,9 @@ const sectionTitles = {
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
+const CONVERSATION_PAGE_SIZE = 20;
+const SIDEBAR_BOTTOM_THRESHOLD = 140;
+const RELATIVE_TIME_REFRESH_MS = 60 * 1000;
 
 const sortConversationsByUpdatedAt = (items) => {
     return [...items].sort((first, second) => {
@@ -45,6 +48,9 @@ export default function Sidebar({
 
     const [conversations, setConversations] = useState([]);
     const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+    const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState(false);
+    const [conversationNextCursor, setConversationNextCursor] = useState(null);
+    const [hasMoreConversations, setHasMoreConversations] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -53,16 +59,25 @@ export default function Sidebar({
     const [openMenuId, setOpenMenuId] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
+    const [, setRelativeTimeTick] = useState(0);
     const [messageApi, contextHolder] = antdMessage.useMessage();
     const conversationUpdateRequestRef = useRef({});
+    const isLoadingMoreConversationsRef = useRef(false);
+    const listRef = useRef(null);
 
     const activeConversationId = activeConversation?._id;
 
     const loadConversations = async () => {
         setIsLoadingConversations(true);
         try {
-            const data = await getConversationsAPI();
-            setConversations(data);
+            const data = await getConversationsAPI({
+                paginated: true,
+                limit: CONVERSATION_PAGE_SIZE,
+            });
+
+            setConversations(data.conversations || []);
+            setHasMoreConversations(Boolean(data.hasMore));
+            setConversationNextCursor(data.nextCursor || null);
         } catch (error) {
             console.error('Lỗi khi tải danh sách cuộc trò chuyện:', error);
         } finally {
@@ -70,8 +85,63 @@ export default function Sidebar({
         }
     };
 
+    const loadMoreConversations = async () => {
+        if (
+            !hasMoreConversations
+            || !conversationNextCursor
+            || isLoadingMoreConversationsRef.current
+            || searchQuery.trim()
+        ) return;
+
+        isLoadingMoreConversationsRef.current = true;
+        setIsLoadingMoreConversations(true);
+
+        try {
+            const data = await getConversationsAPI({
+                paginated: true,
+                limit: CONVERSATION_PAGE_SIZE,
+                cursor: conversationNextCursor,
+            });
+
+            setConversations((prev) => {
+                const existingIds = new Set(prev.map((conversation) => conversation._id));
+                const nextItems = (data.conversations || []).filter((conversation) => {
+                    return !existingIds.has(conversation._id);
+                });
+
+                return [...prev, ...nextItems];
+            });
+            setHasMoreConversations(Boolean(data.hasMore));
+            setConversationNextCursor(data.nextCursor || null);
+        } catch (error) {
+            console.error('Load more conversations error:', error);
+            messageApi.error('Could not load more conversations.');
+        } finally {
+            isLoadingMoreConversationsRef.current = false;
+            setIsLoadingMoreConversations(false);
+        }
+    };
+
+    const handleConversationListScroll = () => {
+        const list = listRef.current;
+        if (!list) return;
+
+        const distanceToBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+        if (distanceToBottom > SIDEBAR_BOTTOM_THRESHOLD) return;
+
+        loadMoreConversations();
+    };
+
     useEffect(() => {
         loadConversations();
+    }, []);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setRelativeTimeTick((tick) => tick + 1);
+        }, RELATIVE_TIME_REFRESH_MS);
+
+        return () => clearInterval(timer);
     }, []);
 
     useEffect(() => {
@@ -313,6 +383,10 @@ export default function Sidebar({
         return conversation.lastMessage.content;
     };
 
+    const getConversationDisplayTime = (conversation) => {
+        return conversation.lastMessage?.createdAt || conversation.updatedAt;
+    };
+
     const handleConversationCreated = (newConversation) => {
         setConversations((prev) => {
             const isExist = prev.find((conv) => conv._id === newConversation._id);
@@ -430,7 +504,7 @@ export default function Sidebar({
                 />
             )}
 
-            <div className={styles.list}>
+            <div className={styles.list} ref={listRef} onScroll={handleConversationListScroll}>
                 {searchQuery.trim() ? (
                     <>
                         {searchLoading && <p className={styles.empty}>Searching...</p>}
@@ -478,7 +552,9 @@ export default function Sidebar({
                         <p>No conversations yet</p>
                         <span>Search for someone or create a group to start chatting.</span>
                     </div>
-                ) : conversations.map((conv) => {
+                ) : (
+                    <>
+                    {conversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
                     const unreadCount = conv.unreadCount || 0;
                     const hasUnread = unreadCount > 0;
@@ -511,7 +587,7 @@ export default function Sidebar({
                                     </span>
 
                                     <span className={styles.convTime}>
-                                        {conv.updatedAt ? formatMessageTime(conv.updatedAt) : ''}
+                                        {getConversationDisplayTime(conv) ? formatRelativeTime(getConversationDisplayTime(conv)) : ''}
                                     </span>
                                 </div>
 
@@ -582,7 +658,21 @@ export default function Sidebar({
                             </div>
                         </div>
                     );
-                })}
+                    })}
+                    {isLoadingMoreConversations && (
+                        <div className={styles.loadMoreState}>Loading more...</div>
+                    )}
+                    {!isLoadingMoreConversations && hasMoreConversations && (
+                        <button
+                            className={styles.loadMoreButton}
+                            onClick={loadMoreConversations}
+                            type="button"
+                        >
+                            Load more
+                        </button>
+                    )}
+                    </>
+                )}
             </div>
         </aside>
         </>

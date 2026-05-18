@@ -36,6 +36,11 @@ export const getPinnedMessagesAPI = async (conversationId) => {
     return response.data;
 };
 
+export const getSharedResourcesAPI = async (conversationId) => {
+    const response = await axiosInstance.get(`/messages/${conversationId}/shared-resources`);
+    return response.data;
+};
+
 export const uploadMessageAttachmentsAPI = async (conversationId, files) => {
     const formData = new FormData();
 

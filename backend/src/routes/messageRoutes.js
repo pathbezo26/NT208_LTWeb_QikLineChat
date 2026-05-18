@@ -4,6 +4,7 @@ const router = express.Router();
 const {
     getMessages,
     getPinnedMessages,
+    getSharedResources,
     searchMessages,
     sendMessage,
     deleteMessage,
@@ -42,6 +43,7 @@ const handleAttachmentUpload = (req, res, next) => {
 
 router.get('/:conversationId/search', protect, searchMessages);
 router.get('/:conversationId/pinned', protect, getPinnedMessages);
+router.get('/:conversationId/shared-resources', protect, getSharedResources);
 router.get('/:conversationId', protect, getMessages);
 router.post('/:conversationId/attachments', protect, uploadLimiter, handleAttachmentUpload, uploadAttachments);
 router.post('/', protect, sendMessageLimiter, sendMessage);

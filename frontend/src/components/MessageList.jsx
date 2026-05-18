@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Badge, Dropdown, Modal } from 'antd';
 import {
+    CheckCircleOutlined,
     DeleteOutlined,
     EllipsisOutlined,
     FileOutlined,
@@ -392,11 +393,60 @@ export default function MessageList({
         return <span className={styles.statusText}>{label}</span>;
     };
 
+    const getInfoMessageStatusRows = (message) => {
+        if (!message) return [];
+
+        const recipientIds = (Array.isArray(conversationMembers) ? conversationMembers : [])
+            .map(getUserId)
+            .filter((memberId) => memberId && memberId !== getSenderId(message));
+        const deliveredCount = recipientIds.filter((memberId) => hasUserId(message.deliveredTo, memberId)).length;
+        const readCount = recipientIds.filter((memberId) => hasUserId(message.readBy, memberId)).length;
+        const totalRecipients = recipientIds.length;
+        const isMine = getSenderId(message) === currentUserId;
+
+        const formatCount = (count) => {
+            if (totalRecipients <= 1) return count > 0 ? '' : 'Waiting';
+            return `${count}/${totalRecipients}`;
+        };
+
+        return [
+            {
+                key: 'sent',
+                label: 'Sent',
+                value: formatFullTime(message.createdAt),
+                active: true,
+            },
+            {
+                key: 'delivered',
+                label: 'Delivered',
+                value: totalRecipients === 0
+                    ? ''
+                    : isMine
+                        ? formatCount(deliveredCount)
+                        : hasUserId(message.deliveredTo, currentUserId) ? '' : 'Waiting',
+                active: totalRecipients === 0 || (isMine ? deliveredCount > 0 : hasUserId(message.deliveredTo, currentUserId)),
+            },
+            {
+                key: 'read',
+                label: 'Read',
+                value: totalRecipients === 0
+                    ? ''
+                    : isMine
+                        ? formatCount(readCount)
+                        : hasUserId(message.readBy, currentUserId) ? '' : 'Waiting',
+                active: totalRecipients === 0 || (isMine ? readCount > 0 : hasUserId(message.readBy, currentUserId)),
+            },
+        ];
+    };
+
     const getReferenceSenderName = (reference) => {
         return reference?.sender?.username || 'User';
     };
 
     const isLargeGroup = Array.isArray(conversationMembers) && conversationMembers.length >= LARGE_GROUP_MEMBER_COUNT;
+    const lastOwnMessageIndex = messages.findLastIndex((message) => {
+        return message?.type !== 'system' && getSenderId(message) === currentUserId;
+    });
 
     if (isInitialLoading) {
         return (
@@ -446,8 +496,10 @@ export default function MessageList({
                 const senderName = message.sender?.username || 'User';
                 const isSending = isMyMessage && message.status === 'sending';
                 const isFailed = isMyMessage && message.status === 'failed';
-                const myMessageStatus = isMyMessage && !isLargeGroup ? getMyMessageStatus(message) : '';
+                const shouldShowOwnStatus = isMyMessage && index === lastOwnMessageIndex;
+                const myMessageStatus = shouldShowOwnStatus && !isLargeGroup ? getMyMessageStatus(message) : '';
                 const shouldShowMeta = isLastInGroup || isSending || isFailed;
+                const shouldShowStatusMeta = Boolean(myMessageStatus || isSending || isFailed);
                 const messageKey = getMessageKey(message);
                 const firstUnreadIndex = Math.max(messages.length - unreadCount, 0);
                 const isInitialUnreadMessage = unreadCount > 0 && index >= firstUnreadIndex;
@@ -622,6 +674,12 @@ export default function MessageList({
                                         </p>
                                     )
                                 )}
+
+                                {shouldShowMeta && (
+                                <span className={styles.meta}>
+                                    <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
+                                </span>
+                                )}
                                 </div>
 
                                 {!isSending && !isFailed && !isDeletedForEveryone && message._id && !String(message._id).startsWith('client-') && (
@@ -665,9 +723,8 @@ export default function MessageList({
                                 </div>
                                 )}
 
-                                {shouldShowMeta && (
-                                <span className={styles.meta}>
-                                    <span className={styles.time}>{formatMessageTime(message.createdAt)}</span>
+                                {shouldShowStatusMeta && (
+                                <span className={styles.statusMeta}>
                                     {myMessageStatus?.startsWith('read')
                                         ? renderReadStatus(myMessageStatus)
                                         : renderMessageStatus(myMessageStatus)}
@@ -720,16 +777,36 @@ export default function MessageList({
             )}
 
             <Modal
-                title="Message info"
                 open={Boolean(infoMessage)}
                 onCancel={() => setInfoMessage(null)}
                 footer={null}
                 centered
+                width={390}
+                className={styles.infoModal}
             >
                 {infoMessage && (
                     <div className={styles.infoModalContent}>
-                        <span>Sent at</span>
-                        <strong>{formatFullTime(infoMessage.createdAt)}</strong>
+                        <div className={styles.infoModalHeader}>
+                            <span className={styles.infoModalIcon}>
+                                <InfoCircleOutlined />
+                            </span>
+                            <div>
+                                <h3>Message info</h3>
+                                <p>{getMessagePreviewContent(infoMessage)}</p>
+                            </div>
+                        </div>
+
+                        <div className={styles.infoStatusList}>
+                            {getInfoMessageStatusRows(infoMessage).map((item) => (
+                                <div className={`${styles.infoStatusRow} ${item.active ? styles.infoStatusActive : ''}`} key={item.key}>
+                                    <span className={styles.infoStatusIcon}>
+                                        <CheckCircleOutlined />
+                                    </span>
+                                    <span className={styles.infoStatusLabel}>{item.label}</span>
+                                    {item.value && <strong>{item.value}</strong>}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </Modal>

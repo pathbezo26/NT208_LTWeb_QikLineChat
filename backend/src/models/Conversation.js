@@ -83,7 +83,7 @@ const ConversationSchema = new mongoose.Schema(
 );
 
 // Index tối ưu sidebar query
-ConversationSchema.index({ members: 1, updatedAt: -1 });
+ConversationSchema.index({ members: 1, updatedAt: -1, _id: -1 });
 ConversationSchema.index({ type: 1, members: 1 });
 
 module.exports = mongoose.model('Conversation', ConversationSchema);

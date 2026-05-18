@@ -54,8 +54,8 @@
     width: 82px;
     height: 82px;
     border-radius: 24px;
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -287,8 +287,8 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -362,11 +362,29 @@
     background: #e5e7eb;
 }
 
-.photoTile img {
+.photoTile img,
+.photoTile video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
+}
+
+.viewMoreButton {
+    width: 100%;
+    min-height: 40px;
+    margin-top: 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: #eef6ff;
+    color: #1877f2;
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.viewMoreButton:hover {
+    border-color: #bfdbfe;
+    background: #e0f2fe;
 }
 
 .fileRow {
@@ -422,7 +440,7 @@
 
 .modalText {
     margin: 0 0 12px;
-    color: #475569;
+    color: #334155;
     line-height: 1.45;
 }
 
@@ -525,8 +543,8 @@
 :global([data-theme='dark']) .drawer :global(.ant-drawer-body),
 :global([data-theme='dark']) .drawer :global(.ant-drawer-header) {
     background:
-        linear-gradient(180deg, rgba(142, 197, 255, 0.06) 0, rgba(16, 24, 38, 0) 170px),
-        #101826;
+        linear-gradient(180deg, rgba(138, 164, 195, 0.025) 0, rgba(16, 24, 38, 0) 170px),
+        #070b13;
 }
 
 :global([data-theme='dark']) .profile,
@@ -534,8 +552,8 @@
 :global([data-theme='dark']) .memberList,
 :global([data-theme='dark']) .resourceList,
 :global([data-theme='dark']) .mediaPanel {
-    border-color: #263244;
-    background: #111c2b;
+    border-color: #1a2431;
+    background: #0a101a;
 }
 
 :global([data-theme='dark']) .nameRow h2,
@@ -554,20 +572,20 @@
 
 :global([data-theme='dark']) .groupMeta span,
 :global([data-theme='dark']) .groupStats span {
-    border-color: #263244;
-    background: #172234;
+    border-color: #1a2431;
+    background: #0d1420;
 }
 
 :global([data-theme='dark']) .avatarButton {
-    border-color: #263244;
-    background: #172b44;
+    border-color: #1a2431;
+    background: #101927;
     color: #e5edf6;
 }
 
 :global([data-theme='dark']) .quickActions,
 :global([data-theme='dark']) .searchResults {
-    border-color: #263244;
-    background: #111c2b;
+    border-color: #1a2431;
+    background: #0a101a;
 }
 
 :global([data-theme='dark']) .quickActions button {
@@ -576,27 +594,38 @@
 
 :global([data-theme='dark']) .quickActions button:hover,
 :global([data-theme='dark']) .quickActionActive {
-    color: #8ec5ff;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .quickActionBubble {
-    background: #172b44;
+    background: #101927;
 }
 
 :global([data-theme='dark']) .memberAvatar,
 :global([data-theme='dark']) .groupAvatar {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .fileIcon,
 :global([data-theme='dark']) .linkIcon {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .viewMoreButton {
+    border-color: #1a2431;
+    background: #101927;
+    color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .viewMoreButton:hover {
+    border-color: #222b39;
+    background: #121d2c;
 }
 
 :global([data-theme='dark']) .actionConfirmModal :global(.ant-modal-content) {
-    background: #101826;
+    background: #070b13;
 }
 
 :global([data-theme='dark']) .confirmCopy h3 {
@@ -608,8 +637,8 @@
 }
 
 :global([data-theme='dark']) .confirmCancel {
-    border-color: #2d3a4d;
-    background: #111c2b;
+    border-color: #243041;
+    background: #0a101a;
     color: #cbd5e1;
 }
 
@@ -619,6 +648,6 @@
 }
 
 :global([data-theme='dark']) .confirmIconPrimary {
-    background: #172b44;
-    color: #8ec5ff;
+    background: #101927;
+    color: #8aa4c3;
 }

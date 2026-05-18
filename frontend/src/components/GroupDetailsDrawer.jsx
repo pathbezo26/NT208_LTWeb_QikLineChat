@@ -25,6 +25,8 @@ import {
 import UserAvatar from './UserAvatar';
 import styles from './styles/GroupDetailsDrawer.module.css';
 
+const MEDIA_PREVIEW_LIMIT = 6;
+
 const getUserId = (user) => {
     if (!user) return null;
     return typeof user === 'object' ? (user._id || user.id || user.toString?.()) : user;
@@ -87,12 +89,26 @@ const getSharedAttachments = (messages = [], targetType) => {
     });
 };
 
+const isVideoAttachment = (attachment) => {
+    return attachment?.mimeType?.toLowerCase().startsWith('video/');
+};
+
+const getMediaItems = (photoItems = [], fileItems = []) => {
+    return [
+        ...photoItems,
+        ...fileItems.filter(isVideoAttachment),
+    ].sort((first, second) => {
+        return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+    });
+};
+
 export default function GroupDetailsDrawer({
     open,
     onClose,
     conversation,
     currentUser,
     messages,
+    sharedResources,
     onConversationUpdated,
     onConversationLeft,
 }) {
@@ -113,6 +129,7 @@ export default function GroupDetailsDrawer({
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [confirmDialog, setConfirmDialog] = useState(null);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [isMediaExpanded, setIsMediaExpanded] = useState(false);
 
     const currentUserId = currentUser?._id;
     const ownerId = getUserId(conversation?.createdBy);
@@ -124,9 +141,12 @@ export default function GroupDetailsDrawer({
     const isCurrentUserAdmin = adminIds.has(currentUserId);
     const canManageGroup = isGroupOwner || isCurrentUserAdmin;
     const adminCount = adminIds.size + (ownerId ? 1 : 0);
-    const photoItems = useMemo(() => getSharedAttachments(messages, 'image'), [messages]);
-    const fileItems = useMemo(() => getSharedAttachments(messages, 'file'), [messages]);
-    const linkItems = useMemo(() => extractLinks(messages), [messages]);
+    const photoItems = useMemo(() => sharedResources?.photos || getSharedAttachments(messages, 'image'), [messages, sharedResources?.photos]);
+    const rawFileItems = useMemo(() => sharedResources?.files || getSharedAttachments(messages, 'file'), [messages, sharedResources?.files]);
+    const mediaItems = useMemo(() => getMediaItems(photoItems, rawFileItems), [photoItems, rawFileItems]);
+    const fileItems = useMemo(() => rawFileItems.filter((item) => !isVideoAttachment(item)), [rawFileItems]);
+    const linkItems = useMemo(() => sharedResources?.links || extractLinks(messages), [messages, sharedResources?.links]);
+    const visibleMediaItems = isMediaExpanded ? mediaItems : mediaItems.slice(0, MEDIA_PREVIEW_LIMIT);
 
     useEffect(() => {
         if (!open) return;
@@ -139,6 +159,7 @@ export default function GroupDetailsDrawer({
         setLeaveOwnerId(null);
         setIsLeaveModalOpen(false);
         setConfirmDialog(null);
+        setIsMediaExpanded(false);
     }, [conversation?._id, conversation?.name, open]);
 
     const resetMemberSearch = () => {
@@ -361,7 +382,7 @@ export default function GroupDetailsDrawer({
 
     const quickActions = [
         { key: 'members', label: 'Members' },
-        { key: 'photos', label: 'Media' },
+        { key: 'photos', label: 'Photos/videos' },
         { key: 'files', label: 'Files' },
         { key: 'links', label: 'Links' },
     ];
@@ -489,15 +510,15 @@ export default function GroupDetailsDrawer({
         },
         {
             key: 'photos',
-            label: `Photos (${photoItems.length})`,
-            children: photoItems.length ? (
+            label: `Photos/videos (${mediaItems.length})`,
+            children: mediaItems.length ? (
                 <div className={styles.mediaPanel}>
                     <div className={styles.sectionHeading}>
-                        <span>Shared photos</span>
-                        <strong>{photoItems.length}</strong>
+                        <span>Photos/videos</span>
+                        <strong>{mediaItems.length}</strong>
                     </div>
                     <div className={styles.photoGrid}>
-                        {photoItems.map((item, index) => (
+                        {visibleMediaItems.map((item, index) => (
                             <a
                                 className={styles.photoTile}
                                 href={item.url}
@@ -505,13 +526,26 @@ export default function GroupDetailsDrawer({
                                 rel="noreferrer"
                                 key={`${item.url}-${index}`}
                             >
-                                <img src={item.url} alt={item.name || 'Shared photo'} />
+                                {isVideoAttachment(item) ? (
+                                    <video src={item.url} title={item.name || 'Shared video'} muted preload="metadata" />
+                                ) : (
+                                    <img src={item.url} alt={item.name || 'Shared photo'} />
+                                )}
                             </a>
                         ))}
                     </div>
+                    {mediaItems.length > MEDIA_PREVIEW_LIMIT && (
+                        <button
+                            className={styles.viewMoreButton}
+                            type="button"
+                            onClick={() => setIsMediaExpanded((value) => !value)}
+                        >
+                            {isMediaExpanded ? 'Show less' : `Show ${mediaItems.length - MEDIA_PREVIEW_LIMIT} more`}
+                        </button>
+                    )}
                 </div>
             ) : (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No shared photos yet" />
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No photos or videos yet" />
             ),
         },
         {
@@ -645,7 +679,7 @@ export default function GroupDetailsDrawer({
 
                 <div className={styles.groupStats}>
                     <span>
-                        <strong>{photoItems.length + fileItems.length}</strong>
+                        <strong>{mediaItems.length}</strong>
                         Media
                     </span>
                     <span>

@@ -14,8 +14,8 @@
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #172b44;
-  color: #8ec5ff;
+  background: #101927;
+  color: #8aa4c3;
   font-weight: 800;
 }
 
@@ -54,7 +54,7 @@
   border: 1px solid #dbe5ef;
   border-radius: 12px;
   background: #f8fbff;
-  color: #475569;
+  color: #334155;
   font-size: 18px;
   transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
@@ -121,6 +121,32 @@
   color: #64748b;
   font-size: 13.5px;
   line-height: 1.45;
+}
+
+.loadMoreState {
+  padding: 14px 12px;
+  color: #8a97a8;
+  font-size: 13px;
+  text-align: center;
+}
+
+.loadMoreButton {
+  width: calc(100% - 20px);
+  min-height: 36px;
+  margin: 10px;
+  border: 1px solid #dbe5ef;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1877f2;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.loadMoreButton:hover {
+  border-color: #b9d7ff;
+  background: #edf6ff;
 }
 
 .skeletonList {
@@ -266,14 +292,14 @@
 
 .groupAvatar {
   border: none;
-  background: #172b44;
-  color: #8ec5ff;
+  background: #101927;
+  color: #8aa4c3;
   font-size: 16px;
 }
 
 .item.active .convAvatar[data-avatar-type='fallback'] {
   border: 1px solid #4a90e8;
-  box-shadow: 0 0 0 3px rgba(142, 197, 255, 0.16);
+  box-shadow: 0 0 0 3px rgba(138, 164, 195, 0.1);
 }
 
 .convInfo {
@@ -457,7 +483,7 @@
 .cancelDeleteBtn {
   border: 1px solid #dbe5ef;
   background: #ffffff;
-  color: #475569;
+  color: #334155;
 }
 
 .cancelDeleteBtn:hover {
@@ -491,17 +517,17 @@
 }
 
 :global([data-theme='dark']) .sidebar {
-  border-right-color: #263244;
-  background: #0f1724;
+  border-right-color: #1a2431;
+  background: #080d16;
 }
 
 :global([data-theme='dark']) .header,
 :global([data-theme='dark']) .actions {
-  background: #101826;
+  background: #070b13;
 }
 
 :global([data-theme='dark']) .actions {
-  border-bottom-color: #263244;
+  border-bottom-color: #1a2431;
 }
 
 :global([data-theme='dark']) .title,
@@ -511,9 +537,20 @@
 }
 
 :global([data-theme='dark']) .empty,
+:global([data-theme='dark']) .loadMoreState,
 :global([data-theme='dark']) .lastMessage,
 :global([data-theme='dark']) .convTime {
   color: #94a3b8;
+}
+
+:global([data-theme='dark']) .loadMoreButton {
+  border-color: #1a2431;
+  background: #070b13;
+  color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .loadMoreButton:hover {
+  background: #0d1420;
 }
 
 :global([data-theme='dark']) .emptyState p {
@@ -525,26 +562,26 @@
 }
 
 :global([data-theme='dark']) .emptyIcon {
-  background: #172b44;
-  color: #8ec5ff;
+  background: #101927;
+  color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .skeletonAvatar,
 :global([data-theme='dark']) .skeletonLine,
 :global([data-theme='dark']) .skeletonLineShort {
-  background: linear-gradient(90deg, #172234 0%, #202d42 45%, #172234 100%);
+  background: linear-gradient(90deg, #0d1420 0%, #121b29 45%, #0d1420 100%);
   background-size: 180% 100%;
 }
 
 :global([data-theme='dark']) .item:hover,
 :global([data-theme='dark']) .searchItem:hover:not(:disabled) {
-  border-color: #263244;
-  background: #162234;
+  border-color: #1a2431;
+  background: #0d1420;
 }
 
 :global([data-theme='dark']) .item.active {
-  border-color: #2a78d6;
-  background: #172b44;
+  border-color: #222b39;
+  background: #101927;
 }
 
 :global([data-theme='dark']) .item.unread .convName,
@@ -555,46 +592,46 @@
 :global([data-theme='dark']) .item.unread .convTime,
 :global([data-theme='dark']) .groupNameIcon,
 :global([data-theme='dark']) .searchAction {
-  color: #8ec5ff;
+  color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .createGroupBtn {
-  border-color: #263244;
-  background: #111c2b;
+  border-color: #1a2431;
+  background: #0a101a;
   color: #94a3b8;
 }
 
 :global([data-theme='dark']) .createGroupBtn:hover,
 :global([data-theme='dark']) .createGroupActive {
-  border-color: #2a78d6;
-  background: #172b44;
-  color: #8ec5ff;
+  border-color: #222b39;
+  background: #101927;
+  color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .groupAvatar {
   border-color: transparent;
-  background: #172b44;
-  color: #8ec5ff;
+  background: #101927;
+  color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .unreadBadge :global(.ant-badge-count) {
-  background: #475569;
+  background: #334155;
   color: #f8fafc;
 }
 
 :global([data-theme='dark']) .threeDotsBtn {
-  background: #162234;
+  background: #0d1420;
   color: #94a3b8;
 }
 
 :global([data-theme='dark']) .threeDotsBtn:hover {
-  background: #263244;
+  background: #1a2431;
   color: #e5edf6;
 }
 
 :global([data-theme='dark']) .dropdownMenu {
-  border-color: #263244;
-  background: #101826;
+  border-color: #1a2431;
+  background: #070b13;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
 }
 
@@ -603,11 +640,11 @@
 }
 
 :global([data-theme='dark']) .cancelDeleteBtn {
-  border-color: #2d3a4d;
-  background: #111c2b;
+  border-color: #243041;
+  background: #0a101a;
   color: #cbd5e1;
 }
 
 :global([data-theme='dark']) .cancelDeleteBtn:hover {
-  background: #162234;
+  background: #0d1420;
 }

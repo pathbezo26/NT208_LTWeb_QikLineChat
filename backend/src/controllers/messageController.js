@@ -13,6 +13,9 @@ const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 const DEFAULT_SEARCH_LIMIT = 20;
 const MAX_SEARCH_LIMIT = 30;
 const SEARCH_SCAN_BATCH_SIZE = 200;
+const MAX_SHARED_RESOURCE_MESSAGES = 1000;
+const LINK_PATTERN = /https?:\/\/[^\s]+/g;
+const LINK_QUERY_PATTERN = /https?:\/\/[^\s]+/;
 
 const normalizeSearchText = (value = '') => {
     return value
@@ -288,6 +291,95 @@ const getPinnedMessages = async (req, res) => {
         res.status(200).json({ messages });
     } catch (error) {
         console.error('getPinnedMessages error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+const extractLinksFromMessage = (message) => {
+    const matches = (message.content || '').match(LINK_PATTERN) || [];
+
+    return matches.map((url) => ({
+        url,
+        domain: (() => {
+            try {
+                return new URL(url).hostname.replace(/^www\./, '');
+            } catch {
+                return url;
+            }
+        })(),
+        messageId: message._id,
+        senderName: message.sender?.username || 'Unknown',
+        createdAt: message.createdAt,
+    }));
+};
+
+const getSharedResources = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const userId = req.user._id;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: 'Conversation not found' });
+        }
+
+        if (!isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to view this conversation' });
+        }
+
+        const query = {
+            ...getVisibleMessagesQuery(conversation, userId),
+            type: { $ne: 'system' },
+            deletedForEveryone: { $ne: true },
+            $or: [
+                { 'attachments.0': { $exists: true } },
+                { content: LINK_QUERY_PATTERN },
+            ],
+        };
+
+        const messages = await Message.find(query)
+            .populate('sender', SENDER_PUBLIC_FIELDS)
+            .select('attachments content sender createdAt')
+            .sort({ createdAt: -1 })
+            .limit(MAX_SHARED_RESOURCE_MESSAGES);
+
+        const photos = [];
+        const files = [];
+        const links = [];
+
+        messages.forEach((message) => {
+            const senderName = message.sender?.username || 'Unknown';
+            const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+
+            attachments.forEach((attachment) => {
+                const rawAttachment = typeof attachment.toObject === 'function'
+                    ? attachment.toObject()
+                    : attachment;
+                const item = {
+                    ...rawAttachment,
+                    messageId: message._id,
+                    senderName,
+                    createdAt: message.createdAt,
+                };
+
+                if (attachment.type === 'image') {
+                    photos.push(item);
+                } else {
+                    files.push(item);
+                }
+            });
+
+            links.push(...extractLinksFromMessage(message));
+        });
+
+        res.status(200).json({
+            photos,
+            files,
+            links,
+            truncated: messages.length >= MAX_SHARED_RESOURCE_MESSAGES,
+        });
+    } catch (error) {
+        console.error('getSharedResources error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -617,6 +709,7 @@ const togglePinMessage = async (req, res) => {
 module.exports = {
     getMessages,
     getPinnedMessages,
+    getSharedResources,
     searchMessages,
     sendMessage,
     deleteMessage,

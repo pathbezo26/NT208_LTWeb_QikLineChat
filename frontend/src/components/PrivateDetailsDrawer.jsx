@@ -11,6 +11,8 @@ import { getConversationsAPI } from '../api/conversationAPI';
 import UserAvatar from './UserAvatar';
 import styles from './styles/PrivateDetailsDrawer.module.css';
 
+const MEDIA_PREVIEW_LIMIT = 6;
+
 const getUserId = (user) => {
     if (!user) return null;
     return typeof user === 'object' ? (user._id || user.id || user.toString?.()) : user;
@@ -89,6 +91,19 @@ const getSharedAttachments = (messages = [], targetType) => {
     });
 };
 
+const isVideoAttachment = (attachment) => {
+    return attachment?.mimeType?.toLowerCase().startsWith('video/');
+};
+
+const getMediaItems = (photoItems = [], fileItems = []) => {
+    return [
+        ...photoItems,
+        ...fileItems.filter(isVideoAttachment),
+    ].sort((first, second) => {
+        return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+    });
+};
+
 export default function PrivateDetailsDrawer({
     open,
     onClose,
@@ -98,19 +113,24 @@ export default function PrivateDetailsDrawer({
     presence,
     isBlocked,
     messages,
+    sharedResources,
     onBlockToggle,
     onReportUser,
 }) {
     const [activePanel, setActivePanel] = useState('overview');
     const [allConversations, setAllConversations] = useState([]);
     const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+    const [isMediaExpanded, setIsMediaExpanded] = useState(false);
 
     const currentUserId = currentUser?._id;
     const otherUserId = getUserId(otherUser);
     const statusText = presence?.online ? 'Online' : formatLastSeen(presence?.lastSeenAt || otherUser?.lastSeenAt);
-    const photoItems = useMemo(() => getSharedAttachments(messages, 'image'), [messages]);
-    const fileItems = useMemo(() => getSharedAttachments(messages, 'file'), [messages]);
-    const linkItems = useMemo(() => extractLinks(messages), [messages]);
+    const photoItems = useMemo(() => sharedResources?.photos || getSharedAttachments(messages, 'image'), [messages, sharedResources?.photos]);
+    const rawFileItems = useMemo(() => sharedResources?.files || getSharedAttachments(messages, 'file'), [messages, sharedResources?.files]);
+    const mediaItems = useMemo(() => getMediaItems(photoItems, rawFileItems), [photoItems, rawFileItems]);
+    const fileItems = useMemo(() => rawFileItems.filter((item) => !isVideoAttachment(item)), [rawFileItems]);
+    const linkItems = useMemo(() => sharedResources?.links || extractLinks(messages), [messages, sharedResources?.links]);
+    const visibleMediaItems = isMediaExpanded ? mediaItems : mediaItems.slice(0, MEDIA_PREVIEW_LIMIT);
     const commonGroups = useMemo(() => {
         if (!currentUserId || !otherUserId) return [];
 
@@ -126,6 +146,7 @@ export default function PrivateDetailsDrawer({
         if (!open) return;
 
         setActivePanel('overview');
+        setIsMediaExpanded(false);
         let ignore = false;
 
         const loadCommonGroups = async () => {
@@ -153,7 +174,7 @@ export default function PrivateDetailsDrawer({
     const panels = [
         { key: 'overview', label: 'Info' },
         { key: 'groups', label: 'Groups' },
-        { key: 'media', label: 'Media' },
+        { key: 'media', label: 'Photos/videos' },
         { key: 'files', label: 'Files' },
     ];
 
@@ -278,12 +299,13 @@ export default function PrivateDetailsDrawer({
             {activePanel === 'media' && (
                 <div className={styles.sectionStack}>
                     <div className={styles.sectionHeading}>
-                        <span>Shared photos</span>
-                        <strong>{photoItems.length}</strong>
+                        <span>Photos/videos</span>
+                        <strong>{mediaItems.length}</strong>
                     </div>
-                    {photoItems.length ? (
+                    {mediaItems.length ? (
+                        <>
                         <div className={styles.photoGrid}>
-                            {photoItems.map((item, index) => (
+                            {visibleMediaItems.map((item, index) => (
                                 <a
                                     className={styles.photoTile}
                                     href={item.url}
@@ -291,12 +313,26 @@ export default function PrivateDetailsDrawer({
                                     rel="noreferrer"
                                     key={`${item.url}-${index}`}
                                 >
-                                    <img src={item.url} alt={item.name || 'Shared photo'} />
+                                    {isVideoAttachment(item) ? (
+                                        <video src={item.url} title={item.name || 'Shared video'} muted preload="metadata" />
+                                    ) : (
+                                        <img src={item.url} alt={item.name || 'Shared photo'} />
+                                    )}
                                 </a>
                             ))}
                         </div>
+                        {mediaItems.length > MEDIA_PREVIEW_LIMIT && (
+                            <button
+                                className={styles.viewMoreButton}
+                                type="button"
+                                onClick={() => setIsMediaExpanded((value) => !value)}
+                            >
+                                {isMediaExpanded ? 'Show less' : `Show ${mediaItems.length - MEDIA_PREVIEW_LIMIT} more`}
+                            </button>
+                        )}
+                        </>
                     ) : (
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No shared photos yet" />
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No photos or videos yet" />
                     )}
                 </div>
             )}

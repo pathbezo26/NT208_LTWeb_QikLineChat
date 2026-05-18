@@ -1,9 +1,13 @@
 import axiosInstance from './axiosInstance';
 
 // Lấy danh sách tất cả conversation của user
-export const getConversationsAPI = async () => {
-    const response = await axiosInstance.get('/conversations');
-    return response.data;
+export const getConversationsAPI = async (params = {}) => {
+    const { paginated = false, ...queryParams } = params;
+    const response = await axiosInstance.get('/conversations', { params: queryParams });
+
+    if (paginated) return response.data;
+
+    return response.data.conversations || response.data;
 };
 
 export const getConversationAPI = async (conversationId) => {

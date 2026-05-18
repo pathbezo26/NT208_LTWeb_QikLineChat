@@ -38,14 +38,14 @@
 }
 
 :global([data-theme='dark']) .searchBox {
-  border-color: #263244;
-  background: #111c2b;
+  border-color: #1a2431;
+  background: #0a101a;
 }
 
 :global([data-theme='dark']) .searchBox:focus-within {
-  border-color: #2a78d6;
-  background: #101826;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+  border-color: #222b39;
+  background: #070b13;
+  box-shadow: 0 0 0 3px rgba(52, 70, 95, 0.2);
 }
 
 :global([data-theme='dark']) .searchIcon,

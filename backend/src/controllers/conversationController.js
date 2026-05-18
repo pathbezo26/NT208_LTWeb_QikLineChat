@@ -10,6 +10,45 @@ const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 const USER_PUBLIC_FIELDS = 'username email avatar lastSeenAt blockedUsers';
 const USER_COMPACT_FIELDS = 'username avatar';
 const LAST_MESSAGE_SENDER_FIELDS = 'username avatar';
+const DEFAULT_CONVERSATION_LIMIT = 20;
+const MAX_CONVERSATION_LIMIT = 50;
+
+const normalizeConversationLimit = (value) => {
+    const parsed = Number.parseInt(value, 10);
+
+    if (Number.isNaN(parsed) || parsed <= 0) return DEFAULT_CONVERSATION_LIMIT;
+
+    return Math.min(parsed, MAX_CONVERSATION_LIMIT);
+};
+
+const encodeConversationCursor = (conversation) => {
+    if (!conversation?.updatedAt || !conversation?._id) return null;
+
+    return Buffer.from(JSON.stringify({
+        updatedAt: conversation.updatedAt.toISOString(),
+        id: conversation._id.toString(),
+    })).toString('base64url');
+};
+
+const decodeConversationCursor = (cursor) => {
+    if (!cursor) return null;
+
+    try {
+        const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+        const updatedAt = new Date(parsed.updatedAt);
+
+        if (Number.isNaN(updatedAt.getTime()) || !mongoose.Types.ObjectId.isValid(parsed.id)) {
+            return null;
+        }
+
+        return {
+            updatedAt,
+            id: new mongoose.Types.ObjectId(parsed.id),
+        };
+    } catch {
+        return null;
+    }
+};
 
 const addUnreadCountForUser = (conversation, userId) => {
     const userIdString = userId.toString();
@@ -204,18 +243,39 @@ const getValidUserIds = async (identifiers) => {
 const getConversations = async (req, res) => {
     try {
         const userId = req.user._id;
+        const limit = normalizeConversationLimit(req.query.limit);
+        const cursor = decodeConversationCursor(req.query.cursor);
+        const query = {
+            members: userId,
+            deletedFor: { $ne: userId },
+        };
+
+        if (req.query.cursor && !cursor) {
+            return res.status(400).json({ message: 'Invalid conversation cursor' });
+        }
+
+        if (cursor) {
+            query.$or = [
+                { updatedAt: { $lt: cursor.updatedAt } },
+                { updatedAt: cursor.updatedAt, _id: { $lt: cursor.id } },
+            ];
+        }
 
         // Tìm tất cả conversation mà user là thành viên
         // populate members để frontend hiển thị info người dùng, bao gồm avatar
-        const conversations = await populateConversationForSidebar(Conversation.find({
-            members: userId,
-            deletedFor: { $ne: userId },
-        }))
-            .sort({ updatedAt: -1 });
+        const conversations = await populateConversationForSidebar(Conversation.find(query))
+            .sort({ updatedAt: -1, _id: -1 })
+            .limit(limit + 1);
 
-        res.status(200).json(
-            conversations.map((conversation) => addUnreadCountForUser(conversation, userId))
-        );
+        const hasMore = conversations.length > limit;
+        const page = hasMore ? conversations.slice(0, limit) : conversations;
+        const nextCursor = hasMore ? encodeConversationCursor(page[page.length - 1]) : null;
+
+        res.status(200).json({
+            conversations: page.map((conversation) => addUnreadCountForUser(conversation, userId)),
+            hasMore,
+            nextCursor,
+        });
     } catch (error) {
         console.error('getConversations error:', error);
         res.status(500).json({ message: 'Server error' });
