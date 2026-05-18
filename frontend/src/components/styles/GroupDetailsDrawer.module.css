@@ -331,8 +331,8 @@
 }
 
 .adminBadge {
-    background: #ecfdf5;
-    color: #047857;
+    background: #eef6ff;
+    color: #2a5fa6;
 }
 
 .photoGrid {
@@ -452,37 +452,38 @@
 
 .actionConfirmModal :global(.ant-modal-content) {
     padding: 0;
-    border-radius: 18px;
+    border: 1px solid #e4eaf2;
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 22px 70px rgba(15, 23, 42, 0.26);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
 }
 
 .confirmPanel {
-    padding: 22px;
+    padding: 18px;
     display: grid;
-    grid-template-columns: 42px 1fr;
-    gap: 14px;
+    grid-template-columns: 32px 1fr;
+    gap: 11px;
     user-select: none;
 }
 
 .confirmIcon {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 15px;
 }
 
 .confirmIconDanger {
-    background: #fff1f2;
-    color: #e11d48;
+    background: #fef2f2;
+    color: #dc2626;
 }
 
 .confirmIconPrimary {
-    background: #eef6ff;
-    color: #1877f2;
+    background: #f8fafc;
+    color: #64748b;
 }
 
 .confirmCopy {
@@ -492,7 +493,7 @@
 .confirmCopy h3 {
     margin: 1px 0 6px;
     color: #172033;
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.3;
     font-weight: 800;
 }
@@ -516,8 +517,8 @@
 .confirmDanger,
 .confirmPrimary {
     min-width: 104px;
-    height: 38px;
-    border-radius: 10px;
+    height: 34px;
+    border-radius: 8px;
     font-weight: 750;
 }
 
@@ -528,13 +529,13 @@
 
 .confirmDanger {
     border-color: transparent;
-    background: #e11d48;
+    background: #dc2626;
     color: #ffffff;
 }
 
 .confirmDanger:not(:disabled):hover {
     border-color: transparent;
-    background: #be123c;
+    background: #b91c1c;
     color: #ffffff;
 }
 
@@ -629,6 +630,7 @@
 
 :global([data-theme='dark']) .actionConfirmModal :global(.ant-modal-content) {
     background: #101824;
+    border-color: #263447;
 }
 
 :global([data-theme='dark']) .confirmCopy h3 {
@@ -646,11 +648,11 @@
 }
 
 :global([data-theme='dark']) .confirmIconDanger {
-    background: rgba(225, 29, 72, 0.14);
-    color: #fb7185;
+    background: rgba(220, 38, 38, 0.15);
+    color: #fca5a5;
 }
 
 :global([data-theme='dark']) .confirmIconPrimary {
     background: #172233;
-    color: #8aa4c3;
+    color: #94a3b8;
 }

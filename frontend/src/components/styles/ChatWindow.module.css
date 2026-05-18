@@ -152,12 +152,12 @@
 }
 
 .onlineStatus {
-    color: #15803d;
+    color: #2a5fa6;
 }
 
 .onlineStatus .statusDot {
-    background: #22c55e;
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.14);
+    background: #2a5fa6;
+    box-shadow: 0 0 0 3px rgba(42, 95, 166, 0.14);
 }
 
 .pinnedBar {
@@ -361,38 +361,39 @@
 
 .privateConfirmModal :global(.ant-modal-content) {
     padding: 0;
-    border-radius: 18px;
+    border: 1px solid #e4eaf2;
+    border-radius: 14px;
     overflow: hidden;
     background: #ffffff;
-    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
 }
 
 .privateConfirmPanel {
-    padding: 20px;
+    padding: 18px;
     display: grid;
-    grid-template-columns: 40px 1fr;
-    gap: 12px;
+    grid-template-columns: 32px 1fr;
+    gap: 11px;
     user-select: none;
 }
 
 .privateConfirmIcon {
-    width: 40px;
-    height: 40px;
-    border-radius: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 19px;
+    font-size: 15px;
 }
 
 .privateConfirmDanger {
-    background: #fff1f2;
-    color: #e11d48;
+    background: #fef2f2;
+    color: #dc2626;
 }
 
 .privateConfirmPrimary {
-    background: #eef6ff;
-    color: #1877f2;
+    background: #f8fafc;
+    color: #64748b;
 }
 
 .privateConfirmCopy {
@@ -403,7 +404,7 @@
 .privateConfirmCopy h3 {
     margin: 0 0 6px;
     color: #172033;
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.25;
     font-weight: 850;
 }
@@ -427,8 +428,8 @@
 .privateConfirmDangerButton,
 .privateConfirmPrimaryButton {
     min-width: 88px;
-    height: 36px;
-    border-radius: 10px;
+    height: 34px;
+    border-radius: 8px;
     border: 1px solid transparent;
     font: inherit;
     font-weight: 800;
@@ -447,12 +448,12 @@
 }
 
 .privateConfirmDangerButton {
-    background: #e11d48;
+    background: #dc2626;
     color: #ffffff;
 }
 
 .privateConfirmDangerButton:hover:not(:disabled) {
-    background: #be123c;
+    background: #b91c1c;
 }
 
 .privateConfirmPrimaryButton {
@@ -516,7 +517,7 @@
 }
 
 :global([data-theme='dark']) .onlineStatus {
-    color: #86efac;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .groupInfoButton {
@@ -591,6 +592,7 @@
 
 :global([data-theme='dark']) .privateConfirmModal :global(.ant-modal-content) {
     background: #070b13;
+    border-color: #263447;
 }
 
 :global([data-theme='dark']) .privateConfirmCopy h3 {
@@ -614,11 +616,11 @@
 }
 
 :global([data-theme='dark']) .privateConfirmDanger {
-    background: rgba(225, 29, 72, 0.14);
-    color: #fb7185;
+    background: rgba(220, 38, 38, 0.15);
+    color: #fca5a5;
 }
 
 :global([data-theme='dark']) .privateConfirmPrimary {
-    background: #101927;
-    color: #8aa4c3;
+    background: #172233;
+    color: #94a3b8;
 }

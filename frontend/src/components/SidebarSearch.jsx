@@ -1,7 +1,7 @@
 import { SearchOutlined } from '@ant-design/icons';
 import styles from './styles/SidebarSearch.module.css';
 
-export default function SidebarSearch({ value, onChange }) {
+export default function SidebarSearch({ value, onChange, placeholder = 'Search' }) {
     return (
         <div className={styles.searchBox}>
             <SearchOutlined className={styles.searchIcon} />
@@ -10,7 +10,7 @@ export default function SidebarSearch({ value, onChange }) {
                 type="text"
                 value={value}
                 onChange={onChange}
-                placeholder="Search"
+                placeholder={placeholder}
             />
         </div>
     );

@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { TeamOutlined, UsergroupAddOutlined } from '@ant-design/icons';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    CheckOutlined,
+    CloseOutlined,
+    ContactsOutlined,
+    DeleteOutlined,
+    MessageOutlined,
+    TeamOutlined,
+    UserAddOutlined,
+    UsergroupAddOutlined,
+} from '@ant-design/icons';
 import { Badge, message as antdMessage } from 'antd';
 import axiosInstance from '../api/axiosInstance';
 import {
@@ -9,6 +18,14 @@ import {
     getConversationsAPI,
     markConversationReadAPI,
 } from '../api/conversationAPI';
+import {
+    acceptContactRequestAPI,
+    cancelContactRequestAPI,
+    declineContactRequestAPI,
+    getContactsAPI,
+    removeContactAPI,
+    sendContactRequestAPI,
+} from '../api/userAPI';
 import useAuth from '../hooks/useAuth';
 import useSocket from '../hooks/useSocket';
 import CreateGroupModal from './CreateGroupModal';
@@ -29,6 +46,12 @@ const CONVERSATION_PAGE_SIZE = 20;
 const SIDEBAR_BOTTOM_THRESHOLD = 140;
 const RELATIVE_TIME_REFRESH_MS = 60 * 1000;
 
+const defaultContactsState = {
+    contacts: [],
+    incomingRequests: [],
+    outgoingRequests: [],
+};
+
 const sortConversationsByUpdatedAt = (items) => {
     return [...items].sort((first, second) => {
         return new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime();
@@ -42,6 +65,7 @@ export default function Sidebar({
     optimisticConversationUpdate,
     syncedConversationUpdate,
     removedConversation,
+    onNavBadgesChange,
 }) {
     const { user } = useAuth();
     const socket = useSocket();
@@ -56,6 +80,9 @@ export default function Sidebar({
     const [searchResults, setSearchResults] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [creatingUserId, setCreatingUserId] = useState(null);
+    const [contactsState, setContactsState] = useState(defaultContactsState);
+    const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+    const [contactActionId, setContactActionId] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
@@ -66,6 +93,9 @@ export default function Sidebar({
     const listRef = useRef(null);
 
     const activeConversationId = activeConversation?._id;
+    const displayedConversations = activeSection === 'groups'
+        ? conversations.filter((conversation) => conversation.type === 'group')
+        : conversations;
 
     const loadConversations = async () => {
         setIsLoadingConversations(true);
@@ -84,6 +114,23 @@ export default function Sidebar({
             setIsLoadingConversations(false);
         }
     };
+
+    const loadContacts = useCallback(async () => {
+        setIsLoadingContacts(true);
+        try {
+            const data = await getContactsAPI();
+            setContactsState({
+                contacts: data.contacts || [],
+                incomingRequests: data.incomingRequests || [],
+                outgoingRequests: data.outgoingRequests || [],
+            });
+        } catch (error) {
+            console.error('Load contacts error:', error);
+            messageApi.error('Could not load contacts.');
+        } finally {
+            setIsLoadingContacts(false);
+        }
+    }, [messageApi]);
 
     const loadMoreConversations = async () => {
         if (
@@ -135,6 +182,10 @@ export default function Sidebar({
     useEffect(() => {
         loadConversations();
     }, []);
+
+    useEffect(() => {
+        loadContacts();
+    }, [loadContacts]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -300,6 +351,39 @@ export default function Sidebar({
     }, [socket, user, activeConversationId, onSelectConversation]);
 
     useEffect(() => {
+        if (!socket || !user) return;
+
+        const refreshContacts = () => {
+            loadContacts();
+        };
+
+        socket.on('contactRequestReceived', refreshContacts);
+        socket.on('contactRequestAccepted', refreshContacts);
+        socket.on('contactRequestDeclined', refreshContacts);
+        socket.on('contactRequestCancelled', refreshContacts);
+        socket.on('contactRemoved', refreshContacts);
+
+        return () => {
+            socket.off('contactRequestReceived', refreshContacts);
+            socket.off('contactRequestAccepted', refreshContacts);
+            socket.off('contactRequestDeclined', refreshContacts);
+            socket.off('contactRequestCancelled', refreshContacts);
+            socket.off('contactRemoved', refreshContacts);
+        };
+    }, [socket, user, loadContacts]);
+
+    useEffect(() => {
+        const unreadMessages = conversations.reduce((total, conversation) => {
+            return total + Number(conversation.unreadCount || 0);
+        }, 0);
+
+        onNavBadgesChange?.({
+            unreadMessages,
+            incomingContacts: contactsState.incomingRequests.length,
+        });
+    }, [contactsState.incomingRequests.length, conversations, onNavBadgesChange]);
+
+    useEffect(() => {
         if (!optimisticConversationUpdate?.conversationId) return;
 
         const {
@@ -438,6 +522,82 @@ export default function Sidebar({
         }
     };
 
+    const handleSendContactRequest = async (targetUser) => {
+        setContactActionId(targetUser._id);
+
+        try {
+            await sendContactRequestAPI(targetUser._id);
+            messageApi.success('Contact request sent.');
+            await loadContacts();
+            setSearchResults((prev) => prev.map((item) => {
+                if (item._id !== targetUser._id) return item;
+                return { ...item, relationshipStatus: 'outgoing_pending' };
+            }));
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not send contact request.');
+        } finally {
+            setContactActionId(null);
+        }
+    };
+
+    const handleAcceptContactRequest = async (request) => {
+        setContactActionId(request._id);
+
+        try {
+            await acceptContactRequestAPI(request._id);
+            messageApi.success('Contact added.');
+            await loadContacts();
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not accept request.');
+        } finally {
+            setContactActionId(null);
+        }
+    };
+
+    const handleDeclineContactRequest = async (request) => {
+        setContactActionId(request._id);
+
+        try {
+            await declineContactRequestAPI(request._id);
+            await loadContacts();
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not decline request.');
+        } finally {
+            setContactActionId(null);
+        }
+    };
+
+    const handleCancelContactRequest = async (request) => {
+        setContactActionId(request._id);
+
+        try {
+            await cancelContactRequestAPI(request._id);
+            await loadContacts();
+            setSearchResults((prev) => prev.map((item) => {
+                if (item._id !== request.otherUser?._id) return item;
+                return { ...item, relationshipStatus: 'none' };
+            }));
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not cancel request.');
+        } finally {
+            setContactActionId(null);
+        }
+    };
+
+    const handleRemoveContact = async (contact) => {
+        setContactActionId(contact._id);
+
+        try {
+            await removeContactAPI(contact._id);
+            messageApi.success('Contact removed.');
+            await loadContacts();
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not remove contact.');
+        } finally {
+            setContactActionId(null);
+        }
+    };
+
     const handleDeleteConversation = async (e, convId) => {
         e.stopPropagation();
         setDeletingId(convId);
@@ -467,6 +627,107 @@ export default function Sidebar({
         setDeleteConfirmId(null);
     };
 
+    const getOutgoingRequestForUser = (userId) => {
+        return contactsState.outgoingRequests.find((request) => {
+            return request.otherUser?._id === userId || request.recipient?._id === userId;
+        });
+    };
+
+    const getIncomingRequestForUser = (userId) => {
+        return contactsState.incomingRequests.find((request) => {
+            return request.otherUser?._id === userId || request.requester?._id === userId;
+        });
+    };
+
+    const renderContactSearchAction = (searchUser) => {
+        const incomingRequest = getIncomingRequestForUser(searchUser._id);
+        const outgoingRequest = getOutgoingRequestForUser(searchUser._id);
+        const relationshipStatus = searchUser.relationshipStatus;
+
+        if (relationshipStatus === 'contact') {
+            return (
+                <button
+                    className={styles.compactActionBtn}
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        handleStartChat(searchUser);
+                    }}
+                    disabled={creatingUserId === searchUser._id}
+                    title="Message"
+                    aria-label={`Message ${searchUser.username}`}
+                >
+                    <MessageOutlined />
+                </button>
+            );
+        }
+
+        if (relationshipStatus === 'incoming_pending' && incomingRequest) {
+            return (
+                <div className={styles.inlineActions}>
+                    <button
+                        className={styles.compactActionBtn}
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            handleAcceptContactRequest(incomingRequest);
+                        }}
+                        disabled={contactActionId === incomingRequest._id}
+                        title="Accept"
+                        aria-label={`Accept ${searchUser.username}`}
+                    >
+                        <CheckOutlined />
+                    </button>
+                    <button
+                        className={styles.compactActionBtn}
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeclineContactRequest(incomingRequest);
+                        }}
+                        disabled={contactActionId === incomingRequest._id}
+                        title="Decline"
+                        aria-label={`Decline ${searchUser.username}`}
+                    >
+                        <CloseOutlined />
+                    </button>
+                </div>
+            );
+        }
+
+        if (relationshipStatus === 'outgoing_pending') {
+            return (
+                <button
+                    className={styles.contactStatusBtn}
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        if (outgoingRequest) handleCancelContactRequest(outgoingRequest);
+                    }}
+                    disabled={!outgoingRequest || contactActionId === outgoingRequest._id}
+                >
+                    Sent
+                </button>
+            );
+        }
+
+        return (
+            <button
+                className={styles.compactActionBtn}
+                type="button"
+                onClick={(event) => {
+                    event.stopPropagation();
+                    handleSendContactRequest(searchUser);
+                }}
+                disabled={contactActionId === searchUser._id}
+                title="Add contact"
+                aria-label={`Add ${searchUser.username}`}
+            >
+                <UserAddOutlined />
+            </button>
+        );
+    };
+
     return (
         <>
         {contextHolder}
@@ -477,24 +738,27 @@ export default function Sidebar({
                 </h2>
             </div>
 
-            <div className={styles.actions}>
+            <div className={`${styles.actions} ${activeSection === 'contacts' ? styles.contactActions : ''}`}>
                 <SidebarSearch
                     value={searchQuery}
                     onChange={handleSearchUsers}
+                    placeholder={activeSection === 'contacts' ? 'Search people' : 'Search'}
                 />
 
-                <button
-                    className={`${styles.createGroupBtn} ${showGroupModal ? styles.createGroupActive : ''}`}
-                    onClick={() => setShowGroupModal((current) => !current)}
-                    title="Create group"
-                    aria-label="Create group"
-                    type="button"
-                >
-                    <UsergroupAddOutlined />
-                </button>
+                {activeSection !== 'contacts' && (
+                    <button
+                        className={`${styles.createGroupBtn} ${showGroupModal ? styles.createGroupActive : ''}`}
+                        onClick={() => setShowGroupModal((current) => !current)}
+                        title="Create group"
+                        aria-label="Create group"
+                        type="button"
+                    >
+                        <UsergroupAddOutlined />
+                    </button>
+                )}
             </div>
 
-            {showGroupModal && (
+            {showGroupModal && activeSection !== 'contacts' && (
                 <CreateGroupModal
                     onClose={() => setShowGroupModal(false)}
                     onCreated={(newGroup) => {
@@ -505,7 +769,171 @@ export default function Sidebar({
             )}
 
             <div className={styles.list} ref={listRef} onScroll={handleConversationListScroll}>
-                {searchQuery.trim() ? (
+                {activeSection === 'contacts' ? (
+                    searchQuery.trim() ? (
+                        <>
+                            {searchLoading && <p className={styles.empty}>Searching...</p>}
+
+                            {!searchLoading && searchResults.length === 0 && (
+                                <p className={styles.empty}>No people found.</p>
+                            )}
+
+                            {!searchLoading && searchResults.map((searchUser) => (
+                                <div key={searchUser._id} className={styles.contactRow}>
+                                    <UserAvatar
+                                        user={searchUser}
+                                        className={styles.convAvatar}
+                                    />
+                                    <div className={styles.contactInfo}>
+                                        <span className={styles.contactName}>{searchUser.username}</span>
+                                        <span className={styles.contactMeta}>
+                                            {searchUser.relationshipStatus === 'contact'
+                                                ? 'In your contacts'
+                                                : searchUser.relationshipStatus === 'incoming_pending'
+                                                    ? 'Sent you a request'
+                                                    : searchUser.relationshipStatus === 'outgoing_pending'
+                                                        ? 'Request pending'
+                                                        : 'Not connected'}
+                                        </span>
+                                    </div>
+                                    {renderContactSearchAction(searchUser)}
+                                </div>
+                            ))}
+                        </>
+                    ) : isLoadingContacts ? (
+                        <div className={styles.skeletonList} aria-label="Loading contacts">
+                            {[0, 1, 2].map((item) => (
+                                <div className={styles.skeletonItem} key={item}>
+                                    <span className={styles.skeletonAvatar} />
+                                    <span className={styles.skeletonContent}>
+                                        <span className={styles.skeletonLine} />
+                                        <span className={styles.skeletonLineShort} />
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className={styles.contactSections}>
+                            {contactsState.incomingRequests.length > 0 && (
+                                <section className={styles.contactSection}>
+                                    <h3>Requests</h3>
+                                    {contactsState.incomingRequests.map((request) => (
+                                        <div key={request._id} className={styles.contactRow}>
+                                            <UserAvatar
+                                                user={request.otherUser}
+                                                className={styles.convAvatar}
+                                            />
+                                            <div className={styles.contactInfo}>
+                                                <span className={styles.contactName}>{request.otherUser?.username}</span>
+                                                <span className={styles.contactMeta}>Wants to connect</span>
+                                            </div>
+                                            <div className={styles.inlineActions}>
+                                                <button
+                                                    className={styles.compactActionBtn}
+                                                    type="button"
+                                                    onClick={() => handleAcceptContactRequest(request)}
+                                                    disabled={contactActionId === request._id}
+                                                    title="Accept"
+                                                    aria-label="Accept request"
+                                                >
+                                                    <CheckOutlined />
+                                                </button>
+                                                <button
+                                                    className={styles.compactActionBtn}
+                                                    type="button"
+                                                    onClick={() => handleDeclineContactRequest(request)}
+                                                    disabled={contactActionId === request._id}
+                                                    title="Decline"
+                                                    aria-label="Decline request"
+                                                >
+                                                    <CloseOutlined />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </section>
+                            )}
+
+                            {contactsState.outgoingRequests.length > 0 && (
+                                <section className={styles.contactSection}>
+                                    <h3>Sent</h3>
+                                    {contactsState.outgoingRequests.map((request) => (
+                                        <div key={request._id} className={styles.contactRow}>
+                                            <UserAvatar
+                                                user={request.otherUser}
+                                                className={styles.convAvatar}
+                                            />
+                                            <div className={styles.contactInfo}>
+                                                <span className={styles.contactName}>{request.otherUser?.username}</span>
+                                                <span className={styles.contactMeta}>Waiting for response</span>
+                                            </div>
+                                            <button
+                                                className={styles.contactStatusBtn}
+                                                type="button"
+                                                onClick={() => handleCancelContactRequest(request)}
+                                                disabled={contactActionId === request._id}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ))}
+                                </section>
+                            )}
+
+                            {contactsState.contacts.length > 0 && (
+                                <section className={styles.contactSection}>
+                                    <h3>Contacts</h3>
+                                    {contactsState.contacts.map((contact) => (
+                                        <div key={contact._id} className={styles.contactRow}>
+                                            <UserAvatar
+                                                user={contact}
+                                                className={styles.convAvatar}
+                                            />
+                                            <div className={styles.contactInfo}>
+                                                <span className={styles.contactName}>{contact.username}</span>
+                                                <span className={styles.contactMeta}>{contact.email}</span>
+                                            </div>
+                                            <div className={styles.inlineActions}>
+                                                <button
+                                                    className={styles.compactActionBtn}
+                                                    type="button"
+                                                    onClick={() => handleStartChat(contact)}
+                                                    disabled={creatingUserId === contact._id}
+                                                    title="Message"
+                                                    aria-label={`Message ${contact.username}`}
+                                                >
+                                                    <MessageOutlined />
+                                                </button>
+                                                <button
+                                                    className={styles.compactActionBtn}
+                                                    type="button"
+                                                    onClick={() => handleRemoveContact(contact)}
+                                                    disabled={contactActionId === contact._id}
+                                                    title="Remove contact"
+                                                    aria-label={`Remove ${contact.username}`}
+                                                >
+                                                    <DeleteOutlined />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </section>
+                            )}
+
+                            {contactsState.contacts.length === 0
+                                && contactsState.incomingRequests.length === 0
+                                && contactsState.outgoingRequests.length === 0 && (
+                                    <div className={styles.emptyState}>
+                                        <div className={styles.emptyIcon}>
+                                            <ContactsOutlined />
+                                        </div>
+                                        <p>No contacts yet</p>
+                                        <span>Search for someone and send a contact request.</span>
+                                    </div>
+                                )}
+                        </div>
+                    )
+                ) : searchQuery.trim() ? (
                     <>
                         {searchLoading && <p className={styles.empty}>Searching...</p>}
 
@@ -544,17 +972,21 @@ export default function Sidebar({
                             </div>
                         ))}
                     </div>
-                ) : conversations.length === 0 ? (
+                ) : displayedConversations.length === 0 ? (
                     <div className={styles.emptyState}>
                         <div className={styles.emptyIcon}>
                             <TeamOutlined />
                         </div>
-                        <p>No conversations yet</p>
-                        <span>Search for someone or create a group to start chatting.</span>
+                        <p>{activeSection === 'groups' ? 'No groups yet' : 'No conversations yet'}</p>
+                        <span>
+                            {activeSection === 'groups'
+                                ? 'Create a group to chat with several people.'
+                                : 'Search for someone or create a group to start chatting.'}
+                        </span>
                     </div>
                 ) : (
                     <>
-                    {conversations.map((conv) => {
+                    {displayedConversations.map((conv) => {
                     const isCurrentlyActive = activeConversation?._id === conv._id;
                     const unreadCount = conv.unreadCount || 0;
                     const hasUnread = unreadCount > 0;

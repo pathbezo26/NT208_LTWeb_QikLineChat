@@ -40,6 +40,7 @@ export default function AppNavRail({
     onSectionChange,
     isDarkMode,
     onToggleDarkMode,
+    badges = {},
 }) {
     const { user, logout, updateUser } = useAuth();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -316,6 +317,8 @@ export default function AppNavRail({
             <div className={styles.navList}>
                 {navItems.map((item) => {
                     const isActive = activeSection === item.id;
+                    const hasUnreadMessages = item.id === 'messages' && Number(badges.unreadMessages) > 0;
+                    const hasIncomingContacts = item.id === 'contacts' && Number(badges.incomingContacts) > 0;
 
                     return (
                         <button
@@ -328,6 +331,18 @@ export default function AppNavRail({
                             aria-pressed={isActive}
                         >
                             <span className={styles.icon}>{item.icon}</span>
+                            {hasUnreadMessages && (
+                                <span
+                                    className={`${styles.navDot} ${styles.messageDot}`}
+                                    aria-label={`${badges.unreadMessages} unread messages`}
+                                />
+                            )}
+                            {hasIncomingContacts && (
+                                <span
+                                    className={`${styles.navDot} ${styles.contactDot}`}
+                                    aria-label={`${badges.incomingContacts} contact requests`}
+                                />
+                            )}
                         </button>
                     );
                 })}

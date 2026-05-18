@@ -47,6 +47,12 @@ const UserSchema = new mongoose.Schema(
                 ref: 'User',
             },
         ],
+        contacts: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+        ],
     },
     { timestamps: true }
 );
@@ -54,6 +60,7 @@ const UserSchema = new mongoose.Schema(
 // Index tăng tốc truy vấn (đã khai báo unique ở trên nên Mongoose tự tạo index)
 UserSchema.index({ email: 1 });
 UserSchema.index({ username: 1 });
+UserSchema.index({ contacts: 1 });
 
 // Method: so sánh password nhập vào với hash trong DB
 UserSchema.methods.matchPassword = async function (enteredPassword) {

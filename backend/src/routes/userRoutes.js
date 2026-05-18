@@ -10,6 +10,13 @@ const {
   blockUser,
   unblockUser,
   reportUser,
+  getContacts,
+  sendContactRequest,
+  acceptContactRequest,
+  declineContactRequest,
+  cancelContactRequest,
+  removeContact,
+  getRelationshipStatusMap,
 } = require('../controllers/userController');
 const { searchLimiter, uploadLimiter } = require('../middleware/rateLimiters');
 
@@ -69,6 +76,12 @@ router.patch('/me/avatar', protect, uploadLimiter, handleAvatarUpload, uploadAva
 router.delete('/me/avatar', protect, deleteAvatar);
 // PATCH /api/users/me/username - doi username cua user hien tai
 router.patch('/me/username', protect, updateUsername);
+router.get('/contacts', protect, getContacts);
+router.post('/:id/contact-request', protect, sendContactRequest);
+router.post('/contact-requests/:requestId/accept', protect, acceptContactRequest);
+router.post('/contact-requests/:requestId/decline', protect, declineContactRequest);
+router.delete('/contact-requests/:requestId', protect, cancelContactRequest);
+router.delete('/:id/contact', protect, removeContact);
 router.post('/:id/block', protect, blockUser);
 router.delete('/:id/block', protect, unblockUser);
 router.post('/:id/report', protect, reportUser);
@@ -91,7 +104,12 @@ router.get('/search', protect, searchLimiter, async (req, res) => {
       .filter((user) => isWordStartMatch(user.username, keyword))
       .slice(0, 20);
 
-    res.json(matchedUsers);
+    const relationshipStatusMap = await getRelationshipStatusMap(req.user, matchedUsers);
+
+    res.json(matchedUsers.map((user) => ({
+      ...user,
+      relationshipStatus: relationshipStatusMap.get(user._id.toString()) || 'none',
+    })));
   } catch (err) {
     res.status(500).json({ message: 'Server error.', error: err.message });
   }

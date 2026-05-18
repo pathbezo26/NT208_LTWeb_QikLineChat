@@ -22,6 +22,7 @@ const formatAuthUser = (user) => ({
     },
     lastSeenAt: user.lastSeenAt,
     blockedUsers: user.blockedUsers || [],
+    contacts: user.contacts || [],
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
 });

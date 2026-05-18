@@ -13,6 +13,10 @@ export default function ChatPage() {
     const [optimisticConversationUpdate, setOptimisticConversationUpdate] = useState(null);
     const [syncedConversationUpdate, setSyncedConversationUpdate] = useState(null);
     const [removedConversation, setRemovedConversation] = useState(null);
+    const [navBadges, setNavBadges] = useState({
+        unreadMessages: 0,
+        incomingContacts: 0,
+    });
     const [colorMode, setColorMode] = useState(() => {
         return localStorage.getItem(THEME_STORAGE_KEY) || 'light';
     });
@@ -68,6 +72,12 @@ export default function ChatPage() {
         <ConfigProvider
             theme={{
                 algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+                token: {
+                    colorSuccess: isDarkMode ? '#8aa4c3' : '#2a5fa6',
+                    colorSuccessBg: isDarkMode ? '#172233' : '#eef6ff',
+                    colorSuccessBorder: isDarkMode ? '#32445d' : '#cfe4ff',
+                    colorSuccessHover: isDarkMode ? '#9bb4d0' : '#1f5fae',
+                },
             }}
         >
             <div className={styles.layout} data-theme={colorMode}>
@@ -76,6 +86,7 @@ export default function ChatPage() {
                     onSectionChange={setActiveSection}
                     isDarkMode={isDarkMode}
                     onToggleDarkMode={() => setColorMode(isDarkMode ? 'light' : 'dark')}
+                    badges={navBadges}
                 />
                 <Sidebar
                     activeSection={activeSection}
@@ -84,6 +95,7 @@ export default function ChatPage() {
                     optimisticConversationUpdate={optimisticConversationUpdate}
                     syncedConversationUpdate={syncedConversationUpdate}
                     removedConversation={removedConversation}
+                    onNavBadgesChange={setNavBadges}
                 />
                 <ChatWindow
                     conversation={activeConversation}

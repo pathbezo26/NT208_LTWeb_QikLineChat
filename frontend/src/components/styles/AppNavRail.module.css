@@ -58,6 +58,7 @@
 }
 
 .navButton {
+  position: relative;
   width: 42px;
   height: 42px;
   display: flex;
@@ -92,20 +93,39 @@
   font-size: 21px;
 }
 
+.navDot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.messageDot {
+  background: #dc2626;
+}
+
+.contactDot {
+  background: #2a5fa6;
+}
+
 .profileMenu {
-  width: 220px;
+  width: 236px;
 }
 
 .settingMenu {
-  width: 220px;
+  width: 236px;
 }
 
 .profileName {
   margin-bottom: 8px;
-  padding: 0 8px 8px;
+  padding: 2px 8px 10px;
   border-bottom: 1px solid #edf2f7;
   color: #172033;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -126,6 +146,8 @@
 .menuButton {
   justify-content: flex-start;
   text-align: left;
+  min-height: 36px;
+  border-radius: 8px;
 }
 
 .usernameForm {
@@ -139,7 +161,7 @@
   height: 34px;
   padding: 0 10px;
   border: 1px solid #dbe5ef;
-  border-radius: 8px;
+  border-radius: 9px;
   color: #172033;
   font-size: 14px;
   outline: none;
@@ -157,6 +179,17 @@
 
 .navPopover {
   color: inherit;
+}
+
+.navPopover :global(.ant-popover-inner) {
+  padding: 10px;
+  border: 1px solid #e4eaf2;
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+}
+
+.navPopover :global(.ant-popover-inner-content) {
+  padding: 0;
 }
 
 .settingRow {
@@ -213,6 +246,19 @@
   background: #101927;
   color: #8aa4c3;
   box-shadow: none;
+}
+
+:global([data-theme='dark']) .navDot {
+  border-color: #070b13;
+  box-shadow: none;
+}
+
+:global([data-theme='dark']) .messageDot {
+  background: #f87171;
+}
+
+:global([data-theme='dark']) .contactDot {
+  background: #8aa4c3;
 }
 
 :global([data-theme='dark']) .profileName,

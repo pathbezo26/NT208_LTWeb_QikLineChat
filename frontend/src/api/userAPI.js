@@ -41,3 +41,33 @@ export const reportUserAPI = async (userId, data) => {
     const response = await axiosInstance.post(`/users/${userId}/report`, data);
     return response.data;
 };
+
+export const getContactsAPI = async () => {
+    const response = await axiosInstance.get('/users/contacts');
+    return response.data;
+};
+
+export const sendContactRequestAPI = async (userId) => {
+    const response = await axiosInstance.post(`/users/${userId}/contact-request`);
+    return response.data;
+};
+
+export const acceptContactRequestAPI = async (requestId) => {
+    const response = await axiosInstance.post(`/users/contact-requests/${requestId}/accept`);
+    return response.data;
+};
+
+export const declineContactRequestAPI = async (requestId) => {
+    const response = await axiosInstance.post(`/users/contact-requests/${requestId}/decline`);
+    return response.data;
+};
+
+export const cancelContactRequestAPI = async (requestId) => {
+    const response = await axiosInstance.delete(`/users/contact-requests/${requestId}`);
+    return response.data;
+};
+
+export const removeContactAPI = async (userId) => {
+    const response = await axiosInstance.delete(`/users/${userId}/contact`);
+    return response.data;
+};
