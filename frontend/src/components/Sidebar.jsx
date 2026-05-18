@@ -66,6 +66,7 @@ export default function Sidebar({
     syncedConversationUpdate,
     removedConversation,
     onNavBadgesChange,
+    onOpenConversation,
 }) {
     const { user } = useAuth();
     const socket = useSocket();
@@ -478,6 +479,11 @@ export default function Sidebar({
 
             return [newConversation, ...prev];
         });
+
+        if (activeSection === 'contacts') {
+            onOpenConversation?.(newConversation);
+            return;
+        }
 
         onSelectConversation(newConversation);
     };

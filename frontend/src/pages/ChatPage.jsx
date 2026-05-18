@@ -3,6 +3,7 @@ import { ConfigProvider, theme as antdTheme } from 'antd';
 import AppNavRail from '../components/AppNavRail';
 import Sidebar from '../components/Sidebar';
 import ChatWindow from '../components/ChatWindow';
+import ContactsWorkspace from '../components/ContactsWorkspace';
 import styles from './styles/ChatPage.module.css';
 
 const THEME_STORAGE_KEY = 'qikline-theme';
@@ -68,6 +69,11 @@ export default function ChatPage() {
         });
     };
 
+    const handleOpenConversation = (conversation) => {
+        setActiveConversation(conversation);
+        setActiveSection('messages');
+    };
+
     return (
         <ConfigProvider
             theme={{
@@ -96,13 +102,18 @@ export default function ChatPage() {
                     syncedConversationUpdate={syncedConversationUpdate}
                     removedConversation={removedConversation}
                     onNavBadgesChange={setNavBadges}
+                    onOpenConversation={handleOpenConversation}
                 />
-                <ChatWindow
-                    conversation={activeConversation}
-                    onConversationUpdated={handleConversationUpdated}
-                    onConversationPreviewUpdate={handleConversationPreviewUpdate}
-                    onConversationLeft={handleConversationLeft}
-                />
+                {activeSection === 'contacts' ? (
+                    <ContactsWorkspace onOpenConversation={handleOpenConversation} />
+                ) : (
+                    <ChatWindow
+                        conversation={activeConversation}
+                        onConversationUpdated={handleConversationUpdated}
+                        onConversationPreviewUpdate={handleConversationPreviewUpdate}
+                        onConversationLeft={handleConversationLeft}
+                    />
+                )}
             </div>
         </ConfigProvider>
     );
