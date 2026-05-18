@@ -1262,6 +1262,7 @@ export default function ChatWindow({
                 currentUserId={user._id}
                 hasMore={displayedHasMoreMessages}
                 conversationId={conversation._id}
+                conversationType={conversation.type}
                 initialUnreadCount={entryUnreadCount}
                 isInitialLoading={shouldShowInitialSkeleton}
                 isLoadingOlder={isLoadingOlder}

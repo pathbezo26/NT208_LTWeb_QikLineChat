@@ -605,6 +605,11 @@
     transition: opacity 0.14s, transform 0.14s;
 }
 
+.statusIcon::before,
+.statusText::before {
+    color: #94a3b8;
+}
+
 .messageStack:hover .messageActions {
     opacity: 1;
     pointer-events: auto;
@@ -1057,6 +1062,10 @@
     color: rgba(255, 255, 255, 0.7);
 }
 
+:global([data-theme='dark']) .statusMeta {
+    color: #94a3b8;
+}
+
 :global([data-theme='dark']) .systemMessage {
     color: #94a3b8;
 }
@@ -1067,19 +1076,19 @@
 }
 
 :global([data-theme='dark']) .statusIcon {
-    color: currentColor;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .statusIcon::before {
-    color: currentColor;
+    color: #64748b;
 }
 
 :global([data-theme='dark']) .statusText {
-    color: currentColor;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .statusText::before {
-    color: currentColor;
+    color: #64748b;
 }
 
 :global([data-theme='dark']) .failed {

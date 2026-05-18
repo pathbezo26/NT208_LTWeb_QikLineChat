@@ -171,6 +171,7 @@ export default function MessageList({
     currentUserId,
     hasMore,
     conversationId,
+    conversationType,
     initialUnreadCount,
     isInitialLoading,
     isLoadingOlder,
@@ -444,6 +445,7 @@ export default function MessageList({
     };
 
     const isLargeGroup = Array.isArray(conversationMembers) && conversationMembers.length >= LARGE_GROUP_MEMBER_COUNT;
+    const isGroupConversation = conversationType === 'group';
     const lastOwnMessageIndex = messages.findLastIndex((message) => {
         return message?.type !== 'system' && getSenderId(message) === currentUserId;
     });
@@ -509,7 +511,7 @@ export default function MessageList({
                 const hasTextContent = Boolean(message.content);
                 const hasReply = hasMessageReference(message.replyTo);
                 const isDeletedForEveryone = Boolean(message.deletedForEveryone);
-                const showsSenderName = !isMyMessage && shouldShowAvatar && message.sender?.username;
+                const showsSenderName = isGroupConversation && !isMyMessage && shouldShowAvatar && message.sender?.username;
                 const hasOnlyImages = imageAttachments.length > 0
                     && fileAttachments.length === 0
                     && !hasTextContent
