@@ -14,8 +14,9 @@
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #101927;
-  color: #8aa4c3;
+  border: 1px solid #cfe4ff;
+  background: linear-gradient(180deg, #f2f8ff 0%, #dcecff 100%);
+  color: #1f5fae;
   font-weight: 800;
 }
 
@@ -291,15 +292,15 @@
 }
 
 .groupAvatar {
-  border: none;
-  background: #101927;
-  color: #8aa4c3;
+  border: 1px solid #cfe4ff;
+  background: linear-gradient(180deg, #f2f8ff 0%, #dcecff 100%);
+  color: #1f5fae;
   font-size: 16px;
 }
 
 .item.active .convAvatar[data-avatar-type='fallback'] {
-  border: 1px solid #4a90e8;
-  box-shadow: 0 0 0 3px rgba(138, 164, 195, 0.1);
+  border-color: #8fc4ff;
+  box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
 }
 
 .convInfo {
@@ -609,7 +610,13 @@
 }
 
 :global([data-theme='dark']) .groupAvatar {
-  border-color: transparent;
+  border-color: #32445d;
+  background: #172233;
+  color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .convAvatar {
+  border-color: #32445d;
   background: #172233;
   color: #8aa4c3;
 }

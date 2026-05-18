@@ -281,8 +281,8 @@
 }
 
 :global([data-theme='dark']) .inputWrap {
-    border-top-color: #1a2431;
-    background: #070b13;
+    border-top-color: #263447;
+    background: #101824;
 }
 
 :global([data-theme='dark']) .disabledOverlay {
@@ -293,18 +293,18 @@
 
 :global([data-theme='dark']) .replyPreview {
     border-left-color: #8aa4c3;
-    background: #0a101a;
+    background: #121d2b;
     color: #e5edf6;
 }
 
 :global([data-theme='dark']) .attachmentChip {
-    border-color: #1a2431;
-    background: #0a101a;
+    border-color: #263447;
+    background: #121d2b;
     color: #e5edf6;
 }
 
 :global([data-theme='dark']) .fileThumb {
-    background: #101927;
+    background: #172233;
     color: #8aa4c3;
 }
 
@@ -323,12 +323,12 @@
 }
 
 :global([data-theme='dark']) .attachBtn {
-    background: #0a101a;
+    background: #172233;
     color: #94a3b8;
 }
 
 :global([data-theme='dark']) .attachBtn:hover:not(:disabled) {
-    background: #101927;
+    background: #1d2b3e;
     color: #8aa4c3;
 }
 
@@ -347,8 +347,8 @@
 }
 
 :global([data-theme='dark']) .textarea {
-    border-color: #1a2431;
-    background: #0a101a;
+    border-color: #263447;
+    background: #121d2b;
     color: #e5edf6;
 }
 
@@ -357,17 +357,17 @@
 }
 
 :global([data-theme='dark']) .textarea:focus {
-    border-color: #222b39;
-    background: #070b13;
-    box-shadow: 0 0 0 3px rgba(52, 70, 95, 0.2);
+    border-color: #3b5a7d;
+    background: #172233;
+    box-shadow: 0 0 0 3px rgba(59, 90, 125, 0.18);
 }
 
 :global([data-theme='dark']) .sendBtn {
-    background: #222b39 !important;
+    background: #2f5f9f !important;
 }
 
 :global([data-theme='dark']) .sendBtn:hover:not(:disabled) {
-    background: #34465f !important;
+    background: #3a74bd !important;
 }
 
 :global([data-theme='dark']) .sendBtn:disabled {

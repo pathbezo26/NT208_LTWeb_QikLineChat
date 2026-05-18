@@ -54,8 +54,9 @@
     width: 82px;
     height: 82px;
     border-radius: 24px;
-    background: #101927;
-    color: #8aa4c3;
+    border: 1px solid #cfe4ff;
+    background: linear-gradient(180deg, #f2f8ff 0%, #dcecff 100%);
+    color: #1f5fae;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -287,8 +288,9 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    background: #101927;
-    color: #8aa4c3;
+    border: 1px solid #cfe4ff;
+    background: linear-gradient(180deg, #f2f8ff 0%, #dcecff 100%);
+    color: #1f5fae;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -603,6 +605,7 @@
 
 :global([data-theme='dark']) .memberAvatar,
 :global([data-theme='dark']) .groupAvatar {
+    border-color: #32445d;
     background: #172233;
     color: #8aa4c3;
 }

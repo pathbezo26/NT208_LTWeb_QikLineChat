@@ -32,8 +32,9 @@
     width: 84px;
     height: 84px;
     border-radius: 26px;
-    background: linear-gradient(135deg, #1877f2 0%, #26a69a 100%);
-    color: #ffffff;
+    border: 1px solid #cfe4ff;
+    background: linear-gradient(180deg, #f2f8ff 0%, #dcecff 100%);
+    color: #1f5fae;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -259,8 +260,9 @@
     width: 36px;
     height: 36px;
     border-radius: 12px;
-    background: #eef6ff;
-    color: #1877f2;
+    border: 1px solid #cfe4ff;
+    background: linear-gradient(180deg, #f2f8ff 0%, #dcecff 100%);
+    color: #1f5fae;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -444,6 +446,7 @@
 :global([data-theme='dark']) .resourceAvatar,
 :global([data-theme='dark']) .fileIcon,
 :global([data-theme='dark']) .linkIcon {
+    border-color: #32445d;
     background: #172233;
     color: #8aa4c3;
 }

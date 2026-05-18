@@ -1156,6 +1156,7 @@ export default function ChatWindow({
     const isOtherBlocked = otherMemberId ? blockedUserIds.includes(otherMemberId) : false;
     const privateStatusText = isOtherOnline ? 'Online' : formatLastSeen(otherPresence?.lastSeenAt || otherMember?.lastSeenAt);
     const topPinnedMessage = pinnedMessages[0] || null;
+    const shouldShowPrivateTyping = conversation.type === 'private' && typingUsers.length > 0;
 
     return (
         <div className={styles.window}>
@@ -1277,9 +1278,16 @@ export default function ChatWindow({
                 onTogglePinMessage={handleTogglePinMessage}
             />
 
-            {typingUsers.length > 0 && (
-                <div className={styles.typing}>
-                    {typingUsers.map((typingUser) => typingUser.username).join(', ')} typing...
+            {shouldShowPrivateTyping && (
+                <div
+                    className={styles.typing}
+                    aria-label={`${typingUsers[0]?.username || getChatName()} is typing`}
+                >
+                    <span className={styles.typingBubble} aria-hidden="true">
+                        <span className={styles.typingDot} />
+                        <span className={styles.typingDot} />
+                        <span className={styles.typingDot} />
+                    </span>
                 </div>
             )}
 
