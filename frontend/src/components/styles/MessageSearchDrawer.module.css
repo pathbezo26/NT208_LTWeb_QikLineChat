@@ -133,8 +133,8 @@
 :global([data-theme='dark']) .drawer :global(.ant-drawer-body),
 :global([data-theme='dark']) .drawer :global(.ant-drawer-header),
 :global([data-theme='dark']) .searchBox {
-    border-color: #1a2431;
-    background: #070b13;
+    border-color: #263447;
+    background: #101824;
 }
 
 :global([data-theme='dark']) .drawer :global(.ant-drawer-title),
@@ -143,15 +143,15 @@
 }
 
 :global([data-theme='dark']) .resultRow:hover {
-    background: #0a101a;
+    background: #172233;
 }
 
 :global([data-theme='dark']) .activeResult {
-    background: #101927;
+    background: #1a2a3d;
 }
 
 :global([data-theme='dark']) .avatar {
-    background: #101927;
+    background: #172233;
     color: #8aa4c3;
 }
 

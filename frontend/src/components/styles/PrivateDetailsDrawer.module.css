@@ -383,15 +383,15 @@
 :global([data-theme='dark']) .drawer :global(.ant-drawer-body),
 :global([data-theme='dark']) .drawer :global(.ant-drawer-header) {
     background:
-        linear-gradient(180deg, rgba(138, 164, 195, 0.025) 0, rgba(16, 24, 38, 0) 170px),
-        #070b13;
+        linear-gradient(180deg, rgba(138, 164, 195, 0.05) 0, rgba(16, 24, 38, 0) 170px),
+        #101824;
 }
 
 :global([data-theme='dark']) .profile,
 :global([data-theme='dark']) .quickActions,
 :global([data-theme='dark']) .resourceList {
-    border-color: #1a2431;
-    background: #0a101a;
+    border-color: #263447;
+    background: #121d2b;
 }
 
 :global([data-theme='dark']) .profile h2,
@@ -414,13 +414,13 @@
 :global([data-theme='dark']) .status,
 :global([data-theme='dark']) .infoRow,
 :global([data-theme='dark']) .previewRow {
-    border-color: #1a2431;
-    background: #0d1420;
+    border-color: #263447;
+    background: #172233;
 }
 
 :global([data-theme='dark']) .previewRow:hover {
-    border-color: #222b39;
-    background: #121d2c;
+    border-color: #32445d;
+    background: #1d2b3e;
 }
 
 :global([data-theme='dark']) .online {
@@ -437,26 +437,26 @@
 }
 
 :global([data-theme='dark']) .quickActionBubble {
-    background: #101927;
+    background: #1a2a3d;
 }
 
 :global([data-theme='dark']) .avatar,
 :global([data-theme='dark']) .resourceAvatar,
 :global([data-theme='dark']) .fileIcon,
 :global([data-theme='dark']) .linkIcon {
-    background: #101927;
+    background: #172233;
     color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .viewMoreButton {
-    border-color: #1a2431;
-    background: #101927;
+    border-color: #263447;
+    background: #172233;
     color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .viewMoreButton:hover {
-    border-color: #222b39;
-    background: #121d2c;
+    border-color: #32445d;
+    background: #1d2b3e;
 }
 
 :global([data-theme='dark']) .dangerZone {

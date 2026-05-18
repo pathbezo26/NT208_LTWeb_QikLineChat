@@ -444,13 +444,13 @@
 }
 
 :global([data-theme='dark']) .header {
-    border-bottom-color: #1a2431;
-    background: #070b13;
+    border-bottom-color: #263447;
+    background: #101824;
     box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
 }
 
 :global([data-theme='dark']) .headerAvatar {
-    background: #101927;
+    background: #172233;
     color: #8aa4c3;
 }
 
@@ -465,29 +465,29 @@
 }
 
 :global([data-theme='dark']) .groupInfoButton {
-    border-color: #1a2431;
-    background: #101927;
+    border-color: #2a3a50;
+    background: #172233;
     color: #d8e3ef;
 }
 
 :global([data-theme='dark']) .groupInfoButton:hover {
     border-color: #8aa4c3;
-    background: #0f1722;
+    background: #1d2b3e;
     color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .pinnedBar {
-    border-bottom-color: #1a2431;
-    background: #080d16;
+    border-bottom-color: #263447;
+    background: #111a25;
     color: #e5edf6;
 }
 
 :global([data-theme='dark']) .pinnedBar:hover {
-    background: #0a101a;
+    background: #172233;
 }
 
 :global([data-theme='dark']) .pinnedIcon {
-    background: #101927;
+    background: #1a2a3d;
     color: #8aa4c3;
 }
 
@@ -506,23 +506,23 @@
 }
 
 :global([data-theme='dark']) .pinnedListItem {
-    border-color: #1a2431;
-    background: #070b13;
+    border-color: #263447;
+    background: #101824;
 }
 
 :global([data-theme='dark']) .pinnedListItem:hover {
-    border-color: #222b39;
-    background: #0d1420;
+    border-color: #32445d;
+    background: #172233;
 }
 
 :global([data-theme='dark']) .drawerAvatar {
-    background: #101927;
+    background: #172233;
     color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .forwardPreview {
     border-left-color: #8aa4c3;
-    background: #0a101a;
+    background: #121d2b;
 }
 
 :global([data-theme='dark']) .forwardPreviewLabel {

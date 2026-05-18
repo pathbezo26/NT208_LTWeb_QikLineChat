@@ -517,17 +517,17 @@
 }
 
 :global([data-theme='dark']) .sidebar {
-  border-right-color: #1a2431;
-  background: #080d16;
+  border-right-color: #263447;
+  background: #101824;
 }
 
 :global([data-theme='dark']) .header,
 :global([data-theme='dark']) .actions {
-  background: #070b13;
+  background: #111a25;
 }
 
 :global([data-theme='dark']) .actions {
-  border-bottom-color: #1a2431;
+  border-bottom-color: #263447;
 }
 
 :global([data-theme='dark']) .title,
@@ -544,13 +544,13 @@
 }
 
 :global([data-theme='dark']) .loadMoreButton {
-  border-color: #1a2431;
-  background: #070b13;
+  border-color: #263447;
+  background: #111a25;
   color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .loadMoreButton:hover {
-  background: #0d1420;
+  background: #172233;
 }
 
 :global([data-theme='dark']) .emptyState p {
@@ -562,26 +562,26 @@
 }
 
 :global([data-theme='dark']) .emptyIcon {
-  background: #101927;
+  background: #172233;
   color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .skeletonAvatar,
 :global([data-theme='dark']) .skeletonLine,
 :global([data-theme='dark']) .skeletonLineShort {
-  background: linear-gradient(90deg, #0d1420 0%, #121b29 45%, #0d1420 100%);
+  background: linear-gradient(90deg, #121d2b 0%, #1a2838 45%, #121d2b 100%);
   background-size: 180% 100%;
 }
 
 :global([data-theme='dark']) .item:hover,
 :global([data-theme='dark']) .searchItem:hover:not(:disabled) {
-  border-color: #1a2431;
-  background: #0d1420;
+  border-color: #263447;
+  background: #172233;
 }
 
 :global([data-theme='dark']) .item.active {
-  border-color: #222b39;
-  background: #101927;
+  border-color: #32445d;
+  background: #1a2a3d;
 }
 
 :global([data-theme='dark']) .item.unread .convName,
@@ -596,21 +596,21 @@
 }
 
 :global([data-theme='dark']) .createGroupBtn {
-  border-color: #1a2431;
-  background: #0a101a;
+  border-color: #263447;
+  background: #111a25;
   color: #94a3b8;
 }
 
 :global([data-theme='dark']) .createGroupBtn:hover,
 :global([data-theme='dark']) .createGroupActive {
-  border-color: #222b39;
-  background: #101927;
+  border-color: #32445d;
+  background: #1a2a3d;
   color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .groupAvatar {
   border-color: transparent;
-  background: #101927;
+  background: #172233;
   color: #8aa4c3;
 }
 
@@ -620,18 +620,18 @@
 }
 
 :global([data-theme='dark']) .threeDotsBtn {
-  background: #0d1420;
+  background: #172233;
   color: #94a3b8;
 }
 
 :global([data-theme='dark']) .threeDotsBtn:hover {
-  background: #1a2431;
+  background: #223145;
   color: #e5edf6;
 }
 
 :global([data-theme='dark']) .dropdownMenu {
-  border-color: #1a2431;
-  background: #070b13;
+  border-color: #263447;
+  background: #101824;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
 }
 
@@ -640,11 +640,11 @@
 }
 
 :global([data-theme='dark']) .cancelDeleteBtn {
-  border-color: #243041;
-  background: #0a101a;
+  border-color: #32445d;
+  background: #111a25;
   color: #cbd5e1;
 }
 
 :global([data-theme='dark']) .cancelDeleteBtn:hover {
-  background: #0d1420;
+  background: #172233;
 }
