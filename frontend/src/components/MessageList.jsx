@@ -709,9 +709,10 @@ export default function MessageList({
                                 </div>
 
                                 {!isSending && !isFailed && !isDeletedForEveryone && message._id && !String(message._id).startsWith('client-') && (
-                                    <div className={styles.bubbleReaction} data-reaction-control>
+                                <div className={styles.messageActions} data-message-actions>
+                                    <div className={styles.reactionPickerWrap}>
                                         <button
-                                            className={styles.bubbleReactionTrigger}
+                                            className={styles.actionBtn}
                                             onMouseDown={(event) => event.preventDefault()}
                                             type="button"
                                             aria-label="React to message"
@@ -733,10 +734,6 @@ export default function MessageList({
                                             ))}
                                         </div>
                                     </div>
-                                )}
-
-                                {!isSending && !isFailed && !isDeletedForEveryone && message._id && !String(message._id).startsWith('client-') && (
-                                <div className={styles.messageActions} data-message-actions>
                                     <button
                                         className={styles.actionBtn}
                                         onMouseDown={(event) => event.preventDefault()}

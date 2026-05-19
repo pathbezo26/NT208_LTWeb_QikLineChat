@@ -360,11 +360,10 @@ export default function AppNavRail({
                 >
                     <button
                         type="button"
-                        className={`${styles.navButton} ${activeSection === 'settings' ? styles.active : ''}`}
-                        onClick={() => onSectionChange('settings')}
+                        className={`${styles.navButton} ${isSettingOpen ? styles.active : ''}`}
                         title="Settings"
                         aria-label="Settings"
-                        aria-pressed={activeSection === 'settings'}
+                        aria-expanded={isSettingOpen}
                     >
                         <span className={styles.icon}>
                             <SettingOutlined />

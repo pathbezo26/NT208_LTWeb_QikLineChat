@@ -631,13 +631,13 @@
 
 .own .messageActions {
     right: 100%;
-    padding-right: 8px;
+    padding-right: 6px;
     justify-content: flex-end;
 }
 
 .other .messageActions {
     left: 100%;
-    padding-left: 8px;
+    padding-left: 6px;
     justify-content: flex-start;
 }
 
@@ -680,85 +680,24 @@
     transform: translateY(-1px);
 }
 
-.bubbleReaction {
-    position: absolute;
-    z-index: 8;
-    bottom: -12px;
+.reactionPickerWrap {
+    position: relative;
     display: inline-flex;
-    align-items: center;
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.92);
-    transition: opacity 0.14s, transform 0.14s;
 }
 
-.bubbleReaction::before {
+.reactionPickerWrap::before {
     content: "";
     position: absolute;
-    top: -58px;
-    bottom: -8px;
-    width: 250px;
-    pointer-events: auto;
-}
-
-.own .bubbleReaction {
-    left: -13px;
-}
-
-.own .bubbleReaction::before {
-    right: -6px;
-}
-
-.other .bubbleReaction {
-    right: -13px;
-}
-
-.other .bubbleReaction::before {
-    left: -6px;
-}
-
-.messageStack:hover .bubbleReaction,
-.bubbleReaction:hover,
-.bubbleReaction:focus-within {
-    opacity: 1;
-    pointer-events: auto;
-    transform: scale(1);
-}
-
-.messageStack:has(.bubbleReaction:hover) .messageActions,
-.messageStack:has(.bubbleReaction:focus-within) .messageActions {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-50%) scale(0.92);
-}
-
-.bubbleReactionTrigger {
-    position: relative;
-    z-index: 2;
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgba(148, 163, 184, 0.32);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.96);
-    color: #2a5fa6;
-    font-size: 14px;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
-    backdrop-filter: blur(10px);
-    transition: background 0.14s, border-color 0.14s, transform 0.14s;
-}
-
-.bubbleReactionTrigger:hover {
-    border-color: #9fc8fb;
-    background: #edf6ff;
-    transform: translateY(-1px);
+    left: -8px;
+    right: -8px;
+    bottom: 100%;
+    height: 12px;
 }
 
 .reactionPicker {
     position: absolute;
     z-index: 20;
-    bottom: calc(100% + 4px);
+    bottom: calc(100% + 2px);
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -775,14 +714,14 @@
 }
 
 .own .reactionPicker {
-    right: calc(100% + 2px);
+    right: 0;
 }
 
 .other .reactionPicker {
-    left: calc(100% + 2px);
+    left: 0;
 }
 
-.bubbleReaction:hover .reactionPicker,
+.reactionPickerWrap:hover .reactionPicker,
 .reactionPicker:focus-within {
     opacity: 1;
     pointer-events: auto;
@@ -790,14 +729,14 @@
 }
 
 .reactionPicker button {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
     display: grid;
     place-items: center;
     border: none;
     border-radius: 50%;
     background: transparent;
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1;
     transition: background 0.14s, transform 0.14s;
 }
@@ -809,11 +748,13 @@
 }
 
 .reactionSummary {
+    position: relative;
+    z-index: 3;
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     max-width: 100%;
-    margin-top: 4px;
+    margin-top: -2px;
 }
 
 .own .reactionSummary {
@@ -834,7 +775,7 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.94);
     color: #334155;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     box-shadow: 0 5px 12px rgba(42, 95, 166, 0.08);
 }
@@ -1338,18 +1279,6 @@
     border-color: #263447;
     background: rgba(16, 24, 38, 0.98);
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
-}
-
-:global([data-theme='dark']) .bubbleReactionTrigger {
-    border-color: rgba(148, 163, 184, 0.18);
-    background: rgba(16, 24, 38, 0.96);
-    color: #8aa4c3;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
-}
-
-:global([data-theme='dark']) .bubbleReactionTrigger:hover {
-    border-color: #32445d;
-    background: #172233;
 }
 
 :global([data-theme='dark']) .reactionPicker button:hover,

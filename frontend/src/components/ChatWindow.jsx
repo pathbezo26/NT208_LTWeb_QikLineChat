@@ -1055,6 +1055,41 @@ export default function ChatWindow({
     const handleToggleReaction = useCallback(async (targetMessage, emoji) => {
         if (!targetMessage?._id || String(targetMessage._id).startsWith('client-') || !emoji) return;
 
+        const applyOptimisticReaction = (reactions = []) => {
+            const safeReactions = Array.isArray(reactions) ? reactions : [];
+            const currentUserId = user?._id;
+            const hasSameReaction = safeReactions.some((reaction) => {
+                return reaction.emoji === emoji && getUserId(reaction.user)?.toString() === currentUserId?.toString();
+            });
+
+            if (hasSameReaction) {
+                return safeReactions.filter((reaction) => {
+                    return !(reaction.emoji === emoji && getUserId(reaction.user)?.toString() === currentUserId?.toString());
+                });
+            }
+
+            return [
+                ...safeReactions.filter((reaction) => getUserId(reaction.user)?.toString() !== currentUserId?.toString()),
+                {
+                    emoji,
+                    user: currentUserId,
+                    createdAt: new Date().toISOString(),
+                },
+            ];
+        };
+        const previousMessages = messages;
+
+        setMessages((prevMessages) => {
+            return prevMessages.map((message) => {
+                if (message._id !== targetMessage._id) return message;
+
+                return {
+                    ...message,
+                    reactions: applyOptimisticReaction(message.reactions),
+                };
+            });
+        });
+
         try {
             const result = await toggleMessageReactionAPI(targetMessage._id, emoji);
             setMessages((prevMessages) => {
@@ -1068,9 +1103,10 @@ export default function ChatWindow({
                 });
             });
         } catch (error) {
+            setMessages(previousMessages);
             messageApi.error(error.response?.data?.message || 'Could not update reaction.');
         }
-    }, [messageApi]);
+    }, [messageApi, messages, user?._id]);
 
     const handleSelectPinnedMessage = useCallback((message) => {
         if (!message?._id) return;
