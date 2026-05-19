@@ -1,6 +1,6 @@
 .inputWrap {
-    border-top: 1px solid #e4eaf2;
-    background: #ffffff;
+    border-top: 1px solid #d8e6f7;
+    background: #fbfdff;
 }
 
 .inputBar {
@@ -129,8 +129,8 @@
     height: 42px;
     min-width: 42px;
     border-radius: 50%;
-    background: #f1f5f9;
-    color: #334155;
+    background: #edf6ff;
+    color: #2a5fa6;
     font-size: 17px;
     transition: background 0.2s, color 0.2s, transform 0.15s;
 }
@@ -202,7 +202,7 @@
     flex: 1;
     resize: none;
     min-height: 42px;
-    border: 1px solid #dbe5ef;
+    border: 1px solid #cfe0f3;
     border-radius: 18px;
     padding: 10px 15px;
     font-size: 15px;
@@ -211,14 +211,14 @@
     max-height: 120px;
     overflow-y: auto;
     transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-    background: #f8fafc;
+    background: #f4f9ff;
     color: #172033;
 }
 
 .textarea:focus {
-    border-color: #b9d7ff;
+    border-color: #9fc8fb;
     background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.08);
+    box-shadow: 0 0 0 3px rgba(42, 95, 166, 0.11);
 }
 
 .sendBtn {

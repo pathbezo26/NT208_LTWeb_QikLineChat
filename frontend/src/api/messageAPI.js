@@ -31,6 +31,11 @@ export const togglePinMessageAPI = async (messageId) => {
     return response.data;
 };
 
+export const toggleMessageReactionAPI = async (messageId, emoji) => {
+    const response = await axiosInstance.patch(`/messages/${messageId}/reactions`, { emoji });
+    return response.data;
+};
+
 export const getPinnedMessagesAPI = async (conversationId) => {
     const response = await axiosInstance.get(`/messages/${conversationId}/pinned`);
     return response.data;

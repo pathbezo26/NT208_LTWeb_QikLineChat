@@ -5,6 +5,7 @@ import {
     CopyOutlined,
     CrownOutlined,
     DeleteOutlined,
+    DownloadOutlined,
     EditOutlined,
     ExclamationCircleOutlined,
     FileTextOutlined,
@@ -22,6 +23,7 @@ import {
     updateGroupDetailsAPI,
     uploadGroupAvatarAPI,
 } from '../api/conversationAPI';
+import { normalizeDisplayFileName } from '../utils/fileNameEncoding';
 import UserAvatar from './UserAvatar';
 import styles from './styles/GroupDetailsDrawer.module.css';
 
@@ -130,6 +132,7 @@ export default function GroupDetailsDrawer({
     const [confirmDialog, setConfirmDialog] = useState(null);
     const [isConfirming, setIsConfirming] = useState(false);
     const [isMediaExpanded, setIsMediaExpanded] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
 
     const currentUserId = currentUser?._id;
     const ownerId = getUserId(conversation?.createdBy);
@@ -519,19 +522,27 @@ export default function GroupDetailsDrawer({
                     </div>
                     <div className={styles.photoGrid}>
                         {visibleMediaItems.map((item, index) => (
-                            <a
-                                className={styles.photoTile}
-                                href={item.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                key={`${item.url}-${index}`}
-                            >
-                                {isVideoAttachment(item) ? (
-                                    <video src={item.url} title={item.name || 'Shared video'} muted preload="metadata" />
-                                ) : (
-                                    <img src={item.url} alt={item.name || 'Shared photo'} />
-                                )}
-                            </a>
+                            isVideoAttachment(item) ? (
+                                <a
+                                    className={styles.photoTile}
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    key={`${item.url}-${index}`}
+                                >
+                                    <video src={item.url} title={normalizeDisplayFileName(item.name) || 'Shared video'} muted preload="metadata" />
+                                </a>
+                            ) : (
+                                <button
+                                    className={styles.photoTile}
+                                    onClick={() => setPreviewImage(item)}
+                                    type="button"
+                                    key={`${item.url}-${index}`}
+                                    aria-label={`Preview ${normalizeDisplayFileName(item.name) || 'shared photo'}`}
+                                >
+                                    <img src={item.url} alt={normalizeDisplayFileName(item.name) || 'Shared photo'} />
+                                </button>
+                            )
                         ))}
                     </div>
                     {mediaItems.length > MEDIA_PREVIEW_LIMIT && (
@@ -560,7 +571,7 @@ export default function GroupDetailsDrawer({
                             <a className={styles.fileRow} href={item.url} target="_blank" rel="noreferrer">
                                 <span className={styles.fileIcon}><FileTextOutlined /></span>
                                 <span className={styles.fileText}>
-                                    <span className={styles.fileName}>{item.name || 'Attachment'}</span>
+                                    <span className={styles.fileName}>{normalizeDisplayFileName(item.name) || 'Attachment'}</span>
                                     <span className={styles.fileMeta}>
                                         {formatFileSize(item.size) || item.mimeType || 'File'} · {item.senderName} · {formatShortDate(item.createdAt)}
                                     </span>
@@ -798,6 +809,32 @@ export default function GroupDetailsDrawer({
                         }))}
                     placeholder="Choose new owner"
                 />
+            </Modal>
+
+            <Modal
+                open={Boolean(previewImage)}
+                onCancel={() => setPreviewImage(null)}
+                footer={null}
+                centered
+                width="min(960px, calc(100vw - 32px))"
+                className={styles.imagePreviewModal}
+            >
+                {previewImage && (
+                    <div className={styles.imagePreviewContent}>
+                        <div className={styles.imagePreviewStage}>
+                            <img src={previewImage.url} alt={normalizeDisplayFileName(previewImage.name) || 'Image preview'} />
+                        </div>
+                        <div className={styles.imagePreviewMeta}>
+                            <span>{normalizeDisplayFileName(previewImage.name) || 'Image attachment'}</span>
+                            {previewImage.url && (
+                                <a href={previewImage.url} target="_blank" rel="noreferrer">
+                                    <DownloadOutlined />
+                                    Open original
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                )}
             </Modal>
         </Drawer>
     );

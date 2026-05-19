@@ -5,7 +5,9 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    background: #f3f6fa;
+    background:
+        radial-gradient(circle at top left, rgba(207, 228, 255, 0.42), transparent 260px),
+        #edf5ff;
 }
 
 .historyLoader {
@@ -73,7 +75,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f3f6fa;
+    background: #edf5ff;
     color: #64748b;
     font-size: 14px;
     padding: 24px;
@@ -259,11 +261,11 @@
 }
 
 .other .bubble {
-    background: #f4f8fd;
+    background: #fbfdff;
     color: #172033;
     border-bottom-left-radius: 5px;
-    border: 1px solid #dce9f6;
-    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.07);
+    border: 1px solid #cfe0f3;
+    box-shadow: 0 6px 16px rgba(42, 95, 166, 0.08);
 }
 
 .senderName {
@@ -392,8 +394,17 @@
     overflow: hidden;
     width: 100%;
     height: 100%;
+    padding: 0;
+    border: none;
     border-radius: 0;
     background: rgba(15, 23, 42, 0.08);
+    cursor: zoom-in;
+    line-height: 0;
+}
+
+.imageAttachment:focus-visible {
+    outline: 2px solid rgba(24, 119, 242, 0.42);
+    outline-offset: -2px;
 }
 
 .imageAttachment img {
@@ -604,6 +615,7 @@
     pointer-events: none;
     transform: translateY(-50%) scale(0.96);
     transition: opacity 0.14s, transform 0.14s;
+    z-index: 4;
 }
 
 .statusIcon::before,
@@ -668,6 +680,182 @@
     transform: translateY(-1px);
 }
 
+.bubbleReaction {
+    position: absolute;
+    z-index: 8;
+    bottom: -12px;
+    display: inline-flex;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.92);
+    transition: opacity 0.14s, transform 0.14s;
+}
+
+.bubbleReaction::before {
+    content: "";
+    position: absolute;
+    top: -58px;
+    bottom: -8px;
+    width: 250px;
+    pointer-events: auto;
+}
+
+.own .bubbleReaction {
+    left: -13px;
+}
+
+.own .bubbleReaction::before {
+    right: -6px;
+}
+
+.other .bubbleReaction {
+    right: -13px;
+}
+
+.other .bubbleReaction::before {
+    left: -6px;
+}
+
+.messageStack:hover .bubbleReaction,
+.bubbleReaction:hover,
+.bubbleReaction:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
+
+.messageStack:has(.bubbleReaction:hover) .messageActions,
+.messageStack:has(.bubbleReaction:focus-within) .messageActions {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(0.92);
+}
+
+.bubbleReactionTrigger {
+    position: relative;
+    z-index: 2;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    color: #2a5fa6;
+    font-size: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(10px);
+    transition: background 0.14s, border-color 0.14s, transform 0.14s;
+}
+
+.bubbleReactionTrigger:hover {
+    border-color: #9fc8fb;
+    background: #edf6ff;
+    transform: translateY(-1px);
+}
+
+.reactionPicker {
+    position: absolute;
+    z-index: 20;
+    bottom: calc(100% + 4px);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px;
+    border: 1px solid #d8e6f7;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 12px 30px rgba(42, 95, 166, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px) scale(0.96);
+    transition: opacity 0.14s, transform 0.14s;
+    backdrop-filter: blur(10px);
+}
+
+.own .reactionPicker {
+    right: calc(100% + 2px);
+}
+
+.other .reactionPicker {
+    left: calc(100% + 2px);
+}
+
+.bubbleReaction:hover .reactionPicker,
+.reactionPicker:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.reactionPicker button {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 18px;
+    line-height: 1;
+    transition: background 0.14s, transform 0.14s;
+}
+
+.reactionPicker button:hover,
+.reactionPicker .reactionChoiceActive {
+    background: #edf6ff;
+    transform: translateY(-2px) scale(1.06);
+}
+
+.reactionSummary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 100%;
+    margin-top: 4px;
+}
+
+.own .reactionSummary {
+    justify-content: flex-end;
+}
+
+.other .reactionSummary {
+    justify-content: flex-start;
+}
+
+.reactionSummary button {
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border: 1px solid #d8e6f7;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #334155;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 5px 12px rgba(42, 95, 166, 0.08);
+}
+
+.reactionSummary button:hover,
+.reactionSummary .reactionSummaryActive {
+    border-color: #9fc8fb;
+    background: #edf6ff;
+    color: #2a5fa6;
+}
+
+.reactionSummary span {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.reactionSummary strong {
+    font-size: 11px;
+    line-height: 1;
+}
+
 .quoteIcon {
     display: inline-flex;
     align-items: center;
@@ -702,6 +890,87 @@
     overflow: hidden;
     background: #ffffff;
     box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+}
+
+.imagePreviewModal :global(.ant-modal-content) {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 22px 64px rgba(15, 23, 42, 0.28);
+}
+
+.imagePreviewModal :global(.ant-modal-close) {
+    top: 12px;
+    right: 12px;
+    color: #334155;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 50%;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
+}
+
+.imagePreviewModal :global(.ant-modal-close:hover) {
+    color: #172033;
+    background: #ffffff;
+}
+
+.imagePreviewContent {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    max-height: min(86vh, 820px);
+}
+
+.imagePreviewStage {
+    display: grid;
+    place-items: center;
+    min-height: min(62vh, 620px);
+    padding: 24px 30px;
+    background: #f8fbff;
+}
+
+.imagePreviewStage img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: calc(min(86vh, 820px) - 54px);
+    object-fit: contain;
+}
+
+.imagePreviewMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 54px;
+    padding: 10px 14px;
+    border-top: 1px solid #e4eaf2;
+    color: #172033;
+    background: #ffffff;
+}
+
+.imagePreviewMeta span {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 750;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.imagePreviewMeta a {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    color: #1877f2;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.imagePreviewMeta a:hover {
+    color: #125fca;
 }
 
 .infoModalContent {
@@ -1029,6 +1298,77 @@
 :global([data-theme='dark']) .infoModal :global(.ant-modal-content) {
     background: #101826;
     border-color: #263244;
+}
+
+:global([data-theme='dark']) .imagePreviewModal :global(.ant-modal-content) {
+    background: #101826;
+    box-shadow: 0 22px 64px rgba(0, 0, 0, 0.42);
+}
+
+:global([data-theme='dark']) .imagePreviewModal :global(.ant-modal-close) {
+    color: #e5edf6;
+    background: rgba(16, 24, 38, 0.92);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+}
+
+:global([data-theme='dark']) .imagePreviewModal :global(.ant-modal-close:hover) {
+    color: #ffffff;
+    background: #172233;
+}
+
+:global([data-theme='dark']) .imagePreviewStage {
+    background: #05080f;
+}
+
+:global([data-theme='dark']) .imagePreviewMeta {
+    border-top-color: #263244;
+    background: #101826;
+    color: #e5edf6;
+}
+
+:global([data-theme='dark']) .imagePreviewMeta a {
+    color: #8ab4f8;
+}
+
+:global([data-theme='dark']) .imagePreviewMeta a:hover {
+    color: #dbeafe;
+}
+
+:global([data-theme='dark']) .reactionPicker {
+    border-color: #263447;
+    background: rgba(16, 24, 38, 0.98);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+}
+
+:global([data-theme='dark']) .bubbleReactionTrigger {
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(16, 24, 38, 0.96);
+    color: #8aa4c3;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+}
+
+:global([data-theme='dark']) .bubbleReactionTrigger:hover {
+    border-color: #32445d;
+    background: #172233;
+}
+
+:global([data-theme='dark']) .reactionPicker button:hover,
+:global([data-theme='dark']) .reactionPicker .reactionChoiceActive {
+    background: #172233;
+}
+
+:global([data-theme='dark']) .reactionSummary button {
+    border-color: #263447;
+    background: #111b29;
+    color: #cbd5e1;
+    box-shadow: none;
+}
+
+:global([data-theme='dark']) .reactionSummary button:hover,
+:global([data-theme='dark']) .reactionSummary .reactionSummaryActive {
+    border-color: #32445d;
+    background: #1a2a3d;
+    color: #8aa4c3;
 }
 
 :global([data-theme='dark']) .infoModalIcon {

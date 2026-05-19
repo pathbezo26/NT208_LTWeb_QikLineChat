@@ -15,6 +15,7 @@ import {
     getPinnedMessagesAPI,
     getSharedResourcesAPI,
     sendMessageAPI,
+    toggleMessageReactionAPI,
     togglePinMessageAPI,
     uploadMessageAttachmentsAPI,
 } from '../api/messageAPI';
@@ -624,16 +625,33 @@ export default function ChatWindow({
             });
         };
 
+        const handleMessageReactionUpdated = ({ conversationId, messageId, reactions }) => {
+            if (conversationId?.toString() !== activeConversationIdRef.current || !messageId) return;
+
+            setMessages((prevMessages) => {
+                return prevMessages.map((message) => {
+                    if (getMessageKey(message)?.toString() !== messageId?.toString()) return message;
+
+                    return {
+                        ...message,
+                        reactions: Array.isArray(reactions) ? reactions : [],
+                    };
+                });
+            });
+        };
+
         socket.on('newMessage', handleNewMessage);
         socket.on('messageStatusUpdated', handleMessageStatusUpdated);
         socket.on('messageDeleted', handleMessageDeleted);
         socket.on('messagePinUpdated', handleMessagePinUpdated);
+        socket.on('messageReactionUpdated', handleMessageReactionUpdated);
 
         return () => {
             socket.off('newMessage', handleNewMessage);
             socket.off('messageStatusUpdated', handleMessageStatusUpdated);
             socket.off('messageDeleted', handleMessageDeleted);
             socket.off('messagePinUpdated', handleMessagePinUpdated);
+            socket.off('messageReactionUpdated', handleMessageReactionUpdated);
         };
     }, [markActiveConversationRead, socket, user?._id]);
 
@@ -1034,6 +1052,26 @@ export default function ChatWindow({
         }
     }, [messageApi]);
 
+    const handleToggleReaction = useCallback(async (targetMessage, emoji) => {
+        if (!targetMessage?._id || String(targetMessage._id).startsWith('client-') || !emoji) return;
+
+        try {
+            const result = await toggleMessageReactionAPI(targetMessage._id, emoji);
+            setMessages((prevMessages) => {
+                return prevMessages.map((message) => {
+                    if (message._id !== targetMessage._id) return message;
+
+                    return {
+                        ...message,
+                        reactions: Array.isArray(result.reactions) ? result.reactions : [],
+                    };
+                });
+            });
+        } catch (error) {
+            messageApi.error(error.response?.data?.message || 'Could not update reaction.');
+        }
+    }, [messageApi]);
+
     const handleSelectPinnedMessage = useCallback((message) => {
         if (!message?._id) return;
 
@@ -1276,6 +1314,7 @@ export default function ChatWindow({
                 onForwardMessage={setForwardMessage}
                 onDeleteMessage={handleDeleteMessage}
                 onTogglePinMessage={handleTogglePinMessage}
+                onToggleReaction={handleToggleReaction}
             />
 
             {shouldShowPrivateTyping && (

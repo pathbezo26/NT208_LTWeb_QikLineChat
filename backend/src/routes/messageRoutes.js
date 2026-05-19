@@ -9,6 +9,7 @@ const {
     sendMessage,
     deleteMessage,
     togglePinMessage,
+    toggleReaction,
     uploadAttachments,
     MAX_ATTACHMENTS_PER_MESSAGE,
 } = require('../controllers/messageController');
@@ -48,6 +49,7 @@ router.get('/:conversationId', protect, getMessages);
 router.post('/:conversationId/attachments', protect, uploadLimiter, handleAttachmentUpload, uploadAttachments);
 router.post('/', protect, sendMessageLimiter, sendMessage);
 router.patch('/:messageId/pin', protect, togglePinMessage);
+router.patch('/:messageId/reactions', protect, toggleReaction);
 router.delete('/:messageId', protect, deleteMessage);
 
 module.exports = router;

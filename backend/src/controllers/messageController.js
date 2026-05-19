@@ -14,6 +14,7 @@ const DEFAULT_SEARCH_LIMIT = 20;
 const MAX_SEARCH_LIMIT = 30;
 const SEARCH_SCAN_BATCH_SIZE = 200;
 const MAX_SHARED_RESOURCE_MESSAGES = 1000;
+const ALLOWED_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 const LINK_PATTERN = /https?:\/\/[^\s]+/g;
 const LINK_QUERY_PATTERN = /https?:\/\/[^\s]+/;
 
@@ -119,6 +120,19 @@ const uploadMessageAttachmentToCloudinary = (fileBuffer, conversationId, fileNam
     });
 };
 
+const looksLikeMojibakeFileName = (fileName = '') => {
+    return /(?:Ã.|Â.|Ä.|Å.|Æ.|Ð.|á[º»].)/.test(fileName);
+};
+
+const normalizeUploadedFileName = (fileName = 'attachment') => {
+    if (!looksLikeMojibakeFileName(fileName)) return fileName;
+
+    const decodedName = Buffer.from(fileName, 'latin1').toString('utf8');
+    if (!decodedName || decodedName.includes('\uFFFD')) return fileName;
+
+    return decodedName;
+};
+
 const sanitizeFileName = (fileName = 'attachment') => {
     return fileName
         .normalize('NFD')
@@ -133,7 +147,8 @@ const uploadMessageFileToSupabase = async (file, conversationId) => {
         throw new Error('Missing SUPABASE_FILE_BUCKET');
     }
 
-    const safeName = sanitizeFileName(file.originalname);
+    const originalName = normalizeUploadedFileName(file.originalname);
+    const safeName = sanitizeFileName(originalName);
     const filePath = `${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
 
     const { data, error } = await supabase.storage
@@ -155,7 +170,7 @@ const uploadMessageFileToSupabase = async (file, conversationId) => {
         type: 'file',
         url: publicUrlData.publicUrl,
         publicId: data.path,
-        name: file.originalname,
+        name: originalName,
         size: file.size,
         mimeType: file.mimetype,
         width: null,
@@ -488,6 +503,7 @@ const uploadAttachments = async (req, res) => {
 
         const attachments = await Promise.all(files.map(async (file) => {
             const isImage = file.mimetype.startsWith('image/');
+            const originalName = normalizeUploadedFileName(file.originalname);
 
             if (!isImage) {
                 return uploadMessageFileToSupabase(file, conversationId);
@@ -496,14 +512,14 @@ const uploadAttachments = async (req, res) => {
             const uploaded = await uploadMessageAttachmentToCloudinary(
                 file.buffer,
                 conversationId,
-                file.originalname
+                originalName
             );
 
             return {
                 type: isImage ? 'image' : 'file',
                 url: uploaded.secure_url,
                 publicId: uploaded.public_id,
-                name: file.originalname,
+                name: originalName,
                 size: file.size,
                 mimeType: file.mimetype,
                 width: uploaded.width || null,
@@ -706,6 +722,67 @@ const togglePinMessage = async (req, res) => {
     }
 };
 
+const toggleReaction = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user._id;
+        const emoji = req.body.emoji?.trim();
+
+        if (!ALLOWED_REACTIONS.includes(emoji)) {
+            return res.status(400).json({ message: 'Unsupported reaction' });
+        }
+
+        const message = await Message.findById(messageId);
+        if (!message) {
+            return res.status(404).json({ message: 'Message not found' });
+        }
+
+        if (message.type === 'system' || message.deletedForEveryone) {
+            return res.status(400).json({ message: 'This message cannot be reacted to' });
+        }
+
+        const conversation = await Conversation.findById(message.conversationId).select('members');
+        if (!conversation || !isConversationMember(conversation, userId)) {
+            return res.status(403).json({ message: 'You do not have permission to react to this message' });
+        }
+
+        const userIdString = userId.toString();
+        const currentReactions = Array.isArray(message.reactions) ? message.reactions : [];
+        const existingReaction = currentReactions.find((reaction) => {
+            return reaction.user?.toString() === userIdString && reaction.emoji === emoji;
+        });
+
+        if (existingReaction) {
+            message.reactions = currentReactions.filter((reaction) => {
+                return !(reaction.user?.toString() === userIdString && reaction.emoji === emoji);
+            });
+        } else {
+            message.reactions = [
+                ...currentReactions.filter((reaction) => reaction.user?.toString() !== userIdString),
+                { emoji, user: userId, createdAt: new Date() },
+            ];
+        }
+
+        await message.save({ validateBeforeSave: false });
+
+        const payload = {
+            messageId: message._id,
+            conversationId: message.conversationId,
+            reactions: message.reactions,
+        };
+
+        const io = req.app.get('io');
+        conversation.members.forEach((memberId) => {
+            io?.to(`user:${memberId.toString()}`).emit('messageReactionUpdated', payload);
+        });
+
+        res.status(200).json(payload);
+    } catch (error) {
+        console.error('toggleReaction error:', error);
+        res.status(500).json({ message: 'Server error while updating reaction' });
+    }
+};
+
 module.exports = {
     getMessages,
     getPinnedMessages,
@@ -714,6 +791,7 @@ module.exports = {
     sendMessage,
     deleteMessage,
     togglePinMessage,
+    toggleReaction,
     uploadAttachments,
     MAX_ATTACHMENTS_PER_MESSAGE,
 };

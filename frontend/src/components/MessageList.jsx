@@ -3,14 +3,17 @@ import { Badge, Dropdown, Modal } from 'antd';
 import {
     CheckCircleOutlined,
     DeleteOutlined,
+    DownloadOutlined,
     EllipsisOutlined,
     FileOutlined,
     InfoCircleOutlined,
     PushpinOutlined,
     ShareAltOutlined,
+    SmileOutlined,
     UpOutlined,
 } from '@ant-design/icons';
 import { formatMessageTime, formatFullTime } from '../utils/formatTime';
+import { normalizeDisplayFileName } from '../utils/fileNameEncoding';
 import UserAvatar from './UserAvatar';
 import styles from './styles/MessageList.module.css';
 
@@ -36,6 +39,7 @@ const SCROLL_BOTTOM_THRESHOLD = 120;
 const MESSAGE_GROUP_TIME_GAP_MS = 5 * 60 * 1000;
 const MESSAGE_TIME_DIVIDER_GAP_MS = 30 * 60 * 1000;
 const LARGE_GROUP_MEMBER_COUNT = 20;
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 const normalizeSearchText = (value = '') => {
     return value
@@ -184,6 +188,7 @@ export default function MessageList({
     onForwardMessage,
     onDeleteMessage,
     onTogglePinMessage,
+    onToggleReaction,
 }) {
     const listRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -197,6 +202,7 @@ export default function MessageList({
     const unreadCount = initialUnreadCount || 0;
     const [remainingUnreadCount, setRemainingUnreadCount] = useState(unreadCount);
     const [infoMessage, setInfoMessage] = useState(null);
+    const [previewImage, setPreviewImage] = useState(null);
 
     const isNearBottom = useCallback(() => {
         const list = listRef.current;
@@ -444,6 +450,23 @@ export default function MessageList({
         return reference?.sender?.username || 'User';
     };
 
+    const getReactionGroups = (reactions = []) => {
+        if (!Array.isArray(reactions)) return [];
+
+        return REACTION_EMOJIS
+            .map((emoji) => {
+                const items = reactions.filter((reaction) => reaction.emoji === emoji);
+                return items.length > 0 ? { emoji, items } : null;
+            })
+            .filter(Boolean);
+    };
+
+    const hasMyReaction = (reactions = [], emoji) => {
+        return reactions.some((reaction) => {
+            return reaction.emoji === emoji && getUserId(reaction.user)?.toString() === currentUserId?.toString();
+        });
+    };
+
     const isLargeGroup = Array.isArray(conversationMembers) && conversationMembers.length >= LARGE_GROUP_MEMBER_COUNT;
     const isGroupConversation = conversationType === 'group';
     const lastOwnMessageIndex = messages.findLastIndex((message) => {
@@ -517,6 +540,7 @@ export default function MessageList({
                     && !hasTextContent
                     && !hasReply
                     && !isDeletedForEveryone;
+                const reactionGroups = getReactionGroups(message.reactions);
                 const messageActionItems = [
                     {
                         key: 'info',
@@ -630,15 +654,15 @@ export default function MessageList({
                                         className={`${styles.attachments} ${styles.imageGrid} ${imageAttachments.length === 1 ? styles.imageGridSingle : ''} ${imageAttachments.length > 1 ? styles.imageGridMulti : ''}`}
                                     >
                                         {imageAttachments.map((attachment, attachmentIndex) => (
-                                                <a
+                                                <button
                                                     className={styles.imageAttachment}
-                                                    href={attachment.url || undefined}
-                                                    target="_blank"
-                                                    rel="noreferrer"
+                                                    onClick={() => setPreviewImage(attachment)}
+                                                    type="button"
                                                     key={`${attachment.url}-${attachmentIndex}`}
+                                                    aria-label={`Preview ${normalizeDisplayFileName(attachment.name) || 'image attachment'}`}
                                                 >
-                                                    <img src={attachment.url} alt={attachment.name || 'Image attachment'} />
-                                                </a>
+                                                    <img src={attachment.url} alt={normalizeDisplayFileName(attachment.name) || 'Image attachment'} />
+                                                </button>
                                         ))}
                                     </div>
                                 )}
@@ -657,7 +681,7 @@ export default function MessageList({
                                                         <FileOutlined />
                                                     </span>
                                                     <span className={styles.fileInfo}>
-                                                        <span className={styles.fileName}>{attachment.name || 'Attachment'}</span>
+                                                        <span className={styles.fileName}>{normalizeDisplayFileName(attachment.name) || 'Attachment'}</span>
                                                         <span className={styles.fileMeta}>
                                                             {attachment.mimeType || 'File'}{attachment.size ? ` - ${formatFileSize(attachment.size)}` : ''}
                                                         </span>
@@ -685,7 +709,34 @@ export default function MessageList({
                                 </div>
 
                                 {!isSending && !isFailed && !isDeletedForEveryone && message._id && !String(message._id).startsWith('client-') && (
-                                <div className={styles.messageActions}>
+                                    <div className={styles.bubbleReaction} data-reaction-control>
+                                        <button
+                                            className={styles.bubbleReactionTrigger}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            type="button"
+                                            aria-label="React to message"
+                                        >
+                                            <SmileOutlined />
+                                        </button>
+                                        <div className={styles.reactionPicker} aria-label="Reaction choices">
+                                            {REACTION_EMOJIS.map((emoji) => (
+                                                <button
+                                                    key={emoji}
+                                                    className={hasMyReaction(message.reactions, emoji) ? styles.reactionChoiceActive : ''}
+                                                    type="button"
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => onToggleReaction?.(message, emoji)}
+                                                    aria-label={`React ${emoji}`}
+                                                >
+                                                    {emoji}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!isSending && !isFailed && !isDeletedForEveryone && message._id && !String(message._id).startsWith('client-') && (
+                                <div className={styles.messageActions} data-message-actions>
                                     <button
                                         className={styles.actionBtn}
                                         onMouseDown={(event) => event.preventDefault()}
@@ -723,6 +774,23 @@ export default function MessageList({
                                         </button>
                                     </Dropdown>
                                 </div>
+                                )}
+
+                                {reactionGroups.length > 0 && (
+                                    <div className={styles.reactionSummary}>
+                                        {reactionGroups.map((group) => (
+                                            <button
+                                                key={group.emoji}
+                                                className={hasMyReaction(message.reactions, group.emoji) ? styles.reactionSummaryActive : ''}
+                                                type="button"
+                                                onClick={() => onToggleReaction?.(message, group.emoji)}
+                                                aria-label={`${group.items.length} reaction ${group.emoji}`}
+                                            >
+                                                <span>{group.emoji}</span>
+                                                <strong>{group.items.length}</strong>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
 
                                 {shouldShowStatusMeta && (
@@ -808,6 +876,32 @@ export default function MessageList({
                                     {item.value && <strong>{item.value}</strong>}
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                open={Boolean(previewImage)}
+                onCancel={() => setPreviewImage(null)}
+                footer={null}
+                centered
+                width="min(960px, calc(100vw - 32px))"
+                className={styles.imagePreviewModal}
+            >
+                {previewImage && (
+                    <div className={styles.imagePreviewContent}>
+                        <div className={styles.imagePreviewStage}>
+                        <img src={previewImage.url} alt={normalizeDisplayFileName(previewImage.name) || 'Image preview'} />
+                        </div>
+                        <div className={styles.imagePreviewMeta}>
+                            <span>{normalizeDisplayFileName(previewImage.name) || 'Image attachment'}</span>
+                            {previewImage.url && (
+                                <a href={previewImage.url} target="_blank" rel="noreferrer">
+                                    <DownloadOutlined />
+                                    Open original
+                                </a>
+                            )}
                         </div>
                     </div>
                 )}

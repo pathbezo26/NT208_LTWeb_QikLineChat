@@ -3,8 +3,8 @@
   min-width: 308px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e4eaf2;
-  background: #f8fbff;
+  border-right: 1px solid #d8e6f7;
+  background: linear-gradient(180deg, #f4f9ff 0%, #edf5ff 100%);
   overflow: hidden;
 }
 
@@ -22,7 +22,7 @@
 
 .header {
   padding: 22px 16px 12px;
-  background: #ffffff;
+  background: #fbfdff;
 }
 
 .title {
@@ -42,8 +42,8 @@
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #ffffff;
-  border-bottom: 1px solid #e8eef5;
+  background: #fbfdff;
+  border-bottom: 1px solid #dbe8f7;
 }
 
 .contactActions {
@@ -264,8 +264,8 @@
 }
 
 .item:hover {
-  background: #ffffff;
-  border-color: #e3ebf5;
+  background: #fbfdff;
+  border-color: #cfe4ff;
 }
 
 .item.active {
@@ -338,8 +338,8 @@
 }
 
 .contactRow:hover {
-  border-color: #e3ebf5;
-  background: #ffffff;
+  border-color: #cfe4ff;
+  background: #fbfdff;
 }
 
 .contactInfo {
