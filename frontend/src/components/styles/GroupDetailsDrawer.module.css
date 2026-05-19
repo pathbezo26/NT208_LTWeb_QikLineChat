@@ -386,7 +386,7 @@
 .imagePreviewModal :global(.ant-modal-content) {
     padding: 0;
     overflow: hidden;
-    border-radius: 14px;
+    border-radius: 0;
     background: #ffffff;
     box-shadow: 0 22px 64px rgba(15, 23, 42, 0.28);
 }
@@ -545,7 +545,7 @@
 .actionConfirmModal :global(.ant-modal-content) {
     padding: 0;
     border: 1px solid #e4eaf2;
-    border-radius: 14px;
+    border-radius: 0;
     overflow: hidden;
     box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
 }

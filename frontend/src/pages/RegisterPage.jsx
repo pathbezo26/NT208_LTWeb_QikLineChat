@@ -11,6 +11,7 @@ export default function RegisterPage() {
     // Đổi tên state cho rõ nghĩa
     const [formData, setFormData] = useState({
         username: '',
+        userId: '',
         email: '',
         password: '',
         confirmPassword: ''
@@ -34,6 +35,11 @@ export default function RegisterPage() {
             return;
         }
 
+        if (!/^[a-z0-9._]{3,30}$/.test(formData.userId.trim().toLowerCase())) {
+            setError('User ID must be 3 to 30 characters and can only contain letters, numbers, dots, and underscores.');
+            return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match!');
             return;
@@ -45,6 +51,7 @@ export default function RegisterPage() {
             // Gọi API: Đã tối ưu destructuring lấy thẳng user và token
             const registerData = {
                 username: formData.username,
+                userId: formData.userId,
                 email: formData.email,
                 password: formData.password
             };
@@ -101,6 +108,20 @@ export default function RegisterPage() {
                                     placeholder="Username"
                                     required
                                 />
+                            </div>
+
+                            <div className={styles.field}>
+                                <input
+                                    id="userId"
+                                    type="text"
+                                    name="userId"
+                                    value={formData.userId}
+                                    onChange={handleChange}
+                                    placeholder="User ID, e.g. tanphat.09"
+                                    autoCapitalize="none"
+                                    required
+                                />
+                                <small className={styles.fieldHint}>People can find you with @{formData.userId.trim().toLowerCase() || 'userid'}.</small>
                             </div>
 
                             <div className={styles.field}>

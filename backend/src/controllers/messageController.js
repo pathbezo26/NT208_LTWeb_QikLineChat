@@ -5,7 +5,7 @@ const cloudinary = require('../config/cloudinary');
 const supabase = require('../config/supabase');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
-const SENDER_PUBLIC_FIELDS = 'username avatar';
+const SENDER_PUBLIC_FIELDS = 'username userId avatar';
 const DEFAULT_MESSAGE_LIMIT = 30;
 const MAX_MESSAGE_LIMIT = 50;
 const MAX_MESSAGE_LENGTH = 5000;

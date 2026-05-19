@@ -350,6 +350,7 @@
 }
 
 .contactName,
+.contactHandle,
 .contactMeta {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -365,6 +366,12 @@
 .contactMeta {
   color: #64748b;
   font-size: 13px;
+}
+
+.contactHandle {
+  color: #1877f2;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .inlineActions {
@@ -544,19 +551,20 @@
   right: 0;
   z-index: 100;
   width: 220px;
-  padding: 8px;
-  border: 1px solid #e5edf6;
-  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  border-radius: 0;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
 }
 
 .deleteBtn {
   width: 100%;
-  min-height: 38px;
-  padding: 0 10px;
+  min-height: 42px;
+  padding: 0 14px;
   border: none;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: #dc2626;
   cursor: pointer;
@@ -567,11 +575,13 @@
 }
 
 .deleteBtn:hover {
-  background: #fef2f2;
+  background: #f1f5f9;
 }
 
 .confirmText {
-  margin: 2px 4px 10px;
+  margin: 0;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #e5edf6;
   color: #334155;
   font-size: 13px;
   font-weight: 400;
@@ -582,12 +592,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  padding: 10px;
 }
 
 .cancelDeleteBtn,
 .confirmDeleteBtn {
   min-height: 34px;
-  border-radius: 7px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
   font-weight: 400;
@@ -654,6 +665,7 @@
 :global([data-theme='dark']) .loadMoreState,
 :global([data-theme='dark']) .lastMessage,
 :global([data-theme='dark']) .convTime,
+:global([data-theme='dark']) .contactHandle,
 :global([data-theme='dark']) .contactMeta,
 :global([data-theme='dark']) .contactSection h3 {
   color: #94a3b8;
@@ -753,12 +765,13 @@
 }
 
 :global([data-theme='dark']) .dropdownMenu {
-  border-color: #263447;
-  background: #101824;
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+  border-color: #141922;
+  background: #1f2632;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
 }
 
 :global([data-theme='dark']) .confirmText {
+  border-bottom-color: #3a4657;
   color: #cbd5e1;
 }
 

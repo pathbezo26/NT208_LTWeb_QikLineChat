@@ -112,20 +112,191 @@
   background: #2a5fa6;
 }
 
-.profileMenu {
-  width: 236px;
+.profileQuickMenu {
+  width: 264px;
+  display: grid;
+  padding: 0;
+  background: #ffffff;
+}
+
+.profileMenuHeader {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #dbe4ee;
+}
+
+.profileMenuAvatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.profileMenuIdentity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profileMenuIdentity strong,
+.profileMenuIdentity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileMenuIdentity strong {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.profileMenuIdentity span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .settingMenu {
-  width: 236px;
+  width: 264px;
+  display: grid;
+  padding: 0;
+  background: #ffffff;
 }
 
-.profileName {
-  margin-bottom: 8px;
-  padding: 2px 8px 10px;
-  border-bottom: 1px solid #edf2f7;
+.quickMenuButton {
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  display: inline-flex;
+  gap: 13px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: #172033;
+  cursor: pointer;
+  font: inherit;
   font-size: 15px;
+  font-weight: 750;
+  text-align: left;
+}
+
+.quickMenuButton svg {
+  width: 17px;
+  height: 17px;
+}
+
+.quickMenuButton:hover {
+  background: #f1f5f9;
+  color: #1877f2;
+}
+
+.quickMenuDanger {
+  color: #dc2626;
+}
+
+.quickMenuDanger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.profileModal :global(.ant-modal-content) {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e4eaf2;
+  border-radius: 0;
+}
+
+.profileModal :global(.ant-modal-header) {
+  margin: 0;
+  padding: 16px 18px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.profileModal :global(.ant-modal-title) {
+  color: #172033;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.profilePanel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.profileHero {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.profileAvatarButton {
+  width: 66px;
+  height: 66px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.profileAvatarButton:hover .profileHeroAvatar {
+  border-color: #1877f2;
+  box-shadow: 0 0 0 4px rgba(24, 119, 242, 0.12);
+}
+
+.profileHeroAvatar {
+  width: 66px;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #dbeafe;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf6ff 100%);
+  color: #1877f2;
+  font-size: 26px;
+  font-weight: 850;
+  object-fit: cover;
+}
+
+.profileHeroText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profileHeroText strong,
+.profileHeroText span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileHeroText strong {
+  color: #172033;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.profileHeroText span {
+  color: #1877f2;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -133,33 +304,210 @@
   margin-bottom: 8px;
 }
 
-.menuUpload {
-  display: block;
-  width: 100%;
-}
-
-.menuUpload :global(.ant-upload) {
-  display: block;
-  width: 100%;
-}
-
-.menuButton {
-  justify-content: flex-start;
-  text-align: left;
-  min-height: 36px;
-  border-radius: 8px;
-}
-
-.usernameForm {
+.avatarPreviewPanel {
   display: grid;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dbe5ef;
+  border-radius: 14px;
+  background: #f8fbff;
 }
 
-.usernameInput {
+.avatarPreviewImageWrap {
+  width: 208px;
+  height: 208px;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #edf6ff;
+  box-shadow:
+    0 0 0 1px rgba(24, 119, 242, 0.2),
+    0 16px 36px rgba(15, 23, 42, 0.16);
+}
+
+.avatarPreviewImage {
   width: 100%;
-  height: 34px;
-  padding: 0 10px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  color: #1877f2;
+  font-size: 62px;
+  font-weight: 850;
+}
+
+.avatarPreviewActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.avatarPreviewActions :global(.ant-upload) {
+  width: 100%;
+}
+
+.avatarPreviewActions :global(.ant-btn) {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.avatarCropPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.avatarCropFrame {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  justify-self: center;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, #eef5ff 25%, transparent 25%) -8px 0 / 16px 16px,
+    linear-gradient(225deg, #eef5ff 25%, transparent 25%) -8px 0 / 16px 16px,
+    linear-gradient(315deg, #eef5ff 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(45deg, #eef5ff 25%, #ffffff 25%) 0 0 / 16px 16px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.avatarCropFrame:active {
+  cursor: grabbing;
+}
+
+.avatarCropImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+.avatarCropShade {
+  display: none;
+}
+
+.avatarCropCircle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 208px;
+  height: 208px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 999px rgba(15, 23, 42, 0.52),
+    0 0 0 1px rgba(24, 119, 242, 0.4),
+    0 12px 32px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.avatarCropCircle::before,
+.avatarCropCircle::after,
+.avatarCropCircle span::before,
+.avatarCropCircle span::after {
+  position: absolute;
+  content: '';
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.avatarCropCircle::before,
+.avatarCropCircle::after {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.avatarCropCircle::before {
+  left: 33.333%;
+}
+
+.avatarCropCircle::after {
+  left: 66.666%;
+}
+
+.avatarCropCircle span::before,
+.avatarCropCircle span::after {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.avatarCropCircle span::before {
+  top: 33.333%;
+}
+
+.avatarCropCircle span::after {
+  top: 66.666%;
+}
+
+.avatarCropControls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatarCropControls > span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.avatarCropControls :global(.ant-slider) {
+  margin: 6px 0;
+}
+
+.avatarCropActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.profileFormGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.profileInputGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.profileInputGroup > span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.profileInputGroup small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.profileInputRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.profileInputRow input {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
   border: 1px solid #dbe5ef;
   border-radius: 9px;
   color: #172033;
@@ -167,14 +515,8 @@
   outline: none;
 }
 
-.usernameInput:focus {
+.profileInputRow input:focus {
   border-color: #1877f2;
-}
-
-.usernameActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .navPopover {
@@ -182,10 +524,12 @@
 }
 
 .navPopover :global(.ant-popover-inner) {
-  padding: 10px;
-  border: 1px solid #e4eaf2;
-  border-radius: 14px;
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
 }
 
 .navPopover :global(.ant-popover-inner-content) {
@@ -197,8 +541,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 4px 8px 12px;
-  margin-bottom: 8px;
+  min-height: 48px;
+  padding: 10px 15px;
+  margin-bottom: 0;
   border-bottom: 1px solid #edf2f7;
 }
 
@@ -216,6 +561,15 @@
 .settingDesc {
   color: #8391a5;
   font-size: 12px;
+}
+
+.menuButton {
+  justify-content: flex-start;
+  min-height: 42px;
+  padding: 10px 15px;
+  border-radius: 0;
+  font-size: 15px;
+  font-weight: 750;
 }
 
 :global([data-theme='dark']) .rail {
@@ -261,31 +615,120 @@
   background: #8aa4c3;
 }
 
-:global([data-theme='dark']) .profileName,
+:global([data-theme='dark']) .quickMenuButton,
+:global([data-theme='dark']) .profileMenuIdentity strong,
 :global([data-theme='dark']) .settingTitle {
   color: #e5edf6;
 }
 
-:global([data-theme='dark']) .profileName,
+:global([data-theme='dark']) .profileQuickMenu,
+:global([data-theme='dark']) .settingMenu {
+  background: #1f2632;
+}
+
+:global([data-theme='dark']) .profileMenuHeader {
+  border-bottom-color: #3a4657;
+}
+
+:global([data-theme='dark']) .profileMenuAvatar {
+  background: #3b82f6;
+  color: #080d17;
+}
+
+:global([data-theme='dark']) .profileMenuIdentity span {
+  color: #e5edf6;
+}
+
 :global([data-theme='dark']) .settingRow {
-  border-bottom-color: #1a2431;
+  border-bottom-color: #3a4657;
+}
+
+:global([data-theme='dark']) .quickMenuButton:hover {
+  background: #26303d;
+  color: #ffffff;
+}
+
+:global([data-theme='dark']) .quickMenuDanger {
+  color: #fca5a5;
+}
+
+:global([data-theme='dark']) .quickMenuDanger:hover {
+  background: #26303d;
+  color: #fecaca;
+}
+
+:global([data-theme='dark']) .profileModal :global(.ant-modal-content),
+:global([data-theme='dark']) .profileModal :global(.ant-modal-header) {
+  border-color: #1a2431;
+  background: #070b13;
+}
+
+:global([data-theme='dark']) .profileModal :global(.ant-modal-title),
+:global([data-theme='dark']) .profileHeroText strong,
+:global([data-theme='dark']) .profileInputGroup > span {
+  color: #e5edf6;
+}
+
+:global([data-theme='dark']) .profileHeroAvatar {
+  border-color: #222b39;
+  background: #111a28;
+  color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .profileAvatarButton:hover .profileHeroAvatar {
+  border-color: #34465f;
+  box-shadow: 0 0 0 4px rgba(138, 164, 195, 0.1);
+}
+
+:global([data-theme='dark']) .profileHeroText span {
+  color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .avatarPreviewPanel {
+  border-color: #243041;
+  background: #0a101a;
+}
+
+:global([data-theme='dark']) .avatarPreviewImageWrap {
+  border-color: #111a28;
+  background: #101927;
+  box-shadow: 0 0 0 1px rgba(138, 164, 195, 0.18);
+}
+
+:global([data-theme='dark']) .avatarPreviewImage {
+  color: #8aa4c3;
+}
+
+:global([data-theme='dark']) .avatarCropFrame {
+  background:
+    linear-gradient(135deg, #101927 25%, transparent 25%) -8px 0 / 16px 16px,
+    linear-gradient(225deg, #101927 25%, transparent 25%) -8px 0 / 16px 16px,
+    linear-gradient(315deg, #101927 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(45deg, #101927 25%, #070b13 25%) 0 0 / 16px 16px;
+}
+
+:global([data-theme='dark']) .avatarCropControls > span {
+  color: #e5edf6;
 }
 
 :global([data-theme='dark']) .settingDesc {
   color: #94a3b8;
 }
 
-:global([data-theme='dark']) .usernameInput {
+:global([data-theme='dark']) .profileInputGroup small {
+  color: #94a3b8;
+}
+
+:global([data-theme='dark']) .profileInputRow input {
   border-color: #243041;
   background: #0a101a;
   color: #e5edf6;
 }
 
-:global([data-theme='dark']) .usernameInput:focus {
+:global([data-theme='dark']) .profileInputRow input:focus {
   border-color: #34465f;
 }
 
-:global([data-theme='dark']) .profileMenu,
 :global([data-theme='dark']) .settingMenu {
   color: #e5edf6;
 }
@@ -299,7 +742,7 @@
   color: #e5edf6;
 }
 
-:global([data-theme='dark']) .usernameInput::placeholder {
+:global([data-theme='dark']) .profileInputRow input::placeholder {
   color: #94a3b8;
 }
 
@@ -310,13 +753,15 @@
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-popover-inner) {
-  background: #070b13 !important;
+  border-color: #141922 !important;
+  border-radius: 0 !important;
+  background: #1f2632 !important;
   color: #e5edf6 !important;
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42) !important;
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-popover-arrow)::before {
-  background: #070b13 !important;
+  background: #1f2632 !important;
 }
 
 :global([data-theme='dark']) .navPopover :global(.ant-btn-text) {

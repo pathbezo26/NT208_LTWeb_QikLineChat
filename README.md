@@ -21,6 +21,19 @@ Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhậ
 
 ---
 
+## Tính năng nổi bật
+
+- **Nhắn tin realtime 1-1 và nhóm**: gửi/nhận tin bằng Socket.IO, cập nhật last message, unread count, trạng thái sent/delivered/read và typing indicator dạng 3 chấm.
+- **Danh bạ và tìm kiếm người dùng theo kiểu social**: đăng ký có `userId` duy nhất, tìm contact bằng tên hiển thị hoặc `@userId`; tab chat chỉ tìm trong các cuộc trò chuyện đã có để tránh nhắn nhầm người lạ.
+- **Hồ sơ cá nhân trực quan**: mở cửa sổ My profile từ avatar để đổi tên hiển thị, đổi User ID, upload hoặc xóa avatar; vẫn giữ menu nhanh My profile / Logout.
+- **Trải nghiệm media hoàn chỉnh**: gửi nhiều ảnh/file, xem ảnh lớn bằng modal/lightbox trong chat và drawer chi tiết, mở file gốc khi cần, xử lý tên file tiếng Việt tránh lỗi encoding.
+- **Tìm kiếm trong cuộc trò chuyện**: search nội dung tin nhắn trong private/group chat, highlight kết quả và nhảy tới đúng tin nhắn ổn định.
+- **Quyền riêng tư và an toàn**: block/report user, khi bị block input tự disable kèm thông báo rõ ràng, header hiển thị trạng thái block.
+- **Drawer chi tiết giàu ngữ cảnh**: xem thông tin private/group, thành viên, nhóm chung, ảnh/video, file và link đã chia sẻ ngay trong cuộc trò chuyện.
+- **Giao diện sáng/tối đồng bộ**: dark mode/light mode dùng cùng hệ màu với Ant Design, skeleton loading, bubble grouping, jump-to-unread và optimistic UI khi gửi tin.
+
+---
+
 ## Tính năng 
 
 - **Đăng ký / đăng nhập bằng JWT** — backend tạo token sau khi đăng nhập, frontend lưu phiên đăng nhập trong `AuthContext`, `axiosInstance` tự gắn `Authorization: Bearer <token>` khi gọi API.

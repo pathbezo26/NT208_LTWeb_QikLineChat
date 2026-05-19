@@ -11,6 +11,16 @@ const UserSchema = new mongoose.Schema(
             minlength: [3, 'Username must be at least 3 characters'],
             maxlength: [30, 'Username must be at most 30 characters'],
         },
+        userId: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true,
+            lowercase: true,
+            minlength: [3, 'User ID must be at least 3 characters'],
+            maxlength: [30, 'User ID must be at most 30 characters'],
+            match: [/^[a-z0-9._]+$/, 'User ID can only contain letters, numbers, dots, and underscores'],
+        },
         email: {
             type: String,
             required: [true, 'Email is required'],
@@ -28,9 +38,27 @@ const UserSchema = new mongoose.Schema(
                 type: String,
                 default: null,
             },
+            originalUrl: {
+                type: String,
+                default: null,
+            },
             publicId: {
                 type: String,
                 default: null,
+            },
+            crop: {
+                x: {
+                    type: Number,
+                    default: null,
+                },
+                y: {
+                    type: Number,
+                    default: null,
+                },
+                size: {
+                    type: Number,
+                    default: null,
+                },
             },
             updatedAt: {
                 type: Date,
@@ -60,6 +88,7 @@ const UserSchema = new mongoose.Schema(
 // Index tăng tốc truy vấn (đã khai báo unique ở trên nên Mongoose tự tạo index)
 UserSchema.index({ email: 1 });
 UserSchema.index({ username: 1 });
+UserSchema.index({ userId: 1 }, { unique: true, sparse: true });
 UserSchema.index({ contacts: 1 });
 
 // Method: so sánh password nhập vào với hash trong DB

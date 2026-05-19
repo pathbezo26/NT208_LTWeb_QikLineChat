@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     CheckOutlined,
     CloseOutlined,
@@ -58,6 +58,16 @@ const sortConversationsByUpdatedAt = (items) => {
     });
 };
 
+const normalizeSearchText = (value = '') => {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+};
+
+const normalizeSearchKeyword = (value = '') => normalizeSearchText(value).replace(/^@+/, '');
+
 export default function Sidebar({
     activeSection,
     activeConversation,
@@ -94,9 +104,40 @@ export default function Sidebar({
     const listRef = useRef(null);
 
     const activeConversationId = activeConversation?._id;
-    const displayedConversations = activeSection === 'groups'
-        ? conversations.filter((conversation) => conversation.type === 'group')
-        : conversations;
+    const getConversationName = useCallback((conversation) => {
+        if (conversation.type === 'group') {
+            return conversation.name || 'Unnamed group';
+        }
+
+        const otherMember = conversation.members.find((member) => member._id !== user._id);
+        return otherMember?.username || 'User';
+    }, [user._id]);
+
+    const getOtherMember = useCallback((conversation) => {
+        return conversation.members.find((member) => member._id !== user._id);
+    }, [user._id]);
+
+    const displayedConversations = useMemo(() => {
+        const baseConversations = activeSection === 'groups'
+            ? conversations.filter((conversation) => conversation.type === 'group')
+            : conversations;
+        const keyword = normalizeSearchKeyword(searchQuery);
+
+        if (!keyword || activeSection === 'contacts') return baseConversations;
+
+        return baseConversations.filter((conversation) => {
+            const otherMember = conversation.type === 'private' ? getOtherMember(conversation) : null;
+            const searchableText = [
+                getConversationName(conversation),
+                conversation.type,
+                otherMember?.username,
+                otherMember?.userId,
+                conversation.lastMessage?.content,
+            ].filter(Boolean).join(' ');
+
+            return normalizeSearchText(searchableText).includes(keyword);
+        });
+    }, [activeSection, conversations, getConversationName, getOtherMember, searchQuery]);
 
     const loadConversations = async () => {
         setIsLoadingConversations(true);
@@ -199,7 +240,7 @@ export default function Sidebar({
     useEffect(() => {
         const keyword = searchQuery.trim();
 
-        if (!keyword) {
+        if (activeSection !== 'contacts' || !keyword) {
             setSearchResults([]);
             setSearchLoading(false);
             return undefined;
@@ -230,7 +271,7 @@ export default function Sidebar({
             ignore = true;
             clearTimeout(debounceTimer);
         };
-    }, [messageApi, searchQuery, user._id]);
+    }, [activeSection, messageApi, searchQuery, user._id]);
 
     useEffect(() => {
         const handleClickOutside = () => {
@@ -437,19 +478,6 @@ export default function Sidebar({
         setOpenMenuId(null);
         setDeleteConfirmId(null);
     }, [removedConversation]);
-
-    const getConversationName = (conversation) => {
-        if (conversation.type === 'group') {
-            return conversation.name || 'Unnamed group';
-        }
-
-        const otherMember = conversation.members.find((member) => member._id !== user._id);
-        return otherMember?.username || 'User';
-    };
-
-    const getOtherMember = (conversation) => {
-        return conversation.members.find((member) => member._id !== user._id);
-    };
 
     const getLastMessagePreview = (conversation) => {
         if (!conversation.lastMessage?.content) return 'No messages yet';
@@ -748,7 +776,7 @@ export default function Sidebar({
                 <SidebarSearch
                     value={searchQuery}
                     onChange={handleSearchUsers}
-                    placeholder={activeSection === 'contacts' ? 'Search people' : 'Search'}
+                    placeholder={activeSection === 'contacts' ? 'Search people by name or @id' : 'Search chats'}
                 />
 
                 {activeSection !== 'contacts' && (
@@ -792,6 +820,9 @@ export default function Sidebar({
                                     />
                                     <div className={styles.contactInfo}>
                                         <span className={styles.contactName}>{searchUser.username}</span>
+                                        {searchUser.userId && (
+                                            <span className={styles.contactHandle}>@{searchUser.userId}</span>
+                                        )}
                                         <span className={styles.contactMeta}>
                                             {searchUser.relationshipStatus === 'contact'
                                                 ? 'In your contacts'
@@ -897,7 +928,7 @@ export default function Sidebar({
                                             />
                                             <div className={styles.contactInfo}>
                                                 <span className={styles.contactName}>{contact.username}</span>
-                                                <span className={styles.contactMeta}>{contact.email}</span>
+                                                <span className={styles.contactMeta}>{contact.userId ? `@${contact.userId}` : contact.email}</span>
                                             </div>
                                             <div className={styles.inlineActions}>
                                                 <button
@@ -939,33 +970,6 @@ export default function Sidebar({
                                 )}
                         </div>
                     )
-                ) : searchQuery.trim() ? (
-                    <>
-                        {searchLoading && <p className={styles.empty}>Searching...</p>}
-
-                        {!searchLoading && searchResults.length === 0 && (
-                            <p className={styles.empty}>No results found.</p>
-                        )}
-
-                        {!searchLoading && searchResults.map((searchUser) => (
-                            <button
-                                key={searchUser._id}
-                                type="button"
-                                className={styles.searchItem}
-                                onClick={() => handleStartChat(searchUser)}
-                                disabled={creatingUserId === searchUser._id}
-                            >
-                                <UserAvatar
-                                    user={searchUser}
-                                    className={styles.convAvatar}
-                                />
-                                <span className={styles.searchName}>{searchUser.username}</span>
-                                <span className={styles.searchAction}>
-                                    {creatingUserId === searchUser._id ? '...' : 'Chat'}
-                                </span>
-                            </button>
-                        ))}
-                    </>
                 ) : isLoadingConversations ? (
                     <div className={styles.skeletonList} aria-label="Loading conversations">
                         {[0, 1, 2, 3, 4].map((item) => (
@@ -983,11 +987,17 @@ export default function Sidebar({
                         <div className={styles.emptyIcon}>
                             <TeamOutlined />
                         </div>
-                        <p>{activeSection === 'groups' ? 'No groups yet' : 'No conversations yet'}</p>
+                        <p>
+                            {searchQuery.trim()
+                                ? 'No matching chats'
+                                : activeSection === 'groups' ? 'No groups yet' : 'No conversations yet'}
+                        </p>
                         <span>
-                            {activeSection === 'groups'
+                            {searchQuery.trim()
+                                ? 'Only existing chats appear here. Search Contacts to find new people.'
+                                : activeSection === 'groups'
                                 ? 'Create a group to chat with several people.'
-                                : 'Search for someone or create a group to start chatting.'}
+                                : 'Open Contacts to find new people or create a group to start chatting.'}
                         </span>
                     </div>
                 ) : (
@@ -1100,7 +1110,7 @@ export default function Sidebar({
                     {isLoadingMoreConversations && (
                         <div className={styles.loadMoreState}>Loading more...</div>
                     )}
-                    {!isLoadingMoreConversations && hasMoreConversations && (
+                    {!searchQuery.trim() && !isLoadingMoreConversations && hasMoreConversations && (
                         <button
                             className={styles.loadMoreButton}
                             onClick={loadMoreConversations}

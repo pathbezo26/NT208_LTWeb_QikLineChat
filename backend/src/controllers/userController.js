@@ -4,15 +4,18 @@ const ContactRequest = require('../models/ContactRequest');
 const UserReport = require('../models/UserReport');
 const cloudinary = require('../config/cloudinary');
 
-const USER_CONTACT_FIELDS = '_id username email avatar lastSeenAt';
+const USER_CONTACT_FIELDS = '_id username userId email avatar lastSeenAt';
 
 const getPublicUser = (user) => ({
     _id: user._id,
     username: user.username,
+    userId: user.userId || '',
     email: user.email,
     avatar: {
         url: user.avatar?.url || null,
+        originalUrl: user.avatar?.originalUrl || null,
         publicId: user.avatar?.publicId || null,
+        crop: user.avatar?.crop || null,
         updatedAt: user.avatar?.updatedAt || null,
     },
     lastSeenAt: user.lastSeenAt,
@@ -30,6 +33,7 @@ const getIdString = (value) => {
 const mapContactUser = (contact) => ({
     _id: contact._id,
     username: contact.username,
+    userId: contact.userId || '',
     email: contact.email,
     avatar: contact.avatar,
     lastSeenAt: contact.lastSeenAt,
@@ -98,10 +102,6 @@ const uploadBufferToCloudinary = (fileBuffer, userId) => {
                 public_id: `user_${userId}_${Date.now()}`,
                 resource_type: 'image',
                 overwrite: true,
-                transformation: [
-                    { width: 400, height: 400, crop: 'fill', gravity: 'face' },
-                    { quality: 'auto', fetch_format: 'auto' },
-                ],
             },
             (error, result) => {
                 if (error) return reject(error);
@@ -110,6 +110,39 @@ const uploadBufferToCloudinary = (fileBuffer, userId) => {
         );
 
         uploadStream.end(fileBuffer);
+    });
+};
+
+const getAvatarCropFromBody = (body, imageWidth, imageHeight) => {
+    const x = Number(body.cropX);
+    const y = Number(body.cropY);
+    const size = Number(body.cropSize);
+    const maxSize = Math.min(imageWidth || 0, imageHeight || 0);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(size) || size <= 0 || maxSize <= 0) {
+        return { x: 0, y: 0, size: maxSize };
+    }
+
+    const safeSize = Math.min(maxSize, Math.max(1, Math.round(size)));
+    const safeX = Math.min(Math.max(0, Math.round(x)), Math.max(0, imageWidth - safeSize));
+    const safeY = Math.min(Math.max(0, Math.round(y)), Math.max(0, imageHeight - safeSize));
+
+    return { x: safeX, y: safeY, size: safeSize };
+};
+
+const buildAvatarDisplayUrl = (publicId, crop) => {
+    const cropTransform = crop?.size
+        ? { x: crop.x, y: crop.y, width: crop.size, height: crop.size, crop: 'crop' }
+        : { width: 400, height: 400, crop: 'fill' };
+
+    return cloudinary.url(publicId, {
+        secure: true,
+        resource_type: 'image',
+        transformation: [
+            cropTransform,
+            { width: 400, height: 400, crop: 'fill' },
+            { quality: 'auto', fetch_format: 'auto' },
+        ],
     });
 };
 
@@ -162,6 +195,45 @@ const updateUsername = async (req, res) => {
     }
 };
 
+const updateUserId = async (req, res) => {
+    try {
+        const userId = req.body.userId?.trim().toLowerCase();
+
+        if (!userId) {
+            return res.status(400).json({ message: 'Please enter a User ID' });
+        }
+
+        if (!/^[a-z0-9._]{3,30}$/.test(userId)) {
+            return res.status(400).json({ message: 'User ID must be 3 to 30 characters and can only contain letters, numbers, dots, and underscores' });
+        }
+
+        const existingUser = await User.findOne({
+            userId,
+            _id: { $ne: req.user._id },
+        });
+
+        if (existingUser) {
+            return res.status(409).json({ message: 'User ID is already taken' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.userId = userId;
+        await user.save();
+
+        res.status(200).json({
+            message: 'User ID updated successfully',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('Update userId error:', error);
+        res.status(500).json({ message: 'Server error while updating User ID' });
+    }
+};
+
 // PATCH /api/users/me/avatar
 // Nhan file avatar tu frontend, upload len Cloudinary, roi chi luu URL/publicId vao MongoDB.
 const uploadAvatar = async (req, res) => {
@@ -181,10 +253,14 @@ const uploadAvatar = async (req, res) => {
 
         const oldAvatarPublicId = user.avatar?.publicId;
         const uploadedAvatar = await uploadBufferToCloudinary(req.file.buffer, user._id);
+        const avatarCrop = getAvatarCropFromBody(req.body, uploadedAvatar.width, uploadedAvatar.height);
+        const displayAvatarUrl = buildAvatarDisplayUrl(uploadedAvatar.public_id, avatarCrop);
 
         user.avatar = {
-            url: uploadedAvatar.secure_url,
+            url: displayAvatarUrl,
+            originalUrl: uploadedAvatar.secure_url,
             publicId: uploadedAvatar.public_id,
+            crop: avatarCrop,
             updatedAt: new Date(),
         };
 
@@ -207,6 +283,40 @@ const uploadAvatar = async (req, res) => {
     }
 };
 
+const updateAvatarCrop = async (req, res) => {
+    try {
+        if (!hasCloudinaryConfig()) {
+            return res.status(500).json({ message: 'Cloudinary is not configured on the server' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!user.avatar?.publicId) {
+            return res.status(400).json({ message: 'Please upload an avatar first' });
+        }
+
+        const metadata = await cloudinary.api.resource(user.avatar.publicId);
+        const avatarCrop = getAvatarCropFromBody(req.body, metadata.width, metadata.height);
+
+        user.avatar.crop = avatarCrop;
+        user.avatar.url = buildAvatarDisplayUrl(user.avatar.publicId, avatarCrop);
+        user.avatar.originalUrl = user.avatar.originalUrl || metadata.secure_url || user.avatar.url;
+        user.avatar.updatedAt = new Date();
+        await user.save();
+
+        res.status(200).json({
+            message: 'Avatar crop updated successfully',
+            user: getPublicUser(user),
+        });
+    } catch (error) {
+        console.error('Update avatar crop error:', error);
+        res.status(500).json({ message: 'Server error while updating avatar crop' });
+    }
+};
+
 // DELETE /api/users/me/avatar
 // Xoa avatar tren Cloudinary va xoa metadata avatar trong MongoDB.
 const deleteAvatar = async (req, res) => {
@@ -226,7 +336,13 @@ const deleteAvatar = async (req, res) => {
 
         user.avatar = {
             url: null,
+            originalUrl: null,
             publicId: null,
+            crop: {
+                x: null,
+                y: null,
+                size: null,
+            },
             updatedAt: null,
         };
 
@@ -250,7 +366,7 @@ const blockUser = async (req, res) => {
             return res.status(400).json({ message: 'You cannot block yourself' });
         }
 
-        const targetUser = await User.findById(targetUserId).select('_id username avatar lastSeenAt');
+        const targetUser = await User.findById(targetUserId).select('_id username userId avatar lastSeenAt');
         if (!targetUser) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -277,7 +393,7 @@ const blockUser = async (req, res) => {
                 $pull: { contacts: targetUserId },
             },
             { new: true }
-        ).select('_id username email avatar lastSeenAt blockedUsers');
+        ).select('_id username userId email avatar lastSeenAt blockedUsers');
 
         res.status(200).json({
             message: `${targetUser.username} has been blocked`,
@@ -326,8 +442,8 @@ const sendContactRequest = async (req, res) => {
         }
 
         const [currentUser, targetUser] = await Promise.all([
-            User.findById(req.user._id).select('contacts blockedUsers username avatar email lastSeenAt'),
-            User.findById(targetUserId).select('contacts blockedUsers username avatar email lastSeenAt'),
+            User.findById(req.user._id).select('contacts blockedUsers username userId avatar email lastSeenAt'),
+            User.findById(targetUserId).select('contacts blockedUsers username userId avatar email lastSeenAt'),
         ]);
 
         if (!targetUser) {
@@ -547,7 +663,7 @@ const unblockUser = async (req, res) => {
             req.user._id,
             { $pull: { blockedUsers: targetUserId } },
             { new: true }
-        ).select('_id username email avatar lastSeenAt blockedUsers');
+        ).select('_id username userId email avatar lastSeenAt blockedUsers');
 
         res.status(200).json({
             message: 'User has been unblocked',
@@ -604,8 +720,10 @@ const reportUser = async (req, res) => {
 
 module.exports = {
     uploadAvatar,
+    updateAvatarCrop,
     deleteAvatar,
     updateUsername,
+    updateUserId,
     blockUser,
     unblockUser,
     reportUser,

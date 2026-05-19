@@ -2,9 +2,18 @@ import axiosInstance from './axiosInstance';
 
 // Upload avatar moi cho user hien tai.
 // Backend dang cho field file ten la "avatar", nen FormData phai dung dung key nay.
-export const uploadAvatarAPI = async (file) => {
+const appendAvatarCrop = (formData, crop) => {
+    if (!crop) return;
+
+    formData.append('cropX', String(crop.x));
+    formData.append('cropY', String(crop.y));
+    formData.append('cropSize', String(crop.size));
+};
+
+export const uploadAvatarAPI = async (file, crop) => {
     const formData = new FormData();
     formData.append('avatar', file);
+    appendAvatarCrop(formData, crop);
 
     const response = await axiosInstance.patch('/users/me/avatar', formData, {
         headers: {
@@ -24,6 +33,21 @@ export const deleteAvatarAPI = async () => {
 // Doi username cua user hien tai.
 export const updateUsernameAPI = async (username) => {
     const response = await axiosInstance.patch('/users/me/username', { username });
+    return response.data; // { message, user }
+};
+
+export const updateAvatarCropAPI = async (crop) => {
+    const response = await axiosInstance.patch('/users/me/avatar/crop', {
+        cropX: crop.x,
+        cropY: crop.y,
+        cropSize: crop.size,
+    });
+
+    return response.data; // { message, user }
+};
+
+export const updateUserIdAPI = async (userId) => {
+    const response = await axiosInstance.patch('/users/me/user-id', { userId });
     return response.data; // { message, user }
 };
 

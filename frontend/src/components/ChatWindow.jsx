@@ -1228,9 +1228,12 @@ export default function ChatWindow({
     const otherPresence = otherMemberId ? presenceByUserId[otherMemberId] : null;
     const isOtherOnline = Boolean(otherPresence?.online);
     const isOtherBlocked = otherMemberId ? blockedUserIds.includes(otherMemberId) : false;
-    const privateStatusText = isOtherOnline ? 'Online' : formatLastSeen(otherPresence?.lastSeenAt || otherMember?.lastSeenAt);
+    const privateStatusText = isOtherBlocked
+        ? 'Blocked'
+        : isOtherOnline ? 'Online' : formatLastSeen(otherPresence?.lastSeenAt || otherMember?.lastSeenAt);
+    const blockedInputReason = `You blocked ${otherMember?.username || 'this user'}. Unblock them in Chat info to send messages again.`;
     const topPinnedMessage = pinnedMessages[0] || null;
-    const shouldShowPrivateTyping = conversation.type === 'private' && typingUsers.length > 0;
+    const shouldShowPrivateTyping = conversation.type === 'private' && !isOtherBlocked && typingUsers.length > 0;
 
     return (
         <div className={styles.window}>
@@ -1262,7 +1265,7 @@ export default function ChatWindow({
                         <span className={styles.headerName}>{getChatName()}</span>
                     )}
                     {conversation.type === 'private' && (
-                        <span className={`${styles.chatStatus} ${isOtherOnline ? styles.onlineStatus : ''}`}>
+                        <span className={`${styles.chatStatus} ${isOtherOnline && !isOtherBlocked ? styles.onlineStatus : ''} ${isOtherBlocked ? styles.blockedStatus : ''}`}>
                             <span className={styles.statusDot} />
                             {privateStatusText}
                         </span>
@@ -1372,7 +1375,7 @@ export default function ChatWindow({
                 replyToMessage={replyToMessage}
                 onCancelReply={() => setReplyToMessage(null)}
                 disabled={conversation.type === 'private' && isOtherBlocked}
-                disabledReason="You blocked this user"
+                disabledReason={blockedInputReason}
             />
 
             <Modal

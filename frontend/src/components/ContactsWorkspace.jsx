@@ -27,7 +27,7 @@ const contactTabs = [
     { id: 'sent', label: 'Sent' },
 ];
 
-const normalizeText = (value = '') => value.toLowerCase().trim();
+const normalizeText = (value = '') => value.toLowerCase().trim().replace(/^@+/, '');
 
 export default function ContactsWorkspace({ onOpenConversation }) {
     const socket = useSocket();
@@ -86,7 +86,7 @@ export default function ContactsWorkspace({ onOpenConversation }) {
         if (!keyword) return contactsState.contacts;
 
         return contactsState.contacts.filter((contact) => {
-            return normalizeText(`${contact.username} ${contact.email}`).includes(keyword);
+            return normalizeText(`${contact.username} ${contact.userId || ''} ${contact.email}`).includes(keyword);
         });
     }, [contactsState.contacts, searchQuery]);
 
@@ -246,7 +246,7 @@ export default function ContactsWorkspace({ onOpenConversation }) {
             return (
                 <EmptyState
                     title={searchQuery.trim() ? 'No matching contacts' : 'No contacts yet'}
-                    text={searchQuery.trim() ? 'Try another name or email.' : 'Use the sidebar search to send a contact request.'}
+                    text={searchQuery.trim() ? 'Try another name, User ID, or email.' : 'Use the sidebar search to send a contact request.'}
                 />
             );
         }
@@ -255,7 +255,7 @@ export default function ContactsWorkspace({ onOpenConversation }) {
             <ContactRow
                 key={contact._id}
                 user={contact}
-                meta={contact.email}
+                meta={contact.userId ? `@${contact.userId}` : contact.email}
                 actions={(
                     <>
                         <button

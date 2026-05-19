@@ -7,9 +7,9 @@ const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 
 // Cac field user duoc phep tra ve khi populate trong conversation.
 // Khong populate passwordHash; chi them avatar metadata de frontend hien anh dai dien.
-const USER_PUBLIC_FIELDS = 'username email avatar lastSeenAt blockedUsers';
-const USER_COMPACT_FIELDS = 'username avatar';
-const LAST_MESSAGE_SENDER_FIELDS = 'username avatar';
+const USER_PUBLIC_FIELDS = 'username userId email avatar lastSeenAt blockedUsers';
+const USER_COMPACT_FIELDS = 'username userId avatar';
+const LAST_MESSAGE_SENDER_FIELDS = 'username userId avatar';
 const DEFAULT_CONVERSATION_LIMIT = 20;
 const MAX_CONVERSATION_LIMIT = 50;
 
@@ -224,7 +224,7 @@ const getValidUserIds = async (identifiers) => {
         } else {
             // Nếu là Username hoặc Email, tìm trong DB để lấy ID
             const foundUser = await User.findOne({
-                $or: [{ username: item }, { email: item }]
+                $or: [{ username: item }, { userId: item.toLowerCase() }, { email: item }]
             });
 
             if (foundUser) {

@@ -12,19 +12,32 @@
 }
 
 .disabledOverlay {
-    position: absolute;
-    left: 20px;
-    right: 20px;
-    top: -32px;
-    min-height: 26px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 38px;
+    margin: 10px 20px 0;
+    padding: 8px 11px;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: 13px;
+    font-weight: 750;
+    line-height: 1.35;
+}
+
+.disabledIcon {
     display: grid;
     place-items: center;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    background: #fff7f7;
-    color: #b91c1c;
-    font-size: 12px;
-    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #ffedd5;
+    color: #c2410c;
+    font-size: 13px;
+    font-weight: 900;
 }
 
 .attachmentTray {
@@ -286,9 +299,14 @@
 }
 
 :global([data-theme='dark']) .disabledOverlay {
-    border-color: #7f1d1d;
-    background: #2a1114;
-    color: #fca5a5;
+    border-color: #7c2d12;
+    background: #24130c;
+    color: #fdba74;
+}
+
+:global([data-theme='dark']) .disabledIcon {
+    background: #431407;
+    color: #fed7aa;
 }
 
 :global([data-theme='dark']) .replyPreview {

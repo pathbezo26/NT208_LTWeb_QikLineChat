@@ -5,7 +5,7 @@ const User = require('../models/User');
 // ─── Hàm tạo JWT token ────────────────────────────────────────────────────────
 const generateToken = (user) => {
     return jwt.sign(
-        { id: user._id, username: user.username },
+        { id: user._id, username: user.username, userId: user.userId || '' },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -14,10 +14,13 @@ const generateToken = (user) => {
 const formatAuthUser = (user) => ({
     _id: user._id,
     username: user.username,
+    userId: user.userId || '',
     email: user.email,
     avatar: {
         url: user.avatar?.url || null,
+        originalUrl: user.avatar?.originalUrl || null,
         publicId: user.avatar?.publicId || null,
+        crop: user.avatar?.crop || null,
         updatedAt: user.avatar?.updatedAt || null,
     },
     lastSeenAt: user.lastSeenAt,
@@ -30,20 +33,27 @@ const formatAuthUser = (user) => ({
 const register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
+        const userId = req.body.userId?.trim().toLowerCase();
 
         // 1. Validate đầu vào
-        if (!username || !email || !password) {
+        if (!username || !userId || !email || !password) {
             return res.status(400).json({ message: 'Please fill in all fields' });
+        }
+        if (!/^[a-z0-9._]{3,30}$/.test(userId)) {
+            return res.status(400).json({ message: 'User ID must be 3 to 30 characters and can only contain letters, numbers, dots, and underscores' });
         }
         if (password.length < 6) {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
 
         // 2. Kiểm tra email hoặc username đã tồn tại chưa
-        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+        const existingUser = await User.findOne({ $or: [{ email }, { username }, { userId }] });
         if (existingUser) {
             if (existingUser.email === email.toLowerCase()) {
                 return res.status(409).json({ message: 'Email is already in use' });
+            }
+            if (existingUser.userId === userId) {
+                return res.status(409).json({ message: 'User ID is already taken' });
             }
             return res.status(409).json({ message: 'Username is already taken' });
         }
@@ -53,7 +63,7 @@ const register = async (req, res) => {
         const passwordHash = await bcrypt.hash(password, salt);
 
         // 4. Tạo user mới
-        const user = await User.create({ username, email, passwordHash });
+        const user = await User.create({ username, userId, email, passwordHash });
 
         // 5. Tạo JWT và trả về
         const token = generateToken(user);

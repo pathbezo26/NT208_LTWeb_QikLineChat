@@ -180,6 +180,14 @@
     box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.13);
 }
 
+.fieldHint {
+    display: block;
+    margin: 6px 2px 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
 .btnPrimary,
 .btnSecondary {
     width: 100%;

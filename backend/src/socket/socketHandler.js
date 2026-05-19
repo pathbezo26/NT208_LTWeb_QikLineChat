@@ -5,7 +5,7 @@ const User = require('../models/User');
 const { updateConversationAfterMessage } = require('../utils/conversationMeta');
 const logger = require('../utils/logger');
 
-const SOCKET_USER_FIELDS = '_id username email avatar';
+const SOCKET_USER_FIELDS = '_id username userId email avatar';
 const MAX_MESSAGE_LENGTH = 5000;
 const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 const SEND_MESSAGE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -173,7 +173,7 @@ const socketHandler = (io) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('_id username');
+      const user = await User.findById(decoded.id).select('_id username userId');
       if (!user) return next(new Error('Authentication error: User not found'));
 
       socket.user = {

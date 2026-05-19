@@ -189,10 +189,13 @@ export default function ChatInput({ conversationId, onSendMessage, replyToMessag
                 </div>
             )}
             {attachmentError && <div className={styles.attachmentError}>{attachmentError}</div>}
-            <div className={styles.inputBar}>
             {disabled && (
-                <div className={styles.disabledOverlay}>{disabledReason || 'Messaging is disabled'}</div>
+                <div className={styles.disabledOverlay}>
+                    <span className={styles.disabledIcon}>!</span>
+                    <span>{disabledReason || 'Messaging is disabled'}</span>
+                </div>
             )}
+            <div className={styles.inputBar}>
             <input
                 ref={fileInputRef}
                 className={styles.fileInput}

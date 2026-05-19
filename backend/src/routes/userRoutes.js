@@ -5,8 +5,10 @@ const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 const {
   uploadAvatar,
+  updateAvatarCrop,
   deleteAvatar,
   updateUsername,
+  updateUserId,
   blockUser,
   unblockUser,
   reportUser,
@@ -60,22 +62,35 @@ const normalizeSearchText = (value) => {
     .replace(/\s+/g, ' ');
 };
 
-const isWordStartMatch = (username, keyword) => {
-  const normalizedUsername = normalizeSearchText(username);
+const isWordStartMatch = (value, keyword) => {
+  const normalizedValue = normalizeSearchText(value || '');
   const normalizedKeyword = normalizeSearchText(keyword);
 
   return (
-    normalizedUsername.startsWith(normalizedKeyword) ||
-    normalizedUsername.includes(` ${normalizedKeyword}`)
+    normalizedValue.startsWith(normalizedKeyword) ||
+    normalizedValue.includes(` ${normalizedKeyword}`)
+  );
+};
+
+const isUserSearchMatch = (user, keyword) => {
+  const normalizedKeyword = normalizeSearchText(keyword);
+  const normalizedUserId = normalizeSearchText(user.userId || '');
+
+  return (
+    isWordStartMatch(user.username, keyword) ||
+    normalizedUserId === normalizedKeyword ||
+    normalizedUserId.startsWith(normalizedKeyword)
   );
 };
 
 router.patch('/me/avatar', protect, uploadLimiter, handleAvatarUpload, uploadAvatar);
+router.patch('/me/avatar/crop', protect, updateAvatarCrop);
 
 // DELETE /api/users/me/avatar — xóa avatar của user hiện tại
 router.delete('/me/avatar', protect, deleteAvatar);
 // PATCH /api/users/me/username - doi username cua user hien tai
 router.patch('/me/username', protect, updateUsername);
+router.patch('/me/user-id', protect, updateUserId);
 router.get('/contacts', protect, getContacts);
 router.post('/:id/contact-request', protect, sendContactRequest);
 router.post('/contact-requests/:requestId/accept', protect, acceptContactRequest);
@@ -89,19 +104,19 @@ router.post('/:id/report', protect, reportUser);
 // GET /api/users/search?q=keyword — search users by username (exclude self)
 router.get('/search', protect, searchLimiter, async (req, res) => {
   const { q } = req.query;
-  const keyword = q?.trim();
+  const keyword = (q || '').trim().replace(/^@+/, '');
 
   if (!keyword) return res.json([]);
 
   try {
     const users = await User.find({ _id: { $ne: req.user.id } })
       // Tra them avatar de frontend hien anh trong ket qua tim kiem user.
-      .select('_id username email avatar')
+      .select('_id username userId email avatar')
       .sort({ username: 1 })
       .lean();
 
     const matchedUsers = users
-      .filter((user) => isWordStartMatch(user.username, keyword))
+      .filter((user) => isUserSearchMatch(user, keyword))
       .slice(0, 20);
 
     const relationshipStatusMap = await getRelationshipStatusMap(req.user, matchedUsers);
