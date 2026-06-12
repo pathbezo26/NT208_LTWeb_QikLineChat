@@ -1,741 +1,489 @@
-# WebChat App — Ứng Dụng Chat Thời Gian Thực
+# QikLine Chat - Ứng dụng chat thời gian thực
 
----
+QikLine Chat là đồ án xây dựng ứng dụng nhắn tin thời gian thực theo mô hình client-server. Hệ thống hỗ trợ đăng ký, đăng nhập, quản lý liên hệ, chat 1-1, chat nhóm, gửi file/ảnh, tìm kiếm tin nhắn và cập nhật trạng thái hội thoại realtime bằng Socket.IO.
+
+## Thông tin đồ án
+
+| Nội dung | Thông tin |
+| --- | --- |
+| Tên dự án | QikLine Chat |
+| Môn học | Lập trình Web |
+| Loại dự án | Web chat realtime |
+| Repository | https://github.com/pathbezo26/NT208_LTWeb_QikLineChat |
+| Slide thuyết trình | [docs/slides.md](./docs/slides.md) |
+| Frontend demo | https://nt208-qikline.vercel.app |
 
 ## Thành viên nhóm
 
-| STT | Họ và tên | MSSV  | GitHub |
-|-----|-----------|------|--------|
+| STT | Họ và tên | MSSV | GitHub |
+| --- | --- | --- | --- |
 | 1 | Nguyễn Tấn Phát | 24521306 | [@pathbezo26](https://github.com/pathbezo26) |
 | 2 | Lê Hồ Thành Phát | 24521297 | [@LEHOTHANHPHAT](https://github.com/LEHOTHANHPHAT) |
 | 3 | Nguyễn Nhật Quang | 24521472 | [@nhat3911](https://github.com/nhat3911) |
 | 4 | Lê Nam Khánh | 24520783 | [@maccriagor](https://github.com/maccriagor) |
 
----
+## Mục tiêu dự án
 
-## Mô tả tổng quan
+QikLine Chat được phát triển nhằm mô phỏng một nền tảng nhắn tin hiện đại, nơi người dùng có thể giao tiếp trực tiếp, quản lý quan hệ liên hệ và trao đổi tài nguyên trong các cuộc trò chuyện. Dự án tập trung vào ba mục tiêu chính:
 
-**QikLine Chat** là một ứng dụng nhắn tin thời gian thực, cho phép người dùng trò chuyện trực tiếp theo hình thức **chat 1-1 (private)** và **chat nhóm (group)**. Ứng dụng được xây dựng theo kiến trúc client-server hiện đại, kết hợp **REST API** để xử lý dữ liệu bền vững và **Socket.IO** để truyền tin nhắn tức thời không cần reload trang.
+- Xây dựng giao diện chat mượt, dễ sử dụng, có trải nghiệm gần với các ứng dụng nhắn tin thực tế.
+- Kết hợp REST API và Socket.IO để vừa đảm bảo lưu trữ dữ liệu bền vững, vừa cập nhật tin nhắn realtime.
+- Tổ chức backend có xác thực JWT, phân quyền theo thành viên hội thoại, validate dữ liệu, upload file và xử lý lỗi rõ ràng.
 
-Dự án hướng tới trải nghiệm người dùng mượt mà: đăng nhập bảo mật bằng JWT, tự động tải lịch sử trò chuyện, hiển thị tin nhắn realtime và quản lý các cuộc trò chuyện linh hoạt. Toàn bộ dữ liệu được lưu trữ trên MongoDB, đảm bảo tính bền vững và khả năng mở rộng cho hệ thống.
+## Tính năng chính
 
----
-
-## Tính năng nổi bật
-
-- **Nhắn tin realtime 1-1 và nhóm**: gửi/nhận tin bằng Socket.IO, cập nhật last message, unread count, trạng thái sent/delivered/read và typing indicator dạng 3 chấm.
-- **Danh bạ và tìm kiếm người dùng theo kiểu social**: đăng ký có `userId` duy nhất, tìm contact bằng tên hiển thị hoặc `@userId`; tab chat chỉ tìm trong các cuộc trò chuyện đã có để tránh nhắn nhầm người lạ.
-- **Hồ sơ cá nhân trực quan**: mở cửa sổ My profile từ avatar để đổi tên hiển thị, đổi User ID, upload hoặc xóa avatar; vẫn giữ menu nhanh My profile / Logout.
-- **Trải nghiệm media hoàn chỉnh**: gửi nhiều ảnh/file, xem ảnh lớn bằng modal/lightbox trong chat và drawer chi tiết, mở file gốc khi cần, xử lý tên file tiếng Việt tránh lỗi encoding.
-- **Tìm kiếm trong cuộc trò chuyện**: search nội dung tin nhắn trong private/group chat, highlight kết quả và nhảy tới đúng tin nhắn ổn định.
-- **Quyền riêng tư và an toàn**: block/report user, khi bị block input tự disable kèm thông báo rõ ràng, header hiển thị trạng thái block.
-- **Drawer chi tiết giàu ngữ cảnh**: xem thông tin private/group, thành viên, nhóm chung, ảnh/video, file và link đã chia sẻ ngay trong cuộc trò chuyện.
-- **Giao diện sáng/tối đồng bộ**: dark mode/light mode dùng cùng hệ màu với Ant Design, skeleton loading, bubble grouping, jump-to-unread và optimistic UI khi gửi tin.
-
----
-
-## Tính năng 
-
-- **Đăng ký / đăng nhập bằng JWT** — backend tạo token sau khi đăng nhập, frontend lưu phiên đăng nhập trong `AuthContext`, `axiosInstance` tự gắn `Authorization: Bearer <token>` khi gọi API.
-- **Khôi phục phiên đăng nhập** — khi reload trang, app kiểm tra token hiện có để giữ user đang đăng nhập và hiển thị `SplashScreen` trong lúc khôi phục.
-- **Chat 1-1 realtime** — user tìm người khác, tạo private conversation và gửi tin nhắn qua Socket.IO; `ChatWindow` join room theo `conversationId`, backend broadcast `newMessage` tới room.
-- **Tạo private chat nhưng không làm phiền người được chọn khi chưa nhắn** — khi bấm `Chat` sau search, conversation mới chỉ hiện ở sidebar người tạo; người được chọn được đưa tạm vào `deletedFor`, nên bên kia chưa render conversation cho tới khi có tin nhắn đầu tiên.
-- **Tự hiện conversation cho người nhận khi có tin nhắn thật** — sau khi gửi message, backend cập nhật conversation và `$pull deletedFor` để conversation xuất hiện ở sidebar các thành viên liên quan.
-- **Chat nhóm** — tạo group với tên nhóm, chọn nhiều thành viên, phân biệt group bằng icon trong tên nhóm và avatar chữ cái/ảnh nhóm.
-- **Quản lý thành viên nhóm** — nhấn dòng số thành viên trong header group để mở drawer, tìm user để thêm vào nhóm hoặc xóa thành viên nếu có quyền.
-- **Upload ảnh nhóm** — tạo nhóm có thể chọn ảnh trước, hoặc cập nhật ảnh nhóm sau; ảnh được upload bằng Multer memory và lưu Cloudinary, frontend cập nhật ảnh ở sidebar và header chat.
-- **Avatar người dùng** — user có thể upload, đổi hoặc xóa avatar cá nhân; avatar được lưu metadata `{ url, publicId, updatedAt }` và hiển thị trong sidebar, message list, search result.
-- **Tìm kiếm user thông minh hơn** — search không phân biệt dấu tiếng Việt và chỉ match đầu mỗi từ: `ngoc` tìm được `Ngọc Lan`, `Yến Ngọc`, `Ngoc Le`; `los` không match `carlos`.
-- **Sidebar conversation list có last message** — mỗi conversation lưu `lastMessage` trực tiếp trong `Conversation`, giúp sidebar hiển thị preview nhanh mà không cần query thêm collection `messages`.
-- **Sắp xếp conversation mới nhất lên đầu** — khi có tin nhắn mới, backend cập nhật `Conversation.updatedAt`, frontend nhận `conversationUpdated` rồi đưa conversation đó lên đầu sidebar.
-- **Unread message count bền vững** — `Conversation.unreadCounts` lưu số tin chưa đọc theo từng user; khi có tin mới backend dùng `$inc` atomic để tránh sai count khi spam nhiều tin liên tục.
-- **Reset unread khi mở conversation** — khi user chọn một conversation, frontend gọi `PATCH /api/conversations/:id/read`, backend đưa unread count của user đó về `0`.
-- **Trạng thái Delivered / Read theo từng tin nhắn** — `Message` lưu `deliveredTo` và `readBy`; frontend nhận `messageStatusUpdated` realtime để hiển thị `Sent`, `Delivered`, `Read` hoặc tiến độ đọc trong group.
-- **Tin nhắn tới khi đang ở room khác** — sidebar vẫn nghe `conversationUpdated`, cập nhật last message, unread count và đưa conversation mới nhắn lên đầu danh sách.
-- **Tin nhắn realtime trong phòng đang mở** — nếu user đang ở đúng conversation, tin mới render trực tiếp trong `MessageList` và conversation được mark read để không tăng badge không cần thiết.
-- **Lịch sử tin nhắn có pagination / infinite scroll** — `GET /api/messages/:conversationId` hỗ trợ `limit` và `before`, frontend tải trang mới hơn/ cũ hơn theo cursor để không load toàn bộ lịch sử một lần.
-- **Tìm kiếm tin nhắn trong conversation** — mở drawer search bên phải, tự tìm khi nhập, duyệt kết quả từ mới nhất tới cũ nhất bằng cursor và highlight nội dung khi nhảy về tin nhắn gốc.
-- **Gửi ảnh / file trong tin nhắn** — hỗ trợ chọn nhiều attachment, preview trước khi gửi, upload file qua API riêng rồi gửi kèm message realtime; ảnh/file cũng được gom lại trong drawer chi tiết.
-- 🎨 **UI: Nút nhảy tới tin chưa đọc** — hỗ trợ đọc nhanh khu vực tin mới trong `MessageList`.
-- **Typing indicator** — khi user gõ, `ChatInput` emit `typing`; khi dừng gõ hoặc gửi tin thì emit `stopTyping`, bên còn lại thấy trạng thái đang nhập.
-- **Online / offline và last seen** — private chat header hiển thị trạng thái online realtime hoặc mốc last seen gần nhất của người còn lại.
-- **Xóa conversation theo từng user** — dùng `deletedFor` để ẩn conversation khỏi sidebar của user hiện tại thay vì xóa cứng dữ liệu conversation/message.
-- **Xóa từng tin nhắn** — hỗ trợ `Delete for me` và `Delete for everyone`; tin đã thu hồi hiển thị placeholder phù hợp thay vì làm lệch lịch sử chat.
-- **Chi tiết chat dạng drawer** — group/private drawer gom thông tin quan trọng như thành viên, nhóm chung, media, file và link đã chia sẻ.
-- **Block / report user** — private chat có khu vực privacy/safety để chặn hoặc báo cáo người dùng.
-- 🎨 **UI: Delete conversation an toàn hơn** — menu ba chấm chỉ hiện khi hover và có bước xác nhận trước khi xóa.
-- 🎨 **UI: Dark mode** — bật/tắt trong Settings, đồng bộ màu với Ant Design qua `ConfigProvider`.
-- 🎨 **UI: Sidebar chuyên nghiệp hơn** — avatar, tên, icon group, last message, thời gian sát phải và unread badge gọn hơn.
-- 🎨 **UI: Message bubble dễ đọc** — nhóm tin theo người gửi và ngưỡng thời gian 5 phút, giảm khoảng cách bubble liên tiếp, chỉ hiện avatar ở đầu cụm và chỉ hiện timestamp/status ở cuối cụm.
-- 🎨 **UI: Tooltip thời gian tin nhắn** — mỗi bubble có tooltip Ant Design khi hover/focus để xem thời gian đầy đủ của riêng tin nhắn mà không làm giao diện bị lặp timestamp.
-- **Bảo vệ Socket.IO bằng JWT** — socket kiểm tra token ngay khi kết nối; user không hợp lệ không được tham gia room hoặc gửi tin.
-- **Validate dữ liệu đầu vào** — giới hạn độ dài message, giới hạn avatar/group image 2MB, chỉ nhận JPG/PNG/WEBP, kiểm tra quyền member trước khi đọc/gửi tin hoặc quản lý nhóm.
-- **Cache tin nhắn theo room để chuyển chat nhanh hơn** — `ChatWindow` lưu message state theo `conversationId`, nên khi user chọn room khác rồi quay lại room cũ, UI có thể hiển thị lại dữ liệu từ cache trước khi gọi API mới.
-- **Ẩn lịch sử cũ sau khi delete conversation** — khi user xóa conversation, backend lưu mốc `deletedAtBy[userId]` và trả thêm `deletedAt` cho user hiện tại; nếu người kia nhắn lại thì conversation hiện lại, nhưng `getMessages` và cache frontend chỉ hiển thị tin nhắn sau mốc xóa đó.
-- **Optimistic UI khi gửi tin nhắn** — tin nhắn của mình được render ngay với trạng thái `sending` trước khi server xác nhận, sau đó được thay bằng message thật từ backend thông qua `clientMessageId`.
-- **Retry khi gửi tin nhắn thất bại** — nếu socket ack lỗi hoặc timeout, message chuyển sang trạng thái `failed` và hiển thị nút `Retry` để gửi lại nội dung cũ.
-- 🎨 **UI: Bộ đếm ký tự khi nhập tin** — hiển thị `current/5000` và disable gửi nội dung rỗng.
-- 🎨 **UI: Giữ vị trí scroll khi tải tin cũ** — load thêm message cũ mà không làm màn hình bị nhảy.
-- 🎨 **UI: Tự cuộn xuống tin mới hợp lý** — chỉ auto-scroll khi user đang ở gần cuối cuộc trò chuyện.
-- 🎨 **UI: Skeleton loading** — sidebar và message list có skeleton khi đang tải dữ liệu.
-- **Debounce khi search user** — thanh search chờ một khoảng ngắn trước khi gọi API, tránh gọi backend liên tục theo từng phím bấm.
-- **Đổi username trong menu tài khoản** — user có thể đổi tên hiển thị trong popover avatar, frontend validate độ dài và backend kiểm tra trùng username trước khi lưu.
-- **Đăng xuất từ avatar/settings menu** — user có thể logout từ menu tài khoản hoặc Settings, frontend xóa token và quay về luồng đăng nhập.
-- 🎨 **UI: Avatar fallback an toàn** — ảnh lỗi hoặc chưa có ảnh thì hiển thị chữ cái đầu của username.
-
----
+- Đăng ký, đăng nhập và khôi phục phiên bằng JWT.
+- Cập nhật hồ sơ cá nhân, đổi tên hiển thị, đổi User ID, upload/xóa avatar.
+- Tìm kiếm người dùng theo tên hoặc `@userId`.
+- Gửi, nhận tin nhắn realtime trong chat 1-1 và chat nhóm.
+- Tạo nhóm, cập nhật thông tin nhóm, ảnh nhóm, thêm/xóa thành viên, phân quyền admin/chủ nhóm.
+- Gửi nhiều ảnh/file trong một tin nhắn, preview trước khi gửi và xem lại tài nguyên đã chia sẻ.
+- Tìm kiếm nội dung trong từng cuộc trò chuyện, highlight và nhảy tới tin nhắn gốc.
+- Hiển thị trạng thái sent, delivered, read, unread count, typing indicator, online/offline và last seen.
+- Xóa tin nhắn theo chế độ xóa cho bản thân hoặc thu hồi cho mọi người.
+- Xóa/ẩn cuộc trò chuyện theo từng user mà không làm mất dữ liệu của người khác.
+- Ghim tin nhắn và reaction tin nhắn.
+- Quản lý danh bạ: gửi, chấp nhận, từ chối, hủy lời mời kết bạn và xóa liên hệ.
+- Block/report user để tăng quyền riêng tư và an toàn.
+- Drawer chi tiết hội thoại hiển thị thành viên, nhóm chung, media, file và link.
+- Dark mode, skeleton loading, optimistic UI, retry khi gửi lỗi và giao diện responsive.
 
 ## Công nghệ sử dụng
 
 ### Frontend
-| Công nghệ | Mục đích |
-|-----------|---------|
-| **ReactJS 18** | Xây dựng giao diện người dùng dạng SPA |
-| **Vite** | Build tool nhanh, thay thế CRA |
-| **React Router DOM** | Điều hướng giữa các trang (Login, Chat...) |
-| **Axios** | Gọi REST API với interceptor tự gắn JWT |
-| **Socket.IO Client** | Kết nối WebSocket với backend |
-| **Context API** | Quản lý state toàn cục (Auth, Socket) |
+
+| Công nghệ | Vai trò |
+| --- | --- |
+| React 19 | Xây dựng giao diện SPA |
+| Vite | Dev server và build tool |
+| React Router DOM | Điều hướng trang đăng nhập, đăng ký, chat |
+| Ant Design | Component UI |
+| Axios | Gọi REST API |
+| Socket.IO Client | Kết nối realtime với backend |
+| Context API | Quản lý trạng thái Auth và Socket |
+| CSS Modules | Tách style theo component |
 
 ### Backend
-| Công nghệ | Mục đích |
-|-----------|---------|
-| **Node.js** | Runtime JavaScript phía server |
-| **Express.js** | Framework xây dựng REST API |
-| **Socket.IO** | Xử lý kết nối WebSocket realtime |
-| **MongoDB** | Cơ sở dữ liệu NoSQL lưu trữ dữ liệu |
-| **Mongoose** | ODM — định nghĩa schema và thao tác với MongoDB |
-| **JWT (jsonwebtoken)** | Tạo và xác thực token xác thực |
-| **bcryptjs** | Mã hóa mật khẩu người dùng |
-| **Cloudinary** | Lưu trữ và tối ưu ảnh avatar |
-| **Multer** | Nhận file upload (memory), giới hạn loại / dung lượng |
-| **cors** | Cho phép frontend (local + Vercel) gọi API |
 
----
+| Công nghệ | Vai trò |
+| --- | --- |
+| Node.js | Runtime server |
+| Express.js | Xây dựng REST API |
+| Socket.IO | Giao tiếp realtime |
+| MongoDB | Cơ sở dữ liệu NoSQL |
+| Mongoose | ODM cho MongoDB |
+| JWT | Xác thực người dùng |
+| bcryptjs | Mã hóa mật khẩu |
+| Multer | Nhận file upload |
+| Cloudinary | Lưu avatar và ảnh nhóm |
+| Supabase Storage | Lưu file đính kèm |
+| Helmet, CORS, Rate Limit | Bảo mật API cơ bản |
+
+## Kiến trúc tổng quan
+
+```mermaid
+flowchart LR
+    User[Người dùng] --> FE[React + Vite Frontend]
+    FE -->|REST API| BE[Express Backend]
+    FE <-->|Socket.IO| WS[Socket.IO Server]
+    BE --> DB[(MongoDB)]
+    BE --> Cloudinary[(Cloudinary)]
+    BE --> Supabase[(Supabase Storage)]
+    WS --> DB
+```
+
+Frontend chịu trách nhiệm hiển thị giao diện, quản lý trạng thái phiên đăng nhập và kết nối socket. Backend cung cấp REST API cho dữ liệu bền vững, đồng thời dùng Socket.IO để broadcast tin nhắn, trạng thái đọc, typing và online/offline trong từng room hội thoại.
 
 ## Cấu trúc thư mục
 
-```
+```text
 QikLineChat/
 ├── README.md
-├── docs/                                 ← Sơ đồ luồng (SVG) trong README
+├── docs/
+│   ├── slides.md
 │   ├── flow_1_login.svg
 │   ├── flow_2_load_history.svg
 │   ├── flow_3_realtime_socket.svg
 │   └── flow_4_create_conversation.svg
-├── frontend/                             ← React + Vite
-│   ├── public/
-│   ├── index.html                        ← HTML entry Vite
-│   ├── vite.config.js                    ← Cấu hình Vite
-│   ├── eslint.config.js                  ← ESLint (flat config)
-│   ├── vercel.json                       ← Cấu hình deploy Vercel
-│   ├── .env.example                      ← Mẫu VITE_API_URL
+├── backend/
+│   ├── .env.example
 │   ├── package.json
-│   │
+│   ├── package-lock.json
+│   ├── server.js
+│   ├── scripts/
+│   │   ├── seedChat.js
+│   │   └── seedUsers.js
 │   └── src/
-│       ├── main.jsx                      ← Mount React (StrictMode), import index.css
-│       ├── App.jsx                       ← AuthProvider + routes: /, /login, /register, /chat; SocketProvider bọc ChatPage
-│       ├── App.css                       ← Style bổ trợ cho App
-│       ├── index.css                     ← Style toàn cục / reset
-│       │
-│       │
-│       ├── api/
-│       │   ├── axiosInstance.js          ← baseURL từ VITE_API_URL, JWT interceptor, xử lý 401
-│       │   ├── authAPI.js                ← Gọi /api/auth/*
-│       │   ├── conversationAPI.js        ← Gọi /api/conversations/*
-│       │   ├── messageAPI.js             ← Gọi /api/messages/*
-│       │   └── userAPI.js                ← Avatar & username: PATCH/DELETE /api/users/me/*
-│       │
-│       ├── components/
-│       │   ├── Sidebar.jsx               ← Danh sách hội thoại private + group
-│       │   ├── SidebarSearch.jsx         ← Tìm user, bắt đầu chat 1-1 (thay thế UserSearch.jsx — đã xóa)
-│       │   ├── ChatWindow.jsx            ← Khung chat đang chọn, join room socket
-│       │   ├── MessageList.jsx           ← Danh sách tin nhắn theo conversation
-│       │   ├── ChatInput.jsx             ← Nhập tin, gửi qua socket / API
-│       │   ├── CreateGroupModal.jsx      ← Modal tạo nhóm
-│       │   ├── AppNavRail.jsx            ← Thanh điều hướng / quick actions
-│       │   ├── UserAvatar.jsx            ← Avatar chữ cái hoặc ảnh Cloudinary
-│       │   ├── SplashScreen.jsx          ← Chờ khôi phục session khi có token
-│       │   └── styles/                   ← CSS Module scoped theo component
-│       │       
-│       │
-│       ├── pages/
-│       │   ├── LoginPage.jsx             ← Form đăng nhập
-│       │   ├── RegisterPage.jsx          ← Form đăng ký
-│       │   ├── ChatPage.jsx              ← Layout chat: sidebar + cửa sổ chat
-│       │   └── styles/                   ← CSS Module scoped theo page
-│       │    
-│       ├── context/
-│       │   ├── AuthContext.jsx           ← Provider: user, token, login/logout
-│       │   ├── AuthContextValue.js       ← Logic / state Auth tách khỏi Provider
-│       │   ├── SocketContext.jsx         ← Provider socket.io-client
-│       │   └── SocketContextValue.js     ← Logic kết nối socket tách khỏi Provider
-│       │
-│       ├── hooks/
-│       │   ├── useAuth.js                ← Đọc AuthContext
-│       │   └── useSocket.js              ← Đọc SocketContext
-│       │
+│       ├── config/
+│       │   ├── cloudinary.js
+│       │   ├── corsOptions.js
+│       │   ├── db.js
+│       │   └── supabase.js
+│       ├── controllers/
+│       │   ├── authController.js
+│       │   ├── conversationController.js
+│       │   ├── messageController.js
+│       │   └── userController.js
+│       ├── middleware/
+│       │   ├── authMiddleware.js
+│       │   ├── errorHandler.js
+│       │   ├── rateLimiters.js
+│       │   └── requestLogger.js
+│       ├── models/
+│       │   ├── ContactRequest.js
+│       │   ├── Conversation.js
+│       │   ├── Message.js
+│       │   ├── User.js
+│       │   └── UserReport.js
+│       ├── routes/
+│       │   ├── authRoutes.js
+│       │   ├── conversationRoutes.js
+│       │   ├── messageRoutes.js
+│       │   └── userRoutes.js
+│       ├── socket/
+│       │   └── socketHandler.js
 │       └── utils/
-│           └── formatTime.js             ← Format thời gian hiển thị tin nhắn
-│
-└── backend/                              ← Node + Express + Socket.IO
-    ├── server.js                         ← Entry duy nhất: Express, CORS, routes, HTTP + Socket.IO
+│           ├── conversationMeta.js
+│           ├── logger.js
+│           └── runtimeMetrics.js
+└── frontend/
+    ├── .env.example
+    ├── README.md
+    ├── eslint.config.js
+    ├── index.html
     ├── package.json
-    ├── .gitignore
-    │
+    ├── package-lock.json
+    ├── vercel.json
+    ├── vite.config.js
+    ├── public/
+    │   ├── favicon.svg
+    │   ├── icons.svg
+    │   └── qikline_logo.svg
     └── src/
-        ├── config/
-        │   ├── db.js                     ← mongoose.connect MongoDB
-        │   └── cloudinary.js             ← Cấu hình SDK Cloudinary (upload avatar)
-        │
-        ├── controllers/
-        │   ├── authController.js         ← Đăng ký, đăng nhập, JWT
-        │   ├── messageController.js      ← Lịch sử tin nhắn, lưu message
-        │   ├── conversationController.js ← Danh sách / tạo conversation
-        │   └── userController.js         ← Upload/xóa avatar lên Cloudinary, đổi username
-        │
-        ├── models/
-        │   ├── User.js                   ← username, email, passwordHash, avatar { url, publicId }
-        │   ├── Message.js                ← conversationId, sender, content, deletedBy[]
-        │   └── Conversation.js           ← Schema: type, name, members, createdBy
-        │
-        ├── routes/
-        │   ├── authRoutes.js             ← POST /register, /login
-        │   ├── messageRoutes.js          ← GET /:conversationId, POST /
-        │   ├── conversationRoutes.js     ← GET /, POST /
-        │   └── userRoutes.js             ← Multer: PATCH/DELETE /me/avatar, PATCH /me/username, GET /search
-        │
-        ├── middleware/
-        │   └── authMiddleware.js         ← verify JWT (Bearer)
-        │
-        └── socket/
-            └── socketHandler.js          ← joinRoom, sendMessage, typing, online/offline, …
+        ├── App.css
+        ├── App.jsx
+        ├── index.css
+        ├── main.jsx
+        ├── api/
+        │   ├── authAPI.js
+        │   ├── axiosInstance.js
+        │   ├── conversationAPI.js
+        │   ├── messageAPI.js
+        │   └── userAPI.js
+        ├── assets/
+        │   ├── hero.png
+        │   ├── logo.png
+        │   ├── react.svg
+        │   └── vite.svg
+        ├── components/
+        │   ├── AppNavRail.jsx
+        │   ├── ChatInput.jsx
+        │   ├── ChatWindow.jsx
+        │   ├── ContactsWorkspace.jsx
+        │   ├── CreateGroupModal.jsx
+        │   ├── GroupDetailsDrawer.jsx
+        │   ├── MessageList.jsx
+        │   ├── MessageSearchDrawer.jsx
+        │   ├── PrivateDetailsDrawer.jsx
+        │   ├── Sidebar.jsx
+        │   ├── SidebarSearch.jsx
+        │   ├── SplashScreen.jsx
+        │   ├── UserAvatar.jsx
+        │   └── styles/
+        │       ├── AppNavRail.module.css
+        │       ├── ChatInput.module.css
+        │       ├── ChatWindow.module.css
+        │       ├── ContactsWorkspace.module.css
+        │       ├── CreateGroupModal.module.css
+        │       ├── GroupDetailsDrawer.module.css
+        │       ├── MessageList.module.css
+        │       ├── MessageSearchDrawer.module.css
+        │       ├── PrivateDetailsDrawer.module.css
+        │       ├── Sidebar.module.css
+        │       ├── SidebarSearch.module.css
+        │       └── SplashScreen.module.css
+        ├── context/
+        │   ├── AuthContext.jsx
+        │   ├── AuthContextValue.js
+        │   ├── SocketContext.jsx
+        │   └── SocketContextValue.js
+        ├── hooks/
+        │   ├── useAuth.js
+        │   └── useSocket.js
+        ├── pages/
+        │   ├── ChatPage.jsx
+        │   ├── LoginPage.jsx
+        │   ├── RegisterPage.jsx
+        │   └── styles/
+        │       ├── AuthPage.module.css
+        │       └── ChatPage.module.css
+        └── utils/
+            ├── fileNameEncoding.js
+            └── formatTime.js
 ```
-
----
 
 ## Sơ đồ luồng hoạt động
 
-### Luồng 1 — Khởi Động App & Đăng Nhập
+### 1. Khởi động app và đăng nhập
 
 ![Luồng đăng nhập](./docs/flow_1_login.svg)
 
----
+### 2. Tải lịch sử chat bằng REST API
 
-### Luồng 2 — Tải Lịch Sử Chat (REST API)
+![Luồng tải lịch sử chat](./docs/flow_2_load_history.svg)
 
-![Luồng tải chat history](./docs/flow_2_load_history.svg)
-
----
-
-### Luồng 3 — Gửi & Nhận Tin Nhắn Realtime (Socket.IO)
+### 3. Gửi và nhận tin nhắn realtime
 
 ![Luồng realtime socket](./docs/flow_3_realtime_socket.svg)
 
----
+### 4. Tạo private chat và group chat
 
-### Luồng 4 — Tạo Private Chat & Group Chat
+![Luồng tạo hội thoại](./docs/flow_4_create_conversation.svg)
 
-![Luồng create conversation](./docs/flow_4_create_conversation.svg)
-
-> **Điểm hay:** Sau khi có `conversationId`, cả private lẫn group chat đều dùng **cùng một cơ chế** — `ChatWindow.jsx` join room socket và `socketHandler.js` broadcast theo room, không cần phân biệt loại chat.
-
----
-
-## Hướng dẫn cài đặt & chạy dự án
+## Hướng dẫn cài đặt
 
 ### Yêu cầu môi trường
 
-| Công cụ | Phiên bản tối thiểu |
-|---------|---------------------|
-| Node.js | >= 18.x |
-| npm | >= 9.x |
-| MongoDB | >= 6.x (local hoặc Atlas) |
-| Git | Bất kỳ |
-
----
+| Công cụ | Phiên bản khuyến nghị |
+| --- | --- |
+| Node.js | >= 18 |
+| npm | >= 9 |
+| MongoDB | Local hoặc MongoDB Atlas |
+| Git | Bất kỳ phiên bản ổn định |
 
 ### 1. Clone repository
 
 ```bash
 git clone https://github.com/pathbezo26/NT208_LTWeb_QikLineChat.git
-cd QikLineChat
+cd NT208_LTWeb_QikLineChat
 ```
 
----
-
-### 2. Cài đặt & cấu hình backend
+### 2. Cài đặt backend
 
 ```bash
-# Di chuyển vào thư mục backend
 cd backend
-
-# Cài đặt dependencies
 npm install
 ```
 
-Tạo file `.env` trong thư mục `backend/`:
+Tạo file `backend/.env` dựa trên `backend/.env.example`:
 
 ```env
-# Cổng chạy server
 PORT=5000
-
-# Chuỗi kết nối MongoDB (local hoặc Atlas)
-MONGO_URI=mongodb://localhost:27017/webchat
-
-# Khóa bí mật để ký JWT (đặt chuỗi ngẫu nhiên dài)
-JWT_SECRET=your_super_secret_key_here
-
-# Thời gian hết hạn JWT
+MONGO_URI=<your-mongodb-uri>
+JWT_SECRET=<your-jwt-secret>
 JWT_EXPIRES_IN=7d
+CORS_ORIGINS=http://localhost:5173,https://nt208-qikline.vercel.app
 
-# Cloudinary (upload avatar) — lấy từ dashboard Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_CLOUD_NAME=<your-cloudinary-cloud-name>
+CLOUDINARY_API_KEY=<your-cloudinary-api-key>
+CLOUDINARY_API_SECRET=<your-cloudinary-api-secret>
+
+SUPABASE_URL=<your-supabase-url>
+SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
+SUPABASE_FILE_BUCKET=<your-supabase-file-bucket>
 ```
 
----
+Chạy backend:
+
+```bash
+npm run dev
+```
+
+Backend mặc định chạy tại:
+
+```text
+http://localhost:5000
+```
 
 ### 3. Cài đặt frontend
 
 ```bash
-# Mở terminal mới, di chuyển vào thư mục frontend
 cd frontend
-
-# Cài đặt dependencies
 npm install
 ```
 
-Trong `frontend/`, tạo `.env` (tham chiếu `.env.example`) với biến **`VITE_API_URL`** trỏ tới API backend, ví dụ:
+Tạo file `frontend/.env` dựa trên `frontend/.env.example`:
 
 ```env
+VITE_SOCKET_URL=http://localhost:5000
 VITE_API_URL=http://localhost:5000/api
 ```
 
-`axiosInstance.js` dùng `import.meta.env.VITE_API_URL` làm `baseURL`.
-
----
-
-### 4. Chạy dự án
+Chạy frontend:
 
 ```bash
-# Terminal 1: Chạy Backend
-cd backend
-npm run dev      # Dùng nodemon (hot reload)
-# hoặc: npm start
-
-# Terminal 2: Chạy Frontend
-cd frontend
 npm run dev
 ```
----
 
-### 5. Truy cập ứng dụng
+Frontend mặc định chạy tại:
 
----
+```text
+http://localhost:5173
+```
 
-## Cách sử dụng
+## Scripts
 
-1. **Đăng ký tài khoản**: Truy cập `/register`, điền thông tin và tạo tài khoản mới.
-2. **Đăng nhập**: Truy cập `/login`, nhập email và mật khẩu — JWT sẽ được lưu vào `AuthContext`.
-3. **Tìm người dùng**: Dùng thanh tìm kiếm trên Sidebar (`SidebarSearch`) để tìm user và bắt đầu chat 1-1.
-4. **Tạo nhóm chat**: Nhấn nút "Tạo nhóm", nhập tên nhóm và chọn thành viên qua `CreateGroupModal`.
-5. **Nhắn tin**: Nhập nội dung vào `ChatInput`, nhấn Enter hoặc nút gửi — tin nhắn xuất hiện realtime cho cả hai phía.
-6. **Xem lịch sử**: Nhấn vào bất kỳ cuộc trò chuyện nào trong Sidebar để tải lịch sử tin nhắn.
+### Backend
 
----
+| Lệnh | Mô tả |
+| --- | --- |
+| `npm run dev` | Chạy server bằng nodemon |
+| `npm start` | Chạy server bằng Node.js |
+| `npm run seed:users` | Tạo dữ liệu user mẫu |
+| `npm run seed:users:1000` | Tạo 1000 user mẫu |
+| `npm run seed:chat` | Tạo dữ liệu chat mẫu |
+| `npm run seed:chat:append` | Thêm dữ liệu chat mẫu |
+| `npm run seed:chat:reset` | Reset và tạo lại dữ liệu chat mẫu |
 
-## API routes
+### Frontend
 
-### Auth — `/api/auth`
+| Lệnh | Mô tả |
+| --- | --- |
+| `npm run dev` | Chạy Vite dev server |
+| `npm run build` | Build production |
+| `npm run preview` | Xem bản build production |
+| `npm run lint` | Kiểm tra ESLint |
+
+## API chính
+
+Các API yêu cầu đăng nhập cần gửi header:
+
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
+
+### Auth
 
 | Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| `POST` | `/api/auth/register` | Đăng ký tài khoản mới | Không |
-| `POST` | `/api/auth/login` | Đăng nhập, nhận JWT | Không |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | Đăng ký tài khoản | Không |
+| `POST` | `/api/auth/login` | Đăng nhập và nhận JWT | Không |
+| `GET` | `/api/auth/me` | Lấy thông tin user hiện tại | Có |
 
-**Ví dụ body đăng ký:**
-```json
-{
-  "username": "nguyenvana",
-  "email": "a@example.com",
-  "password": "123456"
-}
-```
-
-**Ví dụ response đăng nhập:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": { "_id": "...", "username": "nguyenvana", "email": "a@example.com" }
-}
-```
-
----
-
-### Conversations — `/api/conversations`
+### Conversations
 
 | Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| `GET` | `/api/conversations` | Lấy danh sách tất cả conversations của user | Có |
-| `POST` | `/api/conversations` | Tạo private hoặc group conversation | Có |
+| --- | --- | --- | --- |
+| `GET` | `/api/conversations` | Lấy danh sách hội thoại | Có |
+| `GET` | `/api/conversations/:id` | Lấy chi tiết hội thoại | Có |
+| `POST` | `/api/conversations` | Tạo private/group conversation | Có |
+| `DELETE` | `/api/conversations/:id` | Ẩn/xóa hội thoại với user hiện tại | Có |
+| `PATCH` | `/api/conversations/:id/read` | Đánh dấu đã đọc | Có |
+| `PATCH` | `/api/conversations/:id/avatar` | Cập nhật ảnh nhóm | Có |
+| `PATCH` | `/api/conversations/:id/details` | Cập nhật tên/thông tin nhóm | Có |
+| `PUT` | `/api/conversations/:id/add` | Thêm thành viên nhóm | Có |
+| `PUT` | `/api/conversations/:id/remove` | Xóa thành viên nhóm | Có |
+| `PUT` | `/api/conversations/:id/admins` | Cập nhật admin nhóm | Có |
+| `PUT` | `/api/conversations/:id/owner` | Chuyển quyền chủ nhóm | Có |
+| `PUT` | `/api/conversations/:id/leave` | Rời nhóm | Có |
 
-**Ví dụ body tạo private chat:**
-```json
-{
-  "type": "private",
-  "members": ["userId_B"]
-}
-```
-
-**Ví dụ body tạo group chat:**
-```json
-{
-  "type": "group",
-  "name": "Nhóm Đồ Án",
-  "members": ["userId_B", "userId_C", "userId_D"]
-}
-```
-
----
-
-### Messages — `/api/messages`
+### Messages
 
 | Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| `GET` | `/api/messages/:conversationId` | Lấy lịch sử tin nhắn của một conversation | Có |
-| `POST` | `/api/messages` | Lưu tin nhắn mới vào DB | Có |
+| --- | --- | --- | --- |
+| `GET` | `/api/messages/:conversationId` | Lấy lịch sử tin nhắn | Có |
+| `GET` | `/api/messages/:conversationId/search` | Tìm kiếm tin nhắn | Có |
+| `GET` | `/api/messages/:conversationId/pinned` | Lấy tin nhắn đã ghim | Có |
+| `GET` | `/api/messages/:conversationId/shared-resources` | Lấy media/file/link đã chia sẻ | Có |
+| `POST` | `/api/messages` | Gửi tin nhắn mới | Có |
+| `POST` | `/api/messages/:conversationId/attachments` | Upload file đính kèm | Có |
+| `PATCH` | `/api/messages/:messageId/pin` | Ghim/bỏ ghim tin nhắn | Có |
+| `PATCH` | `/api/messages/:messageId/reactions` | Thêm/xóa reaction | Có |
+| `DELETE` | `/api/messages/:messageId` | Xóa hoặc thu hồi tin nhắn | Có |
 
-**Ví dụ body gửi tin nhắn:**
-```json
-{
-  "conversationId": "conv_id_here",
-  "content": "Xin chào!"
-}
-```
-
-> Các route cần **Auth** phải gửi kèm header: `Authorization: Bearer <JWT_TOKEN>`
-
----
-
-### Users — `/api/users`
+### Users
 
 | Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| `GET` | `/api/users/search?q=` | Tìm user theo username (trừ bản thân) | Có |
-| `PATCH` | `/api/users/me/avatar` | Upload / đổi avatar (multipart, field `avatar`, JPG/PNG/WEBP, tối đa 2MB) | Có |
-| `DELETE` | `/api/users/me/avatar` | Xóa avatar trên Cloudinary + DB | Có |
-| `PATCH` | `/api/users/me/username` | Đổi username | Có |
+| --- | --- | --- | --- |
+| `GET` | `/api/users/search?q=` | Tìm kiếm user | Có |
+| `PATCH` | `/api/users/me/avatar` | Upload avatar | Có |
+| `PATCH` | `/api/users/me/avatar/crop` | Cập nhật crop avatar | Có |
+| `DELETE` | `/api/users/me/avatar` | Xóa avatar | Có |
+| `PATCH` | `/api/users/me/username` | Đổi tên hiển thị | Có |
+| `PATCH` | `/api/users/me/user-id` | Đổi User ID | Có |
+| `GET` | `/api/users/contacts` | Lấy danh bạ | Có |
+| `POST` | `/api/users/:id/contact-request` | Gửi lời mời kết bạn | Có |
+| `POST` | `/api/users/contact-requests/:requestId/accept` | Chấp nhận lời mời | Có |
+| `POST` | `/api/users/contact-requests/:requestId/decline` | Từ chối lời mời | Có |
+| `DELETE` | `/api/users/contact-requests/:requestId` | Hủy lời mời đã gửi | Có |
+| `DELETE` | `/api/users/:id/contact` | Xóa liên hệ | Có |
+| `POST` | `/api/users/:id/block` | Chặn user | Có |
+| `DELETE` | `/api/users/:id/block` | Bỏ chặn user | Có |
+| `POST` | `/api/users/:id/report` | Báo cáo user | Có |
 
----
+### System
 
-## Socket events
+| Method | Endpoint | Mô tả |
+| --- | --- | --- |
+| `GET` | `/api/health` | Kiểm tra trạng thái server và database |
+| `GET` | `/api/metrics` | Xem runtime metrics, có thể bảo vệ bằng `MONITORING_TOKEN` |
+
+## Socket.IO events
 
 | Event | Hướng | Mô tả |
-|-------|-------|-------|
-| `connection` | Client → Server | Kết nối socket, kèm `auth.token` để xác thực |
-| `disconnect` | Client → Server | Ngắt kết nối socket |
-| `joinRoom` | Client → Server | Vào phòng chat theo `conversationId` |
-| `leaveRoom` | Client → Server | Rời khỏi phòng chat |
-| `sendMessage` | Client → Server | Gửi tin nhắn mới (`{ conversationId, content }`) |
-| `newMessage` | Server → Client | Broadcast tin nhắn mới đến toàn bộ room |
-| `markMessagesRead` | Client → Server | Đánh dấu các tin nhắn trong conversation hiện tại là đã đọc |
-| `messageStatusUpdated` | Server → Client | Broadcast trạng thái đọc/nhận mới để cập nhật `deliveredTo` / `readBy` realtime |
-| `typing` | Client → Server | Thông báo đang nhập tin nhắn |
-| `stopTyping` | Client → Server | Dừng nhập tin nhắn |
-| `userOnline` | Server → Client | Thông báo user vừa online |
-| `userOffline` | Server → Client | Thông báo user vừa offline |
+| --- | --- | --- |
+| `connection` | Client -> Server | Kết nối socket kèm JWT |
+| `disconnect` | Client -> Server | Ngắt kết nối |
+| `joinRoom` | Client -> Server | Vào room theo `conversationId` |
+| `leaveRoom` | Client -> Server | Rời room hiện tại |
+| `sendMessage` | Client -> Server | Gửi tin nhắn realtime |
+| `newMessage` | Server -> Client | Broadcast tin nhắn mới |
+| `conversationUpdated` | Server -> Client | Cập nhật sidebar, last message, unread count |
+| `markMessagesRead` | Client -> Server | Đánh dấu tin nhắn đã đọc |
+| `messageStatusUpdated` | Server -> Client | Cập nhật delivered/read |
+| `typing` | Client -> Server | Báo đang nhập |
+| `stopTyping` | Client -> Server | Báo dừng nhập |
+| `userOnline` | Server -> Client | User online |
+| `userOffline` | Server -> Client | User offline |
 
-**Ví dụ sử dụng phía client:**
-```javascript
-// Vào phòng chat
-socket.emit('joinRoom', conversationId);
-
-// Gửi tin nhắn
-socket.emit('sendMessage', { conversationId, content: 'Hello!' });
-
-// Lắng nghe tin nhắn mới
-socket.on('newMessage', (message) => {
-  setMessages(prev => [...prev, message]);
-});
-```
----
 ## Thiết kế cơ sở dữ liệu
 
-### Lược đồ (schema)
+Ứng dụng sử dụng MongoDB với các collection chính:
 
-Ứng dụng sử dụng **MongoDB** với 3 collection chính: `users`, `conversations`, `messages`. Dưới đây là chi tiết schema và mối quan hệ giữa các collection.
-
----
-
-#### Collection: `users`
-
-Lưu trữ thông tin tài khoản người dùng.
-
-```javascript
-// models/User.js
-{
-  _id:          ObjectId,          // Khóa chính, tự sinh bởi MongoDB
-  username:     String,            // Tên hiển thị, bắt buộc, duy nhất
-  email:        String,            // Email đăng nhập, bắt buộc, duy nhất
-  passwordHash: String,            // Mật khẩu đã mã hóa bcrypt
-  avatar:       { url, publicId, updatedAt }  // Ảnh đại diện trên Cloudinary (tùy chọn)
-  createdAt:    Date,              // Thời điểm tạo tài khoản (timestamps)
-  updatedAt:    Date               // Thời điểm cập nhật gần nhất (timestamps)
-}
-```
-
-| Trường | Kiểu | Bắt buộc | Unique | Mô tả |
-|--------|------|----------|--------|-------|
-| `_id` | ObjectId | Có | Có | Khóa chính tự sinh |
-| `username` | String | Có | Có | Tên người dùng |
-| `email` | String | Có | Có | Email đăng nhập |
-| `passwordHash` | String | Có | Không | Mật khẩu mã hóa bcrypt |
-| `avatar` | Object | Không | Không | `url`, `publicId`, `updatedAt` (Cloudinary) |
-| `createdAt` | Date | Có | Không | Tự động (Mongoose timestamps) |
-
-> **Lưu ý về `updatedAt`**
->
-> Trường `updatedAt` của `conversations` **không tự động cập nhật khi có tin nhắn mới**, vì message được lưu ở collection `messages` riêng.
->
-> Vì vậy, sau khi lưu `Message`, backend cần **cập nhật thủ công `Conversation.updatedAt`** để sidebar luôn sort đúng cuộc trò chuyện mới nhất lên đầu.
->
-> ```javascript
-> await Conversation.findByIdAndUpdate(conversationId, {
->   updatedAt: new Date()
-> });
-> ```
->
-> Thường xử lý trong `socketHandler.js` hoặc `messageController.js` ngay sau bước lưu message.
-
----
-
-#### Collection: `conversations`
-
-Lưu trữ thông tin các cuộc trò chuyện (private hoặc group).
-
-```javascript
-// models/Conversation.js
-{
-  _id:       ObjectId,            // Khóa chính
-  type:      String,              // "private" | "group"
-  name:      String,              // Tên nhóm (chỉ dùng cho group, null nếu private)
-  members:   [ObjectId],          // Mảng _id của các thành viên → ref: "User"
-  createdBy: ObjectId,            // _id của người tạo → ref: "User"
-  createdAt: Date,
-  updatedAt: Date                 // Cập nhật mỗi khi có tin nhắn mới (dùng để sort)
-}
-```
-
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|------|----------|-------|
-| `_id` | ObjectId | Có | Khóa chính tự sinh |
-| `type` | String (enum) | Có | `"private"` hoặc `"group"` |
-| `name` | String | Không | Tên nhóm (bỏ trống nếu private) |
-| `members` | [ObjectId] | Có | Danh sách thành viên (ref → `users`) |
-| `createdBy` | ObjectId | Có | Người tạo cuộc trò chuyện (ref → `users`) |
-| `updatedAt` | Date | Có | Dùng để sắp xếp sidebar theo thời gian |
-
----
-
-#### Collection: `messages`
-
-Lưu trữ toàn bộ tin nhắn của tất cả các cuộc trò chuyện.
-
-```javascript
-// models/Message.js
-{
-  _id:            ObjectId,       // Khóa chính
-  conversationId: ObjectId,       // Thuộc cuộc trò chuyện nào → ref: "Conversation"
-  sender:         ObjectId,       // Ai gửi → ref: "User"
-  content:        String,         // Nội dung tin nhắn văn bản
-  deliveredTo:    [ObjectId],     // Các user đã nhận tin
-  readBy:         [ObjectId],     // Các user đã đọc tin
-  deletedBy:      [ObjectId],     // Người đã “ẩn” tin (soft delete phía client)
-  createdAt:      Date,
-  updatedAt:      Date
-}
-```
-
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|------|----------|-------|
-| `_id` | ObjectId | Có | Khóa chính tự sinh |
-| `conversationId` | ObjectId | Có | Thuộc conversation nào (ref → `conversations`) |
-| `sender` | ObjectId | Có | Người gửi (ref → `users`) |
-| `content` | String | Có | Nội dung tin nhắn văn bản |
-| `deliveredTo` | [ObjectId] | Không | Danh sách user đã nhận tin nhắn |
-| `readBy` | [ObjectId] | Không | Danh sách user đã đọc tin nhắn |
-| `deletedBy` | [ObjectId] | Không | User đã ẩn tin (không xóa bản ghi) |
-| `createdAt` | Date | Có | Thời điểm gửi, dùng để sắp xếp |
-
----
-
-#### Quan hệ giữa các collection
+- `users`: thông tin tài khoản, mật khẩu đã hash, avatar, userId, danh sách block.
+- `conversations`: loại hội thoại, tên nhóm, thành viên, admin, owner, last message, unread count, trạng thái ẩn/xóa theo user.
+- `messages`: nội dung tin nhắn, sender, conversationId, attachments, trạng thái read/delivered, pin, reaction, delete metadata.
+- `contactrequests`: lời mời kết bạn và trạng thái xử lý.
+- `userreports`: dữ liệu báo cáo user.
 
 ```mermaid
 erDiagram
-    USERS {
-        ObjectId _id PK
-        string username
-        string email
-        string passwordHash
-        date createdAt
-    }
-
-    CONVERSATIONS {
-        ObjectId _id PK
-        string type
-        string name
-        ObjectId[] members FK
-        ObjectId createdBy FK
-        date updatedAt
-    }
-
-    MESSAGES {
-        ObjectId _id PK
-        ObjectId conversationId FK
-        ObjectId sender FK
-        string content
-        date createdAt
-    }
-
-    USERS ||--o{ CONVERSATIONS : "tham gia (members[])"
-    USERS ||--o{ MESSAGES : "gửi (sender)"
-    CONVERSATIONS ||--o{ MESSAGES : "chứa (conversationId)"
+    USERS ||--o{ CONVERSATIONS : participates
+    USERS ||--o{ MESSAGES : sends
+    USERS ||--o{ CONTACTREQUESTS : creates
+    USERS ||--o{ USERREPORTS : reports
+    CONVERSATIONS ||--o{ MESSAGES : contains
 ```
 
----
+## Bảo mật và kiểm soát dữ liệu
 
-### Chiến lược lập chỉ mục (indexing)
-
-Indexing giúp tăng tốc độ truy vấn MongoDB đáng kể, đặc biệt quan trọng khi dữ liệu tin nhắn tăng trưởng nhanh.
-
-#### Index trên collection `users`
-
-```javascript
-// Đăng nhập bằng email (authController.js)
-db.users.createIndex({ email: 1 }, { unique: true })  // Unique, tăng tốc login
-
-// Đảm bảo username không trùng
-db.users.createIndex({ username: 1 }, { unique: true })
-```
-
-| Index | Loại | Lý do |
-|-------|------|-------|
-| `email_1` | Unique | Tra cứu nhanh khi đăng nhập |
-| `username_1` | Unique | Đảm bảo tên không trùng |
-
----
-
-#### Index trên collection `conversations`
-
-```javascript
-// Lấy danh sách conversation của user trên Sidebar
-db.conversations.createIndex({ members: 1 })
-
-// Sắp xếp theo tin nhắn mới nhất (conversation gần đây lên đầu)
-db.conversations.createIndex({ updatedAt: -1 })
-
-// Tổ hợp: lọc theo members + sort theo thời gian (query phổ biến nhất)
-db.conversations.createIndex({ members: 1, updatedAt: -1 })
-
-// Kiểm tra private conversation đã tồn tại chưa trước khi tạo mới
-db.conversations.createIndex({ type: 1, members: 1 })
-```
-
-| Index | Loại | Truy vấn được tối ưu |
-|-------|------|---------------------|
-| `members_1` | Single | Lấy conversations theo userId |
-| `updatedAt_-1` | Single | Sort theo tin nhắn mới nhất |
-| `members_1_updatedAt_-1` | Compound | Sidebar query: filter + sort |
-| `type_1_members_1` | Compound | Kiểm tra private chat trùng |
-
----
-
-#### Index trên collection `messages`
-
-```javascript
-// Lấy lịch sử tin nhắn của một conversation (query quan trọng nhất)
-db.messages.createIndex({ conversationId: 1, createdAt: -1 })
-```
-
-| Index | Loại | Truy vấn được tối ưu |
-|-------|------|---------------------|
-| `conversationId_1_createdAt_-1` | Compound | Tải lịch sử tin nhắn theo thứ tự mới nhất |
-
----
-
-#### Khai báo index trong Mongoose schema
-
-```javascript
-// models/Message.js — Ví dụ khai báo index trực tiếp trong schema
-const MessageSchema = new mongoose.Schema(
-  {
-    conversationId: { type: ObjectId, ref: 'Conversation', required: true },
-    sender:         { type: ObjectId, ref: 'User', required: true },
-    content:        { type: String, required: true },
-  },
-  { timestamps: true }
-);
-
-// Compound index: tối ưu truy vấn lịch sử chat
-MessageSchema.index({ conversationId: 1, createdAt: -1 });
-
-// models/Conversation.js
-const ConversationSchema = new mongoose.Schema(
-  {
-    type:      { type: String, enum: ['private', 'group'], required: true },
-    name:      { type: String },
-    members:   [{ type: ObjectId, ref: 'User', required: true }],
-    createdBy: { type: ObjectId, ref: 'User' },
-  },
-  { timestamps: true }
-);
-
-// Compound index: sidebar query (filter members + sort by latest)
-ConversationSchema.index({ members: 1, updatedAt: -1 });
-ConversationSchema.index({ type: 1, members: 1 });
-```
-
----
-
-#### Tóm tắt index
-
-```
-Collection: users
-  ├── email_1           (unique)     ← đăng nhập
-  └── username_1        (unique)     ← đảm bảo không trùng
-
-Collection: conversations
-  ├── members_1_updatedAt_-1         ← sidebar (chính)
-  └── type_1_members_1               ← kiểm tra private trùng
-
-Collection: messages
-  └── conversationId_1_createdAt_-1  ← tải lịch sử (chính)
-```
-
-> **Lưu ý:** Không nên tạo quá nhiều index vì mỗi index tốn thêm dung lượng lưu trữ và làm chậm thao tác **write** (insert/update). Chỉ index những trường thực sự được dùng trong điều kiện `find()`, `sort()`, và `$lookup`.
-
----
+- Mật khẩu được hash bằng `bcryptjs`.
+- JWT được kiểm tra ở cả REST API và Socket.IO.
+- Middleware `protect` đảm bảo user chỉ truy cập dữ liệu được phép.
+- Helmet thiết lập các HTTP security headers cơ bản.
+- CORS giới hạn origin được phép gọi API/socket.
+- Rate limit áp dụng cho đăng nhập, search, gửi tin và upload.
+- File upload được giới hạn dung lượng và loại file.
+- Tin nhắn và cuộc trò chuyện dùng soft delete để tránh mất dữ liệu ngoài ý muốn.
 
 ## Hướng phát triển
 
-Các tính năng có thể bổ sung trong các phiên bản tiếp theo:
+- Push notification khi người dùng không mở tab.
+- Gọi audio/video bằng WebRTC.
+- Mã hóa đầu cuối cho tin nhắn.
+- Tìm kiếm toàn cục trên nhiều hội thoại.
+- Dashboard quản trị báo cáo user và thống kê hệ thống.
+- Kiểm thử tự động cho API, socket và luồng UI quan trọng.
 
-- **Emoji & reaction** — emoji picker và react vào tin nhắn
-- **Thông báo đẩy (push)** — nhận thông báo kể cả khi không mở tab
-- **Hồ sơ người dùng** — bio, thông tin bổ sung (avatar / đổi tên đã có)
-- **Gọi video / audio** — WebRTC
-- **Ghim tin nhắn** — trong nhóm
+## Ghi chú nộp báo cáo
 
----
-
-
-Dự án được phát triển phục vụ mục đích học tập. Mọi đóng góp và cải tiến đều được chào đón!
+- Link repository đã được đặt trong phần **Thông tin đồ án**.
+- File slide markdown nằm tại [docs/slides.md](./docs/slides.md). Nếu nhóm dùng Canva, Google Slides hoặc một công cụ xuất slide online, chỉ cần thay link này bằng URL slide chính thức.
+- Khi public repository, không commit file `.env`; chỉ commit `.env.example`.
 
 ---
 
 <div align="center">
-  <strong>Nhóm 18</strong> · 2026
+  <strong>Nhóm 18 - QikLine Chat</strong><br />
+  Lập trình Web, 2026
 </div>
