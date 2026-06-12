@@ -2,16 +2,6 @@
 
 QikLine Chat là đồ án xây dựng ứng dụng nhắn tin thời gian thực theo mô hình client-server. Hệ thống hỗ trợ đăng ký, đăng nhập, quản lý liên hệ, chat 1-1, chat nhóm, gửi file/ảnh, tìm kiếm tin nhắn và cập nhật trạng thái hội thoại realtime bằng Socket.IO.
 
-## Thông tin đồ án
-
-| Nội dung | Thông tin |
-| --- | --- |
-| Tên dự án | QikLine Chat |
-| Môn học | Lập trình Web |
-| Loại dự án | Web chat realtime |
-| Repository | https://github.com/pathbezo26/NT208_LTWeb_QikLineChat |
-| Slide thuyết trình | [docs/slides.md](./docs/slides.md) |
-| Frontend demo | https://nt208-qikline.vercel.app |
 
 ## Thành viên nhóm
 
